@@ -94,5 +94,33 @@
   "optTutorialClose": {
     "message": "关闭",
     "description": "Tutorial close button"
+  },
+  "optSupportLink": {
+    "message": "支持作者",
+    "description": "Support author link text"
+  },
+  "optSupportTitle": {
+    "message": "支持作者",
+    "description": "Support modal title"
+  },
+  "optSupportWeChat": {
+    "message": "用微信扫码赞赏",
+    "description": "WeChat reward caption"
+  },
+  "optSupportPayPalDesc": {
+    "message": "海外用户？欢迎用 PayPal 支持",
+    "description": "PayPal reward caption"
+  },
+  "optSupportPayPalBtn": {
+    "message": "通过 PayPal 打赏",
+    "description": "PayPal donate button"
+  },
+  "optSupportSwitchToPayPal": {
+    "message": "海外用户？改用 PayPal",
+    "description": "Switch to PayPal link"
+  },
+  "optSupportSwitchToWeChat": {
+    "message": "国内用户？改用微信赞赏",
+    "description": "Switch to WeChat link"
   }
 }

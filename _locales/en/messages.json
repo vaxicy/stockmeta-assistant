@@ -94,5 +94,33 @@
   "optTutorialClose": {
     "message": "Close",
     "description": "Tutorial close button"
+  },
+  "optSupportLink": {
+    "message": "Support the author",
+    "description": "Support author link text"
+  },
+  "optSupportTitle": {
+    "message": "Support the author",
+    "description": "Support modal title"
+  },
+  "optSupportWeChat": {
+    "message": "Scan with WeChat to leave a tip",
+    "description": "WeChat reward caption"
+  },
+  "optSupportPayPalDesc": {
+    "message": "Prefer PayPal? Any amount helps.",
+    "description": "PayPal reward caption"
+  },
+  "optSupportPayPalBtn": {
+    "message": "Donate via PayPal",
+    "description": "PayPal donate button"
+  },
+  "optSupportSwitchToPayPal": {
+    "message": "Overseas? Use PayPal instead",
+    "description": "Switch to PayPal link"
+  },
+  "optSupportSwitchToWeChat": {
+    "message": "Switch to WeChat reward",
+    "description": "Switch to WeChat link"
   }
 }

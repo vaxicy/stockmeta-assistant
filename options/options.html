@@ -45,6 +45,8 @@
 
     <p class="opt-tutorial-line">
       <a href="#" id="tutorialLink" data-i18n="optTutorialLink">How to connect SiliconFlow?</a>
+      <span class="opt-link-sep">·</span>
+      <a href="#" id="supportLink" data-i18n="optSupportLink">Support the author</a>
     </p>
   </main>
 
@@ -63,6 +65,29 @@
       <div class="opt-modal-foot">
         <button class="opt-btn opt-primary" id="tutorialGo" data-i18n="optTutorialGo">Go to SiliconFlow</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Support modal -->
+  <div class="opt-modal-mask" id="supportMask" hidden>
+    <div class="opt-modal" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
+      <div class="opt-modal-head">
+        <h2 id="supportTitle" data-i18n="optSupportTitle">Support the author</h2>
+        <button class="opt-modal-close" id="supportClose" aria-label="Close">×</button>
+      </div>
+      <div class="opt-support-body">
+        <div class="opt-support-method" id="supportWeChat">
+          <p class="opt-support-cap" data-i18n="optSupportWeChat">Scan with WeChat to leave a tip</p>
+          <img class="opt-support-qr" src="/assets/微信赞赏码.png" alt="WeChat reward QR code" />
+        </div>
+        <div class="opt-support-method" id="supportPayPal">
+          <p class="opt-support-cap" data-i18n="optSupportPayPalDesc">Prefer PayPal? Any amount helps.</p>
+          <button class="opt-btn opt-primary" id="supportPayPalBtn" data-i18n="optSupportPayPalBtn">Donate via PayPal</button>
+        </div>
+      </div>
+      <p class="opt-support-switch-wrap">
+        <a href="#" id="supportSwitch" data-i18n="optSupportSwitchToPayPal">Overseas? Use PayPal instead</a>
+      </p>
     </div>
   </div>
 

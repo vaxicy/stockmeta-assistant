@@ -119,6 +119,46 @@ h1 {
 }
 .opt-tutorial-line a:hover { text-decoration: underline; }
 
+.opt-link-sep {
+  color: #cbd5e1;
+  margin: 0 6px;
+}
+
+/* support modal */
+.opt-support-body {
+  margin-bottom: 14px;
+}
+.opt-support-method {
+  text-align: center;
+}
+.opt-support-method.is-hidden { display: none; }
+.opt-support-cap {
+  font-size: 14px;
+  margin: 0 0 12px;
+  color: #1f2430;
+}
+.opt-support-qr {
+  width: 200px;
+  max-width: 72%;
+  height: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.opt-support-method .opt-btn {
+  flex: none;
+  padding: 10px 18px;
+}
+.opt-support-switch-wrap {
+  text-align: center;
+  margin: 0;
+}
+.opt-support-switch-wrap a {
+  color: #1a73e8;
+  font-size: 13px;
+  text-decoration: none;
+}
+.opt-support-switch-wrap a:hover { text-decoration: underline; }
+
 /* tutorial modal */
 .opt-modal-mask {
   position: fixed;

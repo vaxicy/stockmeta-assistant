@@ -34,6 +34,13 @@ const OPT_I18N = {
     optTutorialStep3: 'Paste the key above and click Save, then Test Connection.',
     optTutorialGo: 'Go to SiliconFlow',
     optTutorialClose: 'Close',
+    optSupportLink: 'Support the author',
+    optSupportTitle: 'Support the author',
+    optSupportWeChat: 'Scan with WeChat to leave a tip',
+    optSupportPayPalDesc: 'Prefer PayPal? Any amount helps.',
+    optSupportPayPalBtn: 'Donate via PayPal',
+    optSupportSwitchToPayPal: 'Overseas? Use PayPal instead',
+    optSupportSwitchToWeChat: 'Switch to WeChat reward',
   },
   zh: {
     optTitle: 'StockMeta 助手 — 设置',
@@ -58,6 +65,13 @@ const OPT_I18N = {
     optTutorialStep3: '将 Key 粘贴到上方并点击保存，然后测试连接。',
     optTutorialGo: '前往 SiliconFlow',
     optTutorialClose: '关闭',
+    optSupportLink: '支持作者',
+    optSupportTitle: '支持作者',
+    optSupportWeChat: '用微信扫码赞赏',
+    optSupportPayPalDesc: '海外用户？欢迎用 PayPal 支持',
+    optSupportPayPalBtn: '通过 PayPal 打赏',
+    optSupportSwitchToPayPal: '海外用户？改用 PayPal',
+    optSupportSwitchToWeChat: '国内用户？改用微信赞赏',
   },
 };
 
@@ -181,11 +195,55 @@ function initTutorial() {
   });
 }
 
+function initSupport() {
+  const mask = document.getElementById('supportMask');
+  const link = document.getElementById('supportLink');
+  const close = document.getElementById('supportClose');
+  const wechat = document.getElementById('supportWeChat');
+  const paypal = document.getElementById('supportPayPal');
+  const switchLink = document.getElementById('supportSwitch');
+  const paypalBtn = document.getElementById('supportPayPalBtn');
+  if (!mask || !link) return;
+
+  const PAYPAL_URL = 'https://www.paypal.com/ncp/payment/QRM8PMBMQ2ZHN';
+  // Default method follows the current UI language: zh -> WeChat, en -> PayPal.
+  let mode = currentLang() === 'zh' ? 'wechat' : 'paypal';
+
+  function render() {
+    const zh = mode === 'wechat';
+    wechat.classList.toggle('is-hidden', !zh);
+    paypal.classList.toggle('is-hidden', zh);
+    switchLink.textContent = msg(zh ? 'optSupportSwitchToPayPal' : 'optSupportSwitchToWeChat');
+  }
+
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    mode = currentLang() === 'zh' ? 'wechat' : 'paypal';
+    render();
+    mask.hidden = false;
+  });
+  close.addEventListener('click', () => {
+    mask.hidden = true;
+  });
+  mask.addEventListener('click', (e) => {
+    if (e.target === mask) mask.hidden = true;
+  });
+  switchLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    mode = mode === 'wechat' ? 'paypal' : 'wechat';
+    render();
+  });
+  paypalBtn.addEventListener('click', () => {
+    window.open(PAYPAL_URL, '_blank');
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyStaticI18n();
   load();
   initLangSelect();
   initTutorial();
+  initSupport();
   document.getElementById('saveBtn').addEventListener('click', onSave);
   document.getElementById('testBtn').addEventListener('click', onTest);
 });
