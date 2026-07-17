@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "extDescription": {
-    "message": "Generate Adobe Stock titles and keywords from your current asset using a vision model, then fill them in with one click. Does not auto-submit.",
+    "message": "Generate Adobe Stock titles and keywords from your asset with a vision model, then fill them in one click. No auto-submit.",
     "description": "Extension description"
   },
   "optTitle": {
