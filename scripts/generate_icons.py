@@ -12,9 +12,27 @@ import os
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "icons")
 BG = (26, 115, 232)        # #1a73e8 brand blue
 FG = (255, 255, 255)       # white glyph
+WHITE = (255, 255, 255)    # white tile
 
 # Which candidate becomes the shipped 16/48/128 icon (set after user picks).
-FINAL = "D"
+FINAL = "F"
+
+
+def tile_white(px, py):
+    return in_rounded_rect(px, py, 0.0, 0.0, 1.0, 1.0, 0.20)
+
+
+def gradient_bg(px, py):
+    # brand blue (top) -> white (bottom)
+    t = max(0.0, min(1.0, py))
+    r = int(BG[0] + (WHITE[0] - BG[0]) * t)
+    g = int(BG[1] + (WHITE[1] - BG[1]) * t)
+    b = int(BG[2] + (WHITE[2] - BG[2]) * t)
+    return (r, g, b)
+
+
+def tile_gradient(px, py):
+    return in_rounded_rect(px, py, 0.0, 0.0, 1.0, 1.0, 0.20)
 
 
 def in_rounded_rect(px, py, x0, y0, x1, y1, r):
@@ -122,16 +140,15 @@ def sample_C(px, py):
     return BG, True
 
 
-# ---- Candidate D: pure mountain polyline (very minimal) ----------------
+# ---- Candidate D: pure mountain polyline, transparent background -------
 def sample_D(px, py):
-    if not tile(px, py):
-        return (0, 0, 0), False
+    # White mountain polyline on transparent background (dark toolbars).
     m1 = thick_line(px, py, 0.22, 0.70, 0.40, 0.42, 0.085)
     m2 = thick_line(px, py, 0.40, 0.42, 0.56, 0.60, 0.085)
     m3 = thick_line(px, py, 0.56, 0.60, 0.78, 0.34, 0.085)
     if m1 or m2 or m3:
         return FG, True
-    return BG, True
+    return (0, 0, 0), False
 
 
 # ---- Candidate E: magnifier over a tiny picture ------------------------
@@ -193,10 +210,102 @@ SAMPLES = {
     "E": sample_E,
 }
 
+
+def sample_Dblue(px, py):
+    # Brand-blue mountain polyline on transparent background (light + dark).
+    m1 = thick_line(px, py, 0.22, 0.70, 0.40, 0.42, 0.085)
+    m2 = thick_line(px, py, 0.40, 0.42, 0.56, 0.60, 0.085)
+    m3 = thick_line(px, py, 0.56, 0.60, 0.78, 0.34, 0.085)
+    if m1 or m2 or m3:
+        return BG, True
+    return (0, 0, 0), False
+
 VARIANTS = {
     "D1": sample_D1,
     "D2": sample_D2,
     "D3": sample_D3,
+}
+
+
+# ---- New white-on-blue candidates (F-J) --------------------------------
+def sample_F(px, py):
+    # white tile + solid blue mountain + sun (classic "picture" cue)
+    if not tile_white(px, py):
+        return (0, 0, 0), False
+    mountain = point_in_triangle(px, py, (0.24, 0.70), (0.50, 0.34), (0.76, 0.70))
+    sun = circle(px, py, 0.66, 0.36, 0.08)
+    if mountain or sun:
+        return BG, True
+    return WHITE, True
+
+
+def sample_G(px, py):
+    # white tile + blue camera outline
+    if not tile_white(px, py):
+        return (0, 0, 0), False
+    body_out = in_rounded_rect(px, py, 0.20, 0.34, 0.80, 0.70, 0.10)
+    body_in = in_rounded_rect(px, py, 0.30, 0.44, 0.70, 0.62, 0.06)
+    frame = body_out and not body_in
+    bump = in_rounded_rect(px, py, 0.40, 0.27, 0.60, 0.36, 0.02)
+    lens_ring = ring(px, py, 0.50, 0.53, 0.13, 0.07)
+    if frame or bump or lens_ring:
+        return BG, True
+    return WHITE, True
+
+
+def sample_H(px, py):
+    # blue->white gradient tile + white picture frame + mountain + sun
+    if not tile_gradient(px, py):
+        return (0, 0, 0), False
+    outer = in_rounded_rect(px, py, 0.26, 0.26, 0.74, 0.66, 0.05)
+    inner = in_rounded_rect(px, py, 0.33, 0.33, 0.67, 0.59, 0.03)
+    frame = outer and not inner
+    mountain = point_in_triangle(px, py, (0.36, 0.57), (0.58, 0.40), (0.70, 0.57))
+    sun = circle(px, py, 0.60, 0.40, 0.045)
+    if frame or mountain or sun:
+        return WHITE, True
+    return gradient_bg(px, py), True
+
+
+def sample_I(px, py):
+    # white tile + blue SM monogram
+    if not tile_white(px, py):
+        return (0, 0, 0), False
+    w = 0.075
+    segs = [
+        (0.20, 0.32, 0.48, 0.32), (0.20, 0.32, 0.20, 0.48),
+        (0.20, 0.48, 0.48, 0.48), (0.48, 0.48, 0.48, 0.64),
+        (0.20, 0.64, 0.48, 0.64),
+        (0.54, 0.32, 0.54, 0.66), (0.54, 0.32, 0.67, 0.54),
+        (0.67, 0.54, 0.80, 0.32), (0.80, 0.32, 0.80, 0.66),
+    ]
+    for (x1, y1, x2, y2) in segs:
+        if thick_line(px, py, x1, y1, x2, y2, w):
+            return BG, True
+    dot = circle(px, py, 0.80, 0.80, 0.045)
+    if dot:
+        return BG, True
+    return WHITE, True
+
+
+def sample_J(px, py):
+    # white tile + blue magnifier with tiny mountain inside
+    if not tile_white(px, py):
+        return (0, 0, 0), False
+    ring1 = ring(px, py, 0.46, 0.46, 0.26, 0.18)
+    handle = thick_line(px, py, 0.63, 0.63, 0.84, 0.84, 0.09)
+    m = point_in_triangle(px, py, (0.32, 0.56), (0.46, 0.42), (0.60, 0.56))
+    if ring1 or handle or m:
+        return BG, True
+    return WHITE, True
+
+
+NEWS = {
+    "F": sample_F,
+    "G": sample_G,
+    "H": sample_H,
+    "I": sample_I,
+    "J": sample_J,
 }
 
 
@@ -250,7 +359,10 @@ def build_final():
     if not FINAL:
         print("FINAL is not set; nothing to build.")
         return
-    fn = SAMPLES[FINAL]
+    fn = {**SAMPLES, **NEWS}.get(FINAL)
+    if fn is None:
+        print(f"FINAL={FINAL!r} not found in SAMPLES or NEWS.")
+        return
     for s in (16, 48, 128):
         rows = render_icon(s, fn, ss=4 if s >= 48 else 3)
         write_png(s, s, rows, os.path.join(OUT_DIR, f"icon{s}.png"))
@@ -294,6 +406,27 @@ def main():
             for dx in range(cell):
                 strip2[oy + dy][ox + dx] = src[dy][dx]
     write_png(W2, H, strip2, os.path.join(OUT_DIR, "preview_D_variants.png"))
+
+    # Transparent-background comparison: white vs blue mountain.
+    for tag, fn in (("Dwhite", sample_D), ("Dblue", sample_Dblue)):
+        rows = render_icon(S, fn, ss=4)
+        write_png(S, S, rows, os.path.join(OUT_DIR, f"preview_{tag}.png"))
+
+    # New white-on-blue candidates F-J
+    nicons = {k: render_icon(S, fn, ss=4) for k, fn in NEWS.items()}
+    for k, rows in nicons.items():
+        write_png(S, S, rows, os.path.join(OUT_DIR, f"preview_{k}.png"))
+    norder = ["F", "G", "H", "I", "J"]
+    W3 = pad * 2 + len(norder) * cell + (len(norder) - 1) * gap
+    strip3 = [[(0, 0, 0, 0) for _ in range(W3)] for _ in range(H)]
+    for idx, k in enumerate(norder):
+        ox = pad + idx * (cell + gap)
+        oy = pad
+        src = nicons[k]
+        for dy in range(cell):
+            for dx in range(cell):
+                strip3[oy + dy][ox + dx] = src[dy][dx]
+    write_png(W3, H, strip3, os.path.join(OUT_DIR, "preview_FGJ.png"))
 
 
 if __name__ == "__main__":
