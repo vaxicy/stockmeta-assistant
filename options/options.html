@@ -34,60 +34,15 @@
     </section>
 
     <section class="opt-field">
-      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
-      <select id="providerSelect">
-        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
-        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
-        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
-      </select>
-    </section>
-
-    <section class="opt-field is-hidden" id="baseUrlField">
-      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
-      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
-      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
-    </section>
-
-    <section class="opt-field">
-      <label for="apiKey" data-i18n="optApiKey">SiliconFlow API Key</label>
+      <label for="apiKey" data-i18n="optApiKey">API Key</label>
       <input type="password" id="apiKey" autocomplete="off" placeholder="sk-..." />
       <p class="opt-hint" data-i18n="optApiKeyDesc">Stored locally in chrome.storage.local. Never hardcoded.</p>
-    </section>
-
-    <section class="opt-field">
-      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
-      <select id="providerSelect">
-        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
-        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
-        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
-      </select>
-    </section>
-
-    <section class="opt-field is-hidden" id="baseUrlField">
-      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
-      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
-      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
     </section>
 
     <section class="opt-field">
       <label for="model" data-i18n="optModel">Vision Model ID</label>
       <input type="text" id="model" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" />
       <p class="opt-hint" data-i18n="optModelDesc">e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner</p>
-    </section>
-
-    <section class="opt-field">
-      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
-      <select id="providerSelect">
-        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
-        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
-        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
-      </select>
-    </section>
-
-    <section class="opt-field is-hidden" id="baseUrlField">
-      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
-      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
-      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
     </section>
 
     <section class="opt-field">
@@ -104,7 +59,7 @@
     <p id="status" class="opt-status" role="status" aria-live="polite"></p>
 
     <p class="opt-tutorial-line">
-      <a href="#" id="tutorialLink" data-i18n="optTutorialLink">How to connect SiliconFlow?</a>
+      <a href="#" id="tutorialLink" data-i18n="optTutorialLink">How to get an API Key?</a>
       <span class="opt-link-sep">·</span>
       <a href="#" id="supportLink" data-i18n="optSupportLink">Support the author</a>
     </p>
@@ -114,17 +69,14 @@
   <div class="opt-modal-mask" id="tutorialMask" hidden>
     <div class="opt-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
       <div class="opt-modal-head">
-        <h2 id="tutorialTitle" data-i18n="optTutorialTitle">How to connect SiliconFlow</h2>
+        <h2 id="tutorialTitle" data-i18n="optTutorialTitle">How to get an API Key</h2>
         <button class="opt-modal-close" id="tutorialClose" aria-label="Close">×</button>
       </div>
       <ol class="opt-modal-steps">
-        <li data-i18n="optTutorialStep1">Register / log in at SiliconFlow and open the API Keys page.</li>
+        <li data-i18n="optTutorialStep1">Open the provider's API Keys page.</li>
         <li data-i18n="optTutorialStep2">Create a new API Key and copy it.</li>
         <li data-i18n="optTutorialStep3">Paste the key above and click Save, then Test Connection.</li>
       </ol>
-      <div class="opt-modal-foot">
-        <button class="opt-btn opt-primary" id="tutorialGo" data-i18n="optTutorialGo">Go to SiliconFlow</button>
-      </div>
     </div>
   </div>
 

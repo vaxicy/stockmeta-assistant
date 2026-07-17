@@ -57,7 +57,7 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
   },
   zh: {
-    optTitle: 'StockMeta Assistant — Settings',
+    optTitle: 'StockMeta Assistant — 设置',
     optLang: '语言',
     optLangAuto: '跟随浏览器',
     optProvider: 'AI 提供商',
@@ -259,7 +259,6 @@ function initTutorial() {
   const mask = document.getElementById('tutorialMask');
   const link = document.getElementById('tutorialLink');
   const close = document.getElementById('tutorialClose');
-  const go = document.getElementById('tutorialGo');
   if (!mask || !link) return;
   link.addEventListener('click', (e) => {
     e.preventDefault();
@@ -271,11 +270,6 @@ function initTutorial() {
   });
   mask.addEventListener('click', (e) => {
     if (e.target === mask) mask.hidden = true;
-  });
-  go.addEventListener('click', () => {
-    const provider = getProvider();
-    const url = PROVIDER_DEFAULTS[provider]?.url || PROVIDER_DEFAULTS.siliconflow.url;
-    window.open(url, '_blank');
   });
 }
 

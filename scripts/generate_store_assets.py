@@ -149,7 +149,7 @@ def draw_step_badge(draw, x, y, text, f):
 SAMPLE = {
     "en": {
         "panelTitle": "StockMeta Assistant",
-        "statusIdle": "Ready. Select an asset to begin.",
+        "statusIdle": "Ready. Click Generate to create title and description.",
         "statusDone": "Title & description ready.",
         "generate": "Generate Title & Description",
         "titleLabel": "Title",
@@ -190,18 +190,24 @@ SAMPLE = {
         "addDetails": "Add details",
         "fTitle": "Title",
         "fKeywords": "Keywords",
-        "step1": "1. Select an asset",
-        "step2": "2. Configure AI provider",
-        "step3": "3. One-click fill",
+        "step1": "1. Configure AI settings",
+        "step2": "2. Open Adobe Stock and generate",
+        "step3": "3. One-click apply to fill",
         "provider": "AI Provider",
         "providerSiliconFlow": "SiliconFlow",
         "providerOpenAI": "OpenAI",
         "providerCustom": "Custom",
         "baseUrl": "Base URL",
+        "adobeNav": ["Dashboard", "Uploaded Files", "Insights", "Contributor Account"],
+        "adobeTabs": ["New", "In review", "Reminder", "Not accepted", "Upload issues", "Releases"],
+        "adobeBanner": "Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.",
+        "adobeFileTypes": "File types: All (42)",
+        "adobeSort": "Upload date ▼",
+        "adobeSaveWork": "Save work",
     },
     "zh": {
         "panelTitle": "StockMeta Assistant",
-        "statusIdle": "就绪。请选择一个素材。",
+        "statusIdle": "就绪。点击“生成标题和描述”。",
         "statusDone": "标题和描述已生成。",
         "generate": "生成标题和描述",
         "titleLabel": "标题",
@@ -213,7 +219,7 @@ SAMPLE = {
         "applyAll": "全部应用",
         "retry": "重试",
         "kwCount": "30 个关键词",
-        "optTitle": "StockMeta Assistant — Settings",
+        "optTitle": "StockMeta Assistant — 设置",
         "lang": "语言",
         "langAuto": "跟随浏览器",
         "english": "English",
@@ -242,14 +248,20 @@ SAMPLE = {
         "addDetails": "填写素材信息",
         "fTitle": "标题",
         "fKeywords": "关键词",
-        "step1": "1. 选择素材",
-        "step2": "2. 配置 AI 提供商",
-        "step3": "3. 一键填入",
+        "step1": "1. 配置 AI 设置",
+        "step2": "2. 打开 Adobe Stock 点击生成",
+        "step3": "3. 一键应用自动填充",
         "provider": "AI 提供商",
         "providerSiliconFlow": "SiliconFlow",
         "providerOpenAI": "OpenAI",
         "providerCustom": "自定义",
         "baseUrl": "Base URL",
+        "adobeNav": ["面板", "已上传文件", "数据", "供稿人账户"],
+        "adobeTabs": ["新建", "审核中", "提醒", "未接受", "上传问题", "发布"],
+        "adobeBanner": "请勿提交标题暗示实际新闻事件描绘的生成式 AI 内容。",
+        "adobeFileTypes": "文件类型：全部 (42)",
+        "adobeSort": "上传时间 ▼",
+        "adobeSaveWork": "保存工作",
     },
 }
 
@@ -317,23 +329,26 @@ def draw_browser(draw, W, H, url):
 # =========================================================================
 def draw_adobe_grid(d, img, W, H, top, lang):
     """Draw a realistic Adobe Stock Uploaded Files grid background."""
+    s = SAMPLE[lang]
     # top nav bar
     rr(d, (0, top, W, top + 50), 0, fill=WHITE)
     d.line((0, top + 50, W, top + 50), fill=(218, 220, 224), width=1)
-    d.text((24, top + 25), "Adobe Stock", font=font(16, True), fill=INK, anchor="lm")
-    nav = ["Dashboard", "Uploaded Files", "Insights", "Contributor Account"]
+    d.text((24, top + 25), s["adobeTitle"], font=font(16, True), fill=INK, anchor="lm")
+    nav = s["adobeNav"]
     nx = 150
+    active_nav = nav[1] if len(nav) > 1 else "Uploaded Files"
     for n in nav:
-        color = BLUE if n == "Uploaded Files" else INK
+        color = BLUE if n == active_nav else INK
         d.text((nx, top + 25), n, font=font(12), fill=color, anchor="lm")
         nx += text_size(d, n, font(12))[0] + 28
 
     # tabs
     tab_y = top + 50 + 12
-    tabs = ["New", "In review", "Reminder", "Not accepted", "Upload issues", "Releases"]
+    tabs = s["adobeTabs"]
     tx = 24
+    tab_active = tabs[0]
     for t in tabs:
-        if t == "New":
+        if t == tab_active:
             d.rectangle((tx, tab_y, tx + 80, tab_y + 32), fill=(240, 245, 255))
             d.text((tx + 40, tab_y + 16), t, font=font(12, True), fill=BLUE, anchor="mm")
         else:
@@ -343,14 +358,13 @@ def draw_adobe_grid(d, img, W, H, top, lang):
     # warning banner
     by = tab_y + 44
     d.rectangle((0, by, W, by + 38), fill=(255, 248, 225))
-    d.text((W / 2, by + 19), "Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.",
-              font=font(11), fill=(150, 124, 0), anchor="mm")
+    d.text((W / 2, by + 19), s["adobeBanner"], font=font(11), fill=(150, 124, 0), anchor="mm")
 
     # filters / toolbar
     fy = by + 50
-    d.text((24, fy + 10), "File types: All (42)", font=font(12), fill=INK, anchor="lm")
+    d.text((24, fy + 10), s["adobeFileTypes"], font=font(12), fill=INK, anchor="lm")
     rr(d, (W - 220, fy, W - 24, fy + 32), 6, fill=WHITE, outline=BORDER, width=1)
-    d.text((W - 122, fy + 16), "Upload date ▼", font=font(11), fill=INK, anchor="mm")
+    d.text((W - 122, fy + 16), s["adobeSort"], font=font(11), fill=INK, anchor="mm")
 
     # grid of assets
     gy = fy + 48
@@ -370,9 +384,8 @@ def draw_adobe_grid(d, img, W, H, top, lang):
             if r == 0 and c == 2:
                 d.rectangle((x - 2, y - 2, x + cw + 2, y + cw + 2), outline=BLUE, width=3)
 
-
     # bottom text
-    d.text((24, gy + rows * (cw + gap) + 14), "Save work", font=font(12), fill=SUB, anchor="lm")
+    d.text((24, gy + rows * (cw + gap) + 14), s["adobeSaveWork"], font=font(12), fill=SUB, anchor="lm")
 
 def shot_adobe(lang):
     W, H = 1280, 800
@@ -382,13 +395,18 @@ def shot_adobe(lang):
     top = 56
     draw_adobe_grid(d, img, W, H, top, lang)
     # floating panel on the right
-    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, idle=True)
+    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="generate")
     # step badge
-    draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step1"], font(13, True))
+    draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step2"], font(13, True))
     return img
 
 
-def draw_panel(d, img, x, y, w, lang, idle=False):
+def draw_panel(d, img, x, y, w, lang, stage="apply"):
+    """Draw the extension side panel.
+    stage: 'generate' highlights the generate button and leaves fields empty;
+           'apply' shows filled content and highlights the Apply All button.
+    """
+    s = SAMPLE[lang]
     header_h = 44
     pad = 12
     cw = w - 2 * pad
@@ -401,7 +419,7 @@ def draw_panel(d, img, x, y, w, lang, idle=False):
     # icon
     icon = Image.open(os.path.join(ROOT, "icons", "icon48.png")).convert("RGBA").resize((22, 22))
     img.paste(icon, (x + 12, y + 11), icon)
-    draw_text(d, (x + 42, y + header_h / 2), SAMPLE[lang]["panelTitle"], font(14, True), WHITE, anchor="lm")
+    draw_text(d, (x + 42, y + header_h / 2), s["panelTitle"], font(14, True), WHITE, anchor="lm")
     # header buttons
     bx = x + w - 36
     rr(d, (bx, y + 7, bx + 28, y + 35), 6, fill=(255, 255, 255, 38))
@@ -411,9 +429,9 @@ def draw_panel(d, img, x, y, w, lang, idle=False):
     d.line((bx2 + 9, y + 21, bx2 + 19, y + 21), fill=WHITE, width=2)
     # status
     cur = y + header_h + pad
-    status_key = "statusIdle" if idle else "statusDone"
-    status_color = SUB if idle else GREEN
-    draw_text(d, (cx, cur), SAMPLE[lang][status_key], font(12), status_color, anchor="la")
+    status_key = "statusIdle" if stage == "generate" else "statusDone"
+    status_color = SUB if stage == "generate" else GREEN
+    draw_text(d, (cx, cur), s[status_key], font(12), status_color, anchor="la")
     cur += 16 + 10
     # preview
     ph = 150
@@ -422,37 +440,74 @@ def draw_panel(d, img, x, y, w, lang, idle=False):
     cur += ph + 12 + 10
     # generate button
     bh = 38
-    draw_button(d, (cx, cur, cx + cw, cur + bh), SAMPLE[lang]["generate"], font(13, True), BLUE, WHITE)
+    draw_button(d, (cx, cur, cx + cw, cur + bh), s["generate"], font(13, True), BLUE, WHITE)
+    if stage == "generate":
+        rr(d, (cx - 2, cur - 2, cx + cw + 2, cur + bh + 2), 10, outline=(255, 214, 92), width=2)
     cur += bh + 10
-    # title field
-    draw_text(d, (cx, cur), SAMPLE[lang]["titleLabel"], font(12, True), INK, anchor="la")
-    cur += 16 + 6
-    th = 48
-    rr(d, (cx, cur, cx + cw, cur + th), 8, fill=WHITE, outline=BORDER, width=1)
-    center_wrapped(d, (cx + 8, cur + 4, cx + cw - 8, cur + th - 4), SAMPLE_TITLE[lang], font(12), INK, line_h=16, anchor_top=True)
-    cur += th + 10
-    # keywords field
-    draw_text(d, (cx, cur), SAMPLE[lang]["keywordsLabel"], font(12, True), INK, anchor="la")
-    draw_text(d, (cx + cw, cur), SAMPLE[lang]["kwCount"], font(11), SUB, anchor="ra")
-    cur += 16 + 6
-    kh = 120
-    rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=WHITE, outline=BORDER, width=1)
-    kw_text = ", ".join(SAMPLE_KW[lang])
-    center_wrapped(d, (cx + 8, cur + 6, cx + cw - 8, cur + kh - 6), kw_text, font(11), INK, line_h=15, anchor_top=True)
-    cur += kh + 10
+
+    if stage == "generate":
+        # empty placeholders for title and keywords
+        draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+        cur += 16 + 6
+        th = 48
+        rr(d, (cx, cur, cx + cw, cur + th), 8, fill=(250, 251, 252), outline=BORDER, width=1)
+        d.text((cx + cw / 2, cur + th / 2), s["titleLabel"], font=font(11), fill=SUB, anchor="mm")
+        cur += th + 10
+        draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
+        cur += 16 + 6
+        kh = 120
+        rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=(250, 251, 252), outline=BORDER, width=1)
+        d.text((cx + cw / 2, cur + kh / 2), s["keywordsLabel"], font=font(11), fill=SUB, anchor="mm")
+        cur += kh + 10
+    else:
+        # title field
+        draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+        cur += 16 + 6
+        th = 48
+        rr(d, (cx, cur, cx + cw, cur + th), 8, fill=WHITE, outline=BORDER, width=1)
+        center_wrapped(d, (cx + 8, cur + 4, cx + cw - 8, cur + th - 4), SAMPLE_TITLE[lang], font(12), INK, line_h=16, anchor_top=True)
+        cur += th + 10
+        # keywords field
+        draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
+        draw_text(d, (cx + cw, cur), s["kwCount"], font(11), SUB, anchor="ra")
+        cur += 16 + 6
+        kh = 120
+        rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=WHITE, outline=BORDER, width=1)
+        kw_text = ", ".join(SAMPLE_KW[lang])
+        center_wrapped(d, (cx + 8, cur + 6, cx + cw - 8, cur + kh - 6), kw_text, font(11), INK, line_h=15, anchor_top=True)
+        cur += kh + 10
+
     # row 1
     rb = 34
     half = (cw - 8) / 2
-    draw_button(d, (cx, cur, cx + half, cur + rb), SAMPLE[lang]["applyTitle"], font(12, True), SOFT, INK)
-    draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), SAMPLE[lang]["copyTitle"], font(12, True), SOFT, INK)
+    if stage == "apply":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), SOFT, INK)
+    else:
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), disabled_color, disabled_text)
     cur += rb + 8
     # row 2
-    draw_button(d, (cx, cur, cx + half, cur + rb), SAMPLE[lang]["applyKeywords"], font(12, True), SOFT, INK)
-    draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), SAMPLE[lang]["copyKeywords"], font(12, True), SOFT, INK)
+    if stage == "apply":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), SOFT, INK)
+    else:
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), disabled_color, disabled_text)
     cur += rb + 8
     # row main
-    draw_button(d, (cx, cur, cx + half, cur + rb), SAMPLE[lang]["applyAll"], font(12, True), BLUE, WHITE)
-    draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), SAMPLE[lang]["retry"], font(12, True), SOFT, INK)
+    if stage == "apply":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), GREEN, WHITE)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), SOFT, INK)
+    else:
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), disabled_color, disabled_text)
 
 
 # =========================================================================
@@ -492,12 +547,6 @@ def shot_settings(lang):
     d.text((sel_x + 12, cur + 12), SAMPLE[lang]["providerSiliconFlow"], font=font(14), fill=INK, anchor="lm")
     d.polygon([(sel_x + sel_w - 22, cur + 8), (sel_x + sel_w - 8, cur + 8), (sel_x + sel_w - 15, cur + 20)], fill=SUB)
     cur += 52
-    # base url (hidden for built-in providers, but we draw a small hint row)
-    draw_text(d, (ix, cur), SAMPLE[lang]["baseUrl"], font(14, True), INK, anchor="la")
-    cur += 22
-    rr(d, (ix, cur, ix + iw, cur + 42), 8, fill=(245, 247, 250), outline=BORDER, width=1)
-    d.text((ix + 12, cur + 21), "https://api.siliconflow.cn/v1", font=font(13), fill=SUB, anchor="lm")
-    cur += 50
     # api key
     draw_text(d, (ix, cur), SAMPLE[lang]["apiKey"], font(14, True), INK, anchor="la")
     cur += 22
@@ -537,36 +586,24 @@ def shot_settings(lang):
     d.text((ix + 200, cur + 8), "·", font=font(13), fill=BORDER, anchor="lm")
     d.text((ix + 220, cur + 8), SAMPLE[lang]["support"], font=font(13), fill=BLUE, anchor="lm")
     # step badge
-    draw_step_badge(d, cx + cw - 170, cy + 28, SAMPLE[lang]["step2"], font(13, True))
+    draw_step_badge(d, cx + cw - 170, cy + 28, SAMPLE[lang]["step1"], font(13, True))
     return img
 
 
 # =========================================================================
-# SCREENSHOT 3 — Popup (ready to use)
+# SCREENSHOT 3 — Adobe Stock + panel (one-click apply)
 # =========================================================================
 def shot_popup(lang):
     W, H = 1280, 800
-    img = Image.new("RGBA", (W, H), (220, 223, 228))
+    img = Image.new("RGBA", (W, H), WHITE)
     d = ImageDraw.Draw(img)
-    draw_browser(d, W, H, "chrome-extension://stockmeta/popup/popup.html")
-    # popup card
-    pw = 320
-    px = (W - pw) / 2
-    py = 120
-    ph = 200
-    rr(d, (px, py, px + pw, py + ph), 12, fill=WHITE, outline=(225, 228, 233), width=1)
-    ix = px + 16
-    iw = pw - 32
-    cur = py + 18
-    draw_text(d, (ix, cur), SAMPLE[lang]["popupTitle"], font(14, True), BLUE, anchor="la")
-    cur += 30
-    draw_text(d, (ix, cur), SAMPLE[lang]["popupStatus"], font(13, True), GREEN, anchor="la")
-    cur += 26
-    center_wrapped(d, (ix, cur, ix + iw, cur + 60), SAMPLE[lang]["popupDesc"], font(12), SUB, line_h=18, anchor_top=True)
-    cur += 66
-    draw_button(d, (ix, cur, ix + iw, cur + 38), SAMPLE[lang]["popupSettings"], font(13, True), BLUE, WHITE)
+    draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
+    top = 56
+    draw_adobe_grid(d, img, W, H, top, lang)
+    # floating panel on the right with generated content and apply buttons
+    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="apply")
     # step badge
-    draw_step_badge(d, px - 8, py - 12, SAMPLE[lang]["step3"], font(13, True))
+    draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step3"], font(13, True))
     return img
 
 
@@ -681,8 +718,8 @@ def main():
     os.makedirs(os.path.join(OUT, "promo"), exist_ok=True)
 
     shots = [
-        ("01-adobe-panel", shot_adobe),
-        ("02-settings", shot_settings),
+        ("01-settings", shot_settings),
+        ("02-adobe", shot_adobe),
         ("03-popup", shot_popup),
     ]
     for name, fn in shots:
