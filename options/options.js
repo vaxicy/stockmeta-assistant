@@ -20,7 +20,7 @@ const PROVIDER_DEFAULTS = {
 // the browser UI language (chrome.i18n.getMessage always follows the browser).
 const OPT_I18N = {
   en: {
-    optTitle: 'StockMeta Assistant — Settings',
+    optTitle: 'Settings',
     optLang: 'Language',
     optLangAuto: 'Follow browser',
     optProvider: 'AI Provider',
@@ -57,7 +57,7 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
   },
   zh: {
-    optTitle: 'StockMeta Assistant — 设置',
+    optTitle: '设置',
     optLang: '语言',
     optLangAuto: '跟随浏览器',
     optProvider: 'AI 提供商',

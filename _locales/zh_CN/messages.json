@@ -8,7 +8,7 @@
     "description": "Extension description"
   },
   "optTitle": {
-    "message": "StockMeta Assistant — 设置",
+    "message": "设置",
     "description": "Options page title"
   },
   "optApiKey": {
