@@ -6,8 +6,7 @@ Outputs:
   store-assets/screenshots/zh/*.png   (1280x800)
   store-assets/screenshots/en/*.png
   store-assets/promo/440x280.png      (bilingual)
-  store-assets/promo/920x680.png
-  store-assets/promo/1400x560.png
+  store-assets/promo/1400x560.png     (bilingual)
 """
 import os
 from PIL import Image, ImageDraw, ImageFont
@@ -135,11 +134,22 @@ def draw_check(draw, cx, cy, size, color):
     draw.line((pts[0], pts[1]), fill=color, width=2)
     draw.line((pts[1], pts[2]), fill=color, width=2)
 
+def draw_step_badge(draw, x, y, text, f):
+    """Draw a numbered tutorial badge at top-left (x, y)."""
+    pad_x, pad_y = 12, 8
+    w, h = text_size(draw, text, f)
+    bw, bh = w + pad_x * 2, h + pad_y * 2
+    rr(draw, (x, y, x + bw, y + bh), 20, fill=BLUE, outline=WHITE, width=2)
+    draw.text((x + bw / 2, y + bh / 2), text, font=f, fill=WHITE, anchor="mm")
+    return bw, bh
+
+
 
 # ---- sample content ------------------------------------------------------
 SAMPLE = {
     "en": {
         "panelTitle": "StockMeta Assistant",
+        "statusIdle": "Ready. Select an asset to begin.",
         "statusDone": "Title & description ready.",
         "generate": "Generate Title & Description",
         "titleLabel": "Title",
@@ -151,12 +161,12 @@ SAMPLE = {
         "applyAll": "Apply All",
         "retry": "Retry",
         "kwCount": "30 keywords",
-        "optTitle": "StockMeta Assistant for Adobe Stock — Settings",
+        "optTitle": "StockMeta Assistant — Settings",
         "lang": "Language",
         "langAuto": "Follow browser",
         "english": "English",
         "chinese": "简体中文",
-        "apiKey": "SiliconFlow API Key",
+        "apiKey": "API Key",
         "apiKeyDesc": "Stored locally in chrome.storage.local. Never hardcoded.",
         "model": "Vision Model ID",
         "modelDesc": "e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner",
@@ -165,9 +175,9 @@ SAMPLE = {
         "test": "Test Connection",
         "save": "Save",
         "saved": "Settings saved.",
-        "tutorial": "How to connect SiliconFlow?",
+        "tutorial": "How to get an API Key?",
         "support": "Support the author",
-        "popupTitle": "StockMeta Assistant for Adobe Stock",
+        "popupTitle": "StockMeta Assistant",
         "popupStatus": "Connection OK",
         "popupDesc": "Generate Adobe Stock titles and keywords from your current asset, then fill them in with one click.",
         "popupSettings": "Settings",
@@ -180,9 +190,18 @@ SAMPLE = {
         "addDetails": "Add details",
         "fTitle": "Title",
         "fKeywords": "Keywords",
+        "step1": "1. Select an asset",
+        "step2": "2. Configure AI provider",
+        "step3": "3. One-click fill",
+        "provider": "AI Provider",
+        "providerSiliconFlow": "SiliconFlow",
+        "providerOpenAI": "OpenAI",
+        "providerCustom": "Custom",
+        "baseUrl": "Base URL",
     },
     "zh": {
         "panelTitle": "StockMeta Assistant",
+        "statusIdle": "就绪。请选择一个素材。",
         "statusDone": "标题和描述已生成。",
         "generate": "生成标题和描述",
         "titleLabel": "标题",
@@ -194,12 +213,12 @@ SAMPLE = {
         "applyAll": "全部应用",
         "retry": "重试",
         "kwCount": "30 个关键词",
-        "optTitle": "StockMeta Assistant for Adobe Stock — Settings",
+        "optTitle": "StockMeta Assistant — Settings",
         "lang": "语言",
         "langAuto": "跟随浏览器",
         "english": "English",
         "chinese": "简体中文",
-        "apiKey": "SiliconFlow API Key",
+        "apiKey": "API Key",
         "apiKeyDesc": "保存在本地 chrome.storage.local，绝不硬编码。",
         "model": "视觉模型 ID",
         "modelDesc": "例如 Qwen/Qwen3-Omni-30B-A3B-Captioner",
@@ -208,9 +227,9 @@ SAMPLE = {
         "test": "测试连接",
         "save": "保存",
         "saved": "设置已保存。",
-        "tutorial": "如何接入 SiliconFlow？",
+        "tutorial": "如何获取 API Key？",
         "support": "支持作者",
-        "popupTitle": "StockMeta Assistant for Adobe Stock",
+        "popupTitle": "StockMeta Assistant",
         "popupStatus": "连接成功",
         "popupDesc": "用视觉模型从当前素材生成 Adobe Stock 标题与关键词，一键填入。",
         "popupSettings": "设置",
@@ -223,6 +242,14 @@ SAMPLE = {
         "addDetails": "填写素材信息",
         "fTitle": "标题",
         "fKeywords": "关键词",
+        "step1": "1. 选择素材",
+        "step2": "2. 配置 AI 提供商",
+        "step3": "3. 一键填入",
+        "provider": "AI 提供商",
+        "providerSiliconFlow": "SiliconFlow",
+        "providerOpenAI": "OpenAI",
+        "providerCustom": "自定义",
+        "baseUrl": "Base URL",
     },
 }
 
@@ -286,47 +313,82 @@ def draw_browser(draw, W, H, url):
     draw.rectangle((ex + 7, ey + 7, ex + 15, ey + 15), fill=(120, 124, 130))
 
 # =========================================================================
-# SCREENSHOT 1 — Adobe panel (hero)
+# SCREENSHOT 1 — Adobe Stock grid + panel (select asset)
 # =========================================================================
+def draw_adobe_grid(d, img, W, H, top, lang):
+    """Draw a realistic Adobe Stock Uploaded Files grid background."""
+    # top nav bar
+    rr(d, (0, top, W, top + 50), 0, fill=WHITE)
+    d.line((0, top + 50, W, top + 50), fill=(218, 220, 224), width=1)
+    d.text((24, top + 25), "Adobe Stock", font=font(16, True), fill=INK, anchor="lm")
+    nav = ["Dashboard", "Uploaded Files", "Insights", "Contributor Account"]
+    nx = 150
+    for n in nav:
+        color = BLUE if n == "Uploaded Files" else INK
+        d.text((nx, top + 25), n, font=font(12), fill=color, anchor="lm")
+        nx += text_size(d, n, font(12))[0] + 28
+
+    # tabs
+    tab_y = top + 50 + 12
+    tabs = ["New", "In review", "Reminder", "Not accepted", "Upload issues", "Releases"]
+    tx = 24
+    for t in tabs:
+        if t == "New":
+            d.rectangle((tx, tab_y, tx + 80, tab_y + 32), fill=(240, 245, 255))
+            d.text((tx + 40, tab_y + 16), t, font=font(12, True), fill=BLUE, anchor="mm")
+        else:
+            d.text((tx + 40, tab_y + 16), t, font=font(12), fill=SUB, anchor="mm")
+        tx += 90
+
+    # warning banner
+    by = tab_y + 44
+    d.rectangle((0, by, W, by + 38), fill=(255, 248, 225))
+    d.text((W / 2, by + 19), "Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.",
+              font=font(11), fill=(150, 124, 0), anchor="mm")
+
+    # filters / toolbar
+    fy = by + 50
+    d.text((24, fy + 10), "File types: All (42)", font=font(12), fill=INK, anchor="lm")
+    rr(d, (W - 220, fy, W - 24, fy + 32), 6, fill=WHITE, outline=BORDER, width=1)
+    d.text((W - 122, fy + 16), "Upload date ▼", font=font(11), fill=INK, anchor="mm")
+
+    # grid of assets
+    gy = fy + 48
+    cols = 5
+    gap = 16
+    margin = 24
+    cw = int((W - margin * 2 - gap * (cols - 1)) / cols)
+    rows = 2
+    for r in range(rows):
+        for c in range(cols):
+            x = margin + c * (cw + gap)
+            y = int(gy + r * (cw + gap))
+            rr(d, (x, y, x + cw, y + cw), 8, fill=PANEL_BG, outline=BORDER, width=1)
+            # placeholder image
+            paste(img, make_photo(cw - 20, cw - 20), (x + 10, y + 10, x + cw - 10, y + cw - 10))
+            # selected highlight for first item
+            if r == 0 and c == 2:
+                d.rectangle((x - 2, y - 2, x + cw + 2, y + cw + 2), outline=BLUE, width=3)
+
+
+    # bottom text
+    d.text((24, gy + rows * (cw + gap) + 14), "Save work", font=font(12), fill=SUB, anchor="lm")
+
 def shot_adobe(lang):
     W, H = 1280, 800
     img = Image.new("RGBA", (W, H), WHITE)
     d = ImageDraw.Draw(img)
     draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
     top = 56
-    # left rail
-    rail_w = 220
-    rr(d, (0, top, rail_w, H), 0, fill=SOFT)
-    d.rectangle((rail_w - 1, top, rail_w, H), fill=(225, 228, 233))
-    d.text((24, top + 22), SAMPLE[lang]["adobeTitle"], font=font(18, True), fill=BLUE, anchor="la")
-    nav = ["Upload", "Your files", "Portfolio", "Earnings"] if lang == "en" else ["上传", "我的文件", "作品集", "收益"]
-    for i, n in enumerate(nav):
-        yy = top + 70 + i * 36
-        rr(d, (16, yy, 44, yy + 24), 5, fill=WHITE, outline=BORDER, width=1)
-        d.text((52, yy + 12), n, font=font(13), fill=INK, anchor="lm")
-    # main area heading
-    mx = rail_w + 30
-    d.text((mx, top + 34), SAMPLE[lang]["addDetails"], font=font(22, True), fill=INK, anchor="la")
-    # selected asset preview
-    pv = (mx, top + 80, mx + 380, top + 380)
-    rr(d, pv, 12, fill=PANEL_BG, outline=BORDER, width=1)
-    paste(img, make_photo(pv[2] - pv[0] - 12, pv[3] - pv[1] - 12), (pv[0] + 6, pv[1] + 6, pv[2] - 6, pv[3] - 6))
-    # adobe form fields (empty, to be filled by extension)
-    fy = top + 410
-    d.text((mx, fy), SAMPLE[lang]["fTitle"], font=font(13, True), fill=INK, anchor="la")
-    rr(d, (mx, fy + 24, mx + 620, fy + 68), 8, fill=WHITE, outline=BORDER, width=1)
-    d.text((mx + 14, fy + 46), "Add a title…" if lang == "en" else "添加标题…",
-              font=font(13), fill=SUB, anchor="lm")
-    ky = fy + 90
-    d.text((mx, ky), SAMPLE[lang]["fKeywords"], font=font(13, True), fill=INK, anchor="la")
-    rr(d, (mx, ky + 24, mx + 620, ky + 150), 8, fill=WHITE, outline=BORDER, width=1)
-    d.text((mx + 14, ky + 46), "Add keywords (comma separated)…" if lang == "en" else "添加关键词（逗号分隔）…",
-              font=font(13), fill=SUB, anchor="lm")
-    # floating panel
-    draw_panel(d, img, W - 320 - 24, top + 24, 320, lang)
+    draw_adobe_grid(d, img, W, H, top, lang)
+    # floating panel on the right
+    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, idle=True)
+    # step badge
+    draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step1"], font(13, True))
     return img
 
-def draw_panel(d, img, x, y, w, lang):
+
+def draw_panel(d, img, x, y, w, lang, idle=False):
     header_h = 44
     pad = 12
     cw = w - 2 * pad
@@ -349,7 +411,9 @@ def draw_panel(d, img, x, y, w, lang):
     d.line((bx2 + 9, y + 21, bx2 + 19, y + 21), fill=WHITE, width=2)
     # status
     cur = y + header_h + pad
-    draw_text(d, (cx, cur), SAMPLE[lang]["statusDone"], font(12), GREEN, anchor="la")
+    status_key = "statusIdle" if idle else "statusDone"
+    status_color = SUB if idle else GREEN
+    draw_text(d, (cx, cur), SAMPLE[lang][status_key], font(12), status_color, anchor="la")
     cur += 16 + 10
     # preview
     ph = 150
@@ -390,8 +454,9 @@ def draw_panel(d, img, x, y, w, lang):
     draw_button(d, (cx, cur, cx + half, cur + rb), SAMPLE[lang]["applyAll"], font(12, True), BLUE, WHITE)
     draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), SAMPLE[lang]["retry"], font(12, True), SOFT, INK)
 
+
 # =========================================================================
-# SCREENSHOT 2 — Settings page
+# SCREENSHOT 2 — Settings page (configure AI provider)
 # =========================================================================
 def shot_settings(lang):
     W, H = 1280, 800
@@ -402,12 +467,10 @@ def shot_settings(lang):
     # card
     cw = 560
     cx = (W - cw) / 2
-    cy = top + 40
-    ch = 660
+    cy = top + 30
+    ch = 700
     rr(d, (cx, cy, cx + cw, cy + ch), 14, fill=WHITE, outline=(230, 233, 238), width=1)
     d.rectangle((cx, cy, cx + cw, cy + ch), outline=None)
-    # shadow-ish
-    rr(d, (cx, cy, cx + cw, cy + ch), 14, fill=None, outline=(0, 0, 0, 0))
     ix = cx + 28
     iw = cw - 56
     cur = cy + 28
@@ -421,6 +484,20 @@ def shot_settings(lang):
     d.text((sel_x + 12, cur + 12), SAMPLE[lang]["english"], font=font(14), fill=INK, anchor="lm")
     d.polygon([(sel_x + sel_w - 22, cur + 8), (sel_x + sel_w - 8, cur + 8), (sel_x + sel_w - 15, cur + 20)], fill=SUB)
     cur += 52
+    # provider
+    draw_text(d, (ix, cur), SAMPLE[lang]["provider"], font(14, True), INK, anchor="la")
+    sel_w = 280
+    sel_x = ix + iw - sel_w
+    rr(d, (sel_x, cur - 6, sel_x + sel_w, cur + 30), 8, fill=WHITE, outline=BORDER, width=1)
+    d.text((sel_x + 12, cur + 12), SAMPLE[lang]["providerSiliconFlow"], font=font(14), fill=INK, anchor="lm")
+    d.polygon([(sel_x + sel_w - 22, cur + 8), (sel_x + sel_w - 8, cur + 8), (sel_x + sel_w - 15, cur + 20)], fill=SUB)
+    cur += 52
+    # base url (hidden for built-in providers, but we draw a small hint row)
+    draw_text(d, (ix, cur), SAMPLE[lang]["baseUrl"], font(14, True), INK, anchor="la")
+    cur += 22
+    rr(d, (ix, cur, ix + iw, cur + 42), 8, fill=(245, 247, 250), outline=BORDER, width=1)
+    d.text((ix + 12, cur + 21), "https://api.siliconflow.cn/v1", font=font(13), fill=SUB, anchor="lm")
+    cur += 50
     # api key
     draw_text(d, (ix, cur), SAMPLE[lang]["apiKey"], font(14, True), INK, anchor="la")
     cur += 22
@@ -459,10 +536,13 @@ def shot_settings(lang):
     d.text((ix, cur + 8), SAMPLE[lang]["tutorial"], font=font(13), fill=BLUE, anchor="lm")
     d.text((ix + 200, cur + 8), "·", font=font(13), fill=BORDER, anchor="lm")
     d.text((ix + 220, cur + 8), SAMPLE[lang]["support"], font=font(13), fill=BLUE, anchor="lm")
+    # step badge
+    draw_step_badge(d, cx + cw - 170, cy + 28, SAMPLE[lang]["step2"], font(13, True))
     return img
 
+
 # =========================================================================
-# SCREENSHOT 3 — Popup
+# SCREENSHOT 3 — Popup (ready to use)
 # =========================================================================
 def shot_popup(lang):
     W, H = 1280, 800
@@ -485,7 +565,10 @@ def shot_popup(lang):
     center_wrapped(d, (ix, cur, ix + iw, cur + 60), SAMPLE[lang]["popupDesc"], font(12), SUB, line_h=18, anchor_top=True)
     cur += 66
     draw_button(d, (ix, cur, ix + iw, cur + 38), SAMPLE[lang]["popupSettings"], font(13, True), BLUE, WHITE)
+    # step badge
+    draw_step_badge(d, px - 8, py - 12, SAMPLE[lang]["step3"], font(13, True))
     return img
+
 
 # =========================================================================
 # =========================================================================
@@ -518,44 +601,14 @@ def promo_440():
     icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((52, 52))
     img.paste(icon, (24, 30), icon)
     draw_text(d, (92, 34), PROMO["title_zh"], font(18, True), WHITE, anchor="la")
-    draw_text(d, (92, 64), PROMO["title_en"], font(13), WHITE, anchor="la")
-    center_wrapped(d, (24, 116, W - 24, 150), PROMO["tag_zh"], font(14), WHITE, line_h=20, anchor_top=True)
-    center_wrapped(d, (24, 168, W - 24, 196), PROMO["tag_en"], font(12), WHITE, line_h=16, anchor_top=True)
+    center_wrapped(d, (24, 100, W - 24, 134), PROMO["tag_zh"], font(14), WHITE, line_h=20, anchor_top=True)
+    center_wrapped(d, (24, 152, W - 24, 180), PROMO["tag_en"], font(12), WHITE, line_h=16, anchor_top=True)
     # cta
     draw_button(d, (24, 224, 200, 262), PROMO["cta_zh"], font(15, True), WHITE, BLUE, r=20)
     d.text((216, 243), PROMO["cta_en"], font=font(14, True), fill=WHITE, anchor="lm")
     return img
 
-def promo_920():
-    W, H = 920, 680
-    img = Image.new("RGBA", (W, H), BLUE)
-    d = ImageDraw.Draw(img)
-    for y in range(H):
-        t = y / H
-        d.line((0, y, W, y), fill=(int(26 + 12 * t), int(115 + 24 * t), int(232 - 24 * t)))
-    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((88, 88))
-    img.paste(icon, (60, 56), icon)
-    draw_text(d, (168, 70), PROMO["title_zh"], font(40, True), WHITE, anchor="la")
-    draw_text(d, (168, 124), PROMO["title_en"], font(22), WHITE, anchor="la")
-    center_wrapped(d, (60, 200, W - 60, 240), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
-    center_wrapped(d, (60, 248, W - 60, 282), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
-    # feature cards (2x2)
-    card_w = (W - 120 - 24) / 2
-    card_h = 150
-    x0, y0 = 60, 320
-    for i, (zh, en) in enumerate(PROMO["feat"]):
-        r, c = divmod(i, 2)
-        x = x0 + c * (card_w + 24)
-        y = y0 + r * (card_h + 20)
-        rr(d, (x, y, x + card_w, y + card_h), 14, fill=(60, 140, 225))
-        rr(d, (x, y, x + card_w, y + card_h), 14, fill=None, outline=(170, 210, 255), width=1)
-        draw_check(d, x + 20, y + 20, 12, WHITE)
-        draw_text(d, (x + 40, y + 22), zh, font(18, True), WHITE, anchor="la")
-        center_wrapped(d, (x + 20, y + 58, x + card_w - 20, y + card_h - 18), en, font(14), WHITE, line_h=19, anchor_top=True)
-    # cta
-    draw_button(d, (60, 600, 260, 648), PROMO["cta_zh"], font(18, True), WHITE, BLUE, r=24)
-    d.text((280, 624), PROMO["cta_en"], font=font(17, True), fill=WHITE, anchor="lm")
-    return img
+
 
 def promo_1400():
     W, H = 1400, 560
@@ -567,10 +620,9 @@ def promo_1400():
     # left text block
     icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((76, 76))
     img.paste(icon, (60, 50), icon)
-    draw_text(d, (156, 60), PROMO["title_zh"], font(38, True), WHITE, anchor="la")
-    draw_text(d, (156, 112), PROMO["title_en"], font(22), WHITE, anchor="la")
-    center_wrapped(d, (60, 170, 760, 210), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
-    center_wrapped(d, (60, 218, 760, 252), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
+    draw_text(d, (156, 60), PROMO["title_zh"], font(32, True), WHITE, anchor="la")
+    center_wrapped(d, (60, 126, 760, 160), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
+    center_wrapped(d, (60, 174, 760, 208), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
     # features 2x2 small
     fx, fy = 60, 300
     fw = 350
@@ -640,7 +692,6 @@ def main():
             print("saved", p)
 
     promo_440().save(os.path.join(OUT, "promo", "440x280.png"))
-    promo_920().save(os.path.join(OUT, "promo", "920x680.png"))
     promo_1400().save(os.path.join(OUT, "promo", "1400x560.png"))
     print("saved promo images")
 

@@ -1,21 +1,35 @@
 // options/options.js
-// Settings page: API key, model id, keyword count, language, test connection, save,
-// plus a "how to connect" tutorial modal.
+// Settings page: AI provider, API key, model id, keyword count, language, test connection, save,
+// plus a provider-aware "how to connect" tutorial modal.
 
 const DEFAULTS = {
   apiKey: '',
+  provider: 'siliconflow',
+  baseUrl: '',
   model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner',
   keywordCount: 30,
+};
+
+const PROVIDER_DEFAULTS = {
+  siliconflow: { model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner', url: 'https://cloud.siliconflow.cn' },
+  openai: { model: 'gpt-4o-mini', url: 'https://platform.openai.com/api-keys' },
+  custom: { model: '', url: '' },
 };
 
 // Self-contained translations so the page can switch language independently of
 // the browser UI language (chrome.i18n.getMessage always follows the browser).
 const OPT_I18N = {
   en: {
-    optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
+    optTitle: 'StockMeta Assistant — Settings',
     optLang: 'Language',
     optLangAuto: 'Follow browser',
-    optApiKey: 'SiliconFlow API Key',
+    optProvider: 'AI Provider',
+    optProviderSiliconFlow: 'SiliconFlow',
+    optProviderOpenAI: 'OpenAI',
+    optProviderCustom: 'Custom (OpenAI-compatible)',
+    optBaseUrl: 'Base URL',
+    optBaseUrlDesc: 'OpenAI-compatible endpoint, e.g. https://api.openai.com/v1',
+    optApiKey: 'API Key',
     optApiKeyDesc: 'Stored locally in chrome.storage.local. Never hardcoded.',
     optModel: 'Vision Model ID',
     optModelDesc: 'e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner',
@@ -27,12 +41,12 @@ const OPT_I18N = {
     optTestOk: 'Connection OK. Model responded.',
     optTestFail: 'Connection failed:',
     optTestMissing: 'Please enter an API Key first.',
-    optTutorialLink: 'How to connect SiliconFlow?',
-    optTutorialTitle: 'How to connect SiliconFlow',
-    optTutorialStep1: 'Register / log in at SiliconFlow and open the API Keys page.',
+    optTutorialLink: 'How to get an API Key?',
+    optTutorialTitle: 'How to get an API Key',
+    optTutorialStep1: 'Open the provider\'s API Keys page.',
     optTutorialStep2: 'Create a new API Key and copy it.',
     optTutorialStep3: 'Paste the key above and click Save, then Test Connection.',
-    optTutorialGo: 'Go to SiliconFlow',
+    optTutorialGo: 'Open API Keys page',
     optTutorialClose: 'Close',
     optSupportLink: 'Support the author',
     optSupportTitle: 'Support the author',
@@ -43,10 +57,16 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
   },
   zh: {
-    optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
+    optTitle: 'StockMeta Assistant — Settings',
     optLang: '语言',
     optLangAuto: '跟随浏览器',
-    optApiKey: 'SiliconFlow API Key',
+    optProvider: 'AI 提供商',
+    optProviderSiliconFlow: 'SiliconFlow',
+    optProviderOpenAI: 'OpenAI',
+    optProviderCustom: '自定义（OpenAI 兼容）',
+    optBaseUrl: 'Base URL',
+    optBaseUrlDesc: 'OpenAI 兼容的 endpoint，例如 https://api.openai.com/v1',
+    optApiKey: 'API Key',
     optApiKeyDesc: '保存在本地 chrome.storage.local，绝不硬编码。',
     optModel: '视觉模型 ID',
     optModelDesc: '例如 Qwen/Qwen3-Omni-30B-A3B-Captioner',
@@ -58,12 +78,12 @@ const OPT_I18N = {
     optTestOk: '连接成功，模型已响应。',
     optTestFail: '连接失败：',
     optTestMissing: '请先填写 API Key。',
-    optTutorialLink: '如何接入 SiliconFlow？',
-    optTutorialTitle: '如何接入 SiliconFlow',
-    optTutorialStep1: '注册 / 登录 SiliconFlow，打开 API Keys 页面。',
+    optTutorialLink: '如何获取 API Key？',
+    optTutorialTitle: '如何获取 API Key',
+    optTutorialStep1: '打开所选提供商的 API Keys 页面。',
     optTutorialStep2: '创建一个新的 API Key 并复制。',
     optTutorialStep3: '将 Key 粘贴到上方并点击保存，然后测试连接。',
-    optTutorialGo: '前往 SiliconFlow',
+    optTutorialGo: '前往 API Keys 页面',
     optTutorialClose: '关闭',
     optSupportLink: '支持作者',
     optSupportTitle: '支持作者',
@@ -110,21 +130,36 @@ function setStatus(text, kind) {
   el.className = 'opt-status' + (kind ? ' ' + kind : '');
 }
 
+function getProvider() {
+  const sel = document.getElementById('providerSelect');
+  return sel ? sel.value : DEFAULTS.provider;
+}
+
+function getDefaultModelFor(provider) {
+  return PROVIDER_DEFAULTS[provider]?.model || DEFAULTS.model;
+}
+
 async function load() {
-  const stored = await chrome.storage.local.get(['apiKey', 'model', 'keywordCount']);
+  const stored = await chrome.storage.local.get(['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount']);
+  const provider = stored.provider ?? DEFAULTS.provider;
+  document.getElementById('providerSelect').value = provider;
+  document.getElementById('baseUrl').value = stored.baseUrl ?? DEFAULTS.baseUrl;
   document.getElementById('apiKey').value = stored.apiKey ?? DEFAULTS.apiKey;
-  document.getElementById('model').value = stored.model ?? DEFAULTS.model;
+  document.getElementById('model').value = stored.model ?? getDefaultModelFor(provider);
   document.getElementById('keywordCount').value = stored.keywordCount ?? DEFAULTS.keywordCount;
+  updateProviderUI();
 }
 
 async function onSave() {
   const apiKey = document.getElementById('apiKey').value.trim();
-  const model = document.getElementById('model').value.trim() || DEFAULTS.model;
+  const provider = getProvider();
+  const baseUrl = document.getElementById('baseUrl').value.trim();
+  const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
   if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
   keywordCount = Math.max(1, Math.min(50, keywordCount));
 
-  await chrome.storage.local.set({ apiKey, model, keywordCount });
+  await chrome.storage.local.set({ apiKey, provider, baseUrl, model, keywordCount });
   setStatus(msg('optSaved'), 'ok');
 }
 
@@ -156,6 +191,42 @@ function onTest() {
   });
 }
 
+function updateProviderUI() {
+  const provider = getProvider();
+  const baseUrlField = document.getElementById('baseUrlField');
+  const apiKeyLabel = document.querySelector('label[for="apiKey"]');
+  const modelInput = document.getElementById('model');
+  const modelHint = document.querySelector('p[data-i18n="optModelDesc"]');
+
+  if (baseUrlField) {
+    baseUrlField.classList.toggle('is-hidden', provider !== 'custom');
+  }
+  if (apiKeyLabel) {
+    apiKeyLabel.textContent = msg('optApiKey');
+  }
+  if (modelInput && !modelInput.value) {
+    modelInput.value = getDefaultModelFor(provider);
+  }
+  if (modelHint) {
+    modelHint.textContent = provider === 'openai' ? 'e.g. gpt-4o-mini' : msg('optModelDesc');
+  }
+
+  updateTutorialLink();
+}
+
+async function initProviderSelect() {
+  const sel = document.getElementById('providerSelect');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const provider = sel.value;
+    const modelInput = document.getElementById('model');
+    if (modelInput && !modelInput.value) {
+      modelInput.value = getDefaultModelFor(provider);
+    }
+    updateProviderUI();
+  });
+}
+
 async function initLangSelect() {
   const stored = await chrome.storage.local.get(['lang']);
   const sel = document.getElementById('langSelect');
@@ -174,6 +245,16 @@ async function initLangSelect() {
   });
 }
 
+function updateTutorialLink() {
+  const provider = getProvider();
+  const link = document.getElementById('tutorialLink');
+  if (link) link.textContent = msg('optTutorialLink');
+  const title = document.getElementById('tutorialTitle');
+  if (title) title.textContent = msg('optTutorialTitle');
+  const go = document.getElementById('tutorialGo');
+  if (go) go.textContent = msg('optTutorialGo');
+}
+
 function initTutorial() {
   const mask = document.getElementById('tutorialMask');
   const link = document.getElementById('tutorialLink');
@@ -182,6 +263,7 @@ function initTutorial() {
   if (!mask || !link) return;
   link.addEventListener('click', (e) => {
     e.preventDefault();
+    updateTutorialLink();
     mask.hidden = false;
   });
   close.addEventListener('click', () => {
@@ -191,7 +273,9 @@ function initTutorial() {
     if (e.target === mask) mask.hidden = true;
   });
   go.addEventListener('click', () => {
-    window.open('https://cloud.siliconflow.cn', '_blank');
+    const provider = getProvider();
+    const url = PROVIDER_DEFAULTS[provider]?.url || PROVIDER_DEFAULTS.siliconflow.url;
+    window.open(url, '_blank');
   });
 }
 
@@ -242,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyStaticI18n();
   load();
   initLangSelect();
+  initProviderSelect();
   initTutorial();
   initSupport();
   document.getElementById('saveBtn').addEventListener('click', onSave);

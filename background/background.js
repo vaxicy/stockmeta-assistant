@@ -1,6 +1,6 @@
 // background/background.js  (MV3 service worker, ES module)
 import { getConfig } from '../services/config.js';
-import { generateMetadata } from '../services/siliconflow.js';
+import { generateMetadata } from '../services/aiProvider.js';
 
 function buildPrompt(keywordCount) {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
@@ -32,6 +32,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('[StockMeta] generateMetadata model:', cfg.model);
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
+          provider: cfg.provider,
+          baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
           prompt: buildPrompt(cfg.keywordCount),
@@ -67,6 +69,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAA//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AfwD/2Q==';
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
+          provider: cfg.provider,
+          baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: tiny,
           prompt: 'Return JSON {"title":"test","keywords":["test"]} describing nothing.',

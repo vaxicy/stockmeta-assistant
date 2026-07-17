@@ -46,7 +46,7 @@
       keywordCountNote: 'keywords',
     },
     zh: {
-      panelTitle: 'StockMeta 助手',
+      panelTitle: 'StockMeta Assistant',
       statusIdle: '就绪。请选择一个素材。',
       statusNoImage: '未检测到素材图片。',
       statusReading: '正在读取图片…',

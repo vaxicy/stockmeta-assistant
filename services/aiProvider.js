@@ -1,8 +1,11 @@
-// services/siliconflow.js
-// Calls the SiliconFlow chat-completions endpoint with an image (Base64) + prompt.
-// Returns parsed { title, keywords } JSON.
+// services/aiProvider.js
+// Generic OpenAI-compatible chat-completions caller.
+// Supports SiliconFlow, OpenAI, or any custom OpenAI-compatible endpoint.
 
-const ENDPOINT = 'https://api.siliconflow.cn/v1/chat/completions';
+const DEFAULT_ENDPOINTS = {
+  siliconflow: 'https://api.siliconflow.cn/v1',
+  openai: 'https://api.openai.com/v1',
+};
 
 // Reject keywords containing CJK, Hiragana/Katakana, Hangul, Arabic, etc.
 const NON_ENGLISH_RE = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af\u0600-\u06ff\u0750-\u077f]/;
@@ -11,22 +14,40 @@ function isEnglishKeyword(k) {
   return k && typeof k === 'string' && !NON_ENGLISH_RE.test(k);
 }
 
+export function getEndpoint(provider, baseUrl) {
+  const key = String(provider || 'siliconflow').toLowerCase();
+  if (key === 'custom' && baseUrl) {
+    return String(baseUrl).replace(/\/$/, '');
+  }
+  return DEFAULT_ENDPOINTS[key] || DEFAULT_ENDPOINTS.siliconflow;
+}
+
+export function getDefaultModel(provider) {
+  const key = String(provider || 'siliconflow').toLowerCase();
+  if (key === 'openai') return 'gpt-4o-mini';
+  return 'Qwen/Qwen3-Omni-30B-A3B-Captioner';
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.apiKey
+ * @param {string} opts.provider   siliconflow | openai | custom
+ * @param {string} opts.baseUrl    required when provider === 'custom'
  * @param {string} opts.model
  * @param {string} opts.imageBase64  data URL, e.g. "data:image/jpeg;base64,...."
  * @param {string} opts.prompt
  * @param {number} opts.timeoutMs
  * @returns {Promise<{title:string, keywords:string[]}>}
  */
-export async function generateMetadata({ apiKey, model, imageBase64, prompt, timeoutMs = 60000 }) {
+export async function generateMetadata({ apiKey, provider, baseUrl, model, imageBase64, prompt, timeoutMs = 60000 }) {
   if (!apiKey) {
     throw new Error('MISSING_API_KEY');
   }
   if (!imageBase64) {
     throw new Error('MISSING_IMAGE');
   }
+
+  const endpoint = getEndpoint(provider, baseUrl) + '/chat/completions';
 
   const messages = [
     {
@@ -43,7 +64,7 @@ export async function generateMetadata({ apiKey, model, imageBase64, prompt, tim
 
   let res;
   try {
-    res = await fetch(ENDPOINT, {
+    res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

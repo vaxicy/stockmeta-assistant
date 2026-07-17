@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title data-i18n="optTitle">StockMeta Assistant for Adobe Stock — Settings</title>
+  <title data-i18n="optTitle">StockMeta Assistant — Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
   <main class="opt-wrap">
-    <h1 data-i18n="optTitle">StockMeta Assistant for Adobe Stock — Settings</h1>
+    <h1 data-i18n="optTitle">StockMeta Assistant — Settings</h1>
 
     <section class="opt-field opt-lang-field">
       <label for="langSelect" data-i18n="optLang">Language</label>
@@ -19,15 +19,75 @@
     </section>
 
     <section class="opt-field">
+      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
+      <select id="providerSelect">
+        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
+        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
+        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
+      </select>
+    </section>
+
+    <section class="opt-field is-hidden" id="baseUrlField">
+      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
+      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
+      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
+    </section>
+
+    <section class="opt-field">
+      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
+      <select id="providerSelect">
+        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
+        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
+        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
+      </select>
+    </section>
+
+    <section class="opt-field is-hidden" id="baseUrlField">
+      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
+      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
+      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
+    </section>
+
+    <section class="opt-field">
       <label for="apiKey" data-i18n="optApiKey">SiliconFlow API Key</label>
       <input type="password" id="apiKey" autocomplete="off" placeholder="sk-..." />
       <p class="opt-hint" data-i18n="optApiKeyDesc">Stored locally in chrome.storage.local. Never hardcoded.</p>
     </section>
 
     <section class="opt-field">
+      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
+      <select id="providerSelect">
+        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
+        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
+        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
+      </select>
+    </section>
+
+    <section class="opt-field is-hidden" id="baseUrlField">
+      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
+      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
+      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
+    </section>
+
+    <section class="opt-field">
       <label for="model" data-i18n="optModel">Vision Model ID</label>
       <input type="text" id="model" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" />
       <p class="opt-hint" data-i18n="optModelDesc">e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner</p>
+    </section>
+
+    <section class="opt-field">
+      <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
+      <select id="providerSelect">
+        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
+        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
+        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
+      </select>
+    </section>
+
+    <section class="opt-field is-hidden" id="baseUrlField">
+      <label for="baseUrl" data-i18n="optBaseUrl">Base URL</label>
+      <input type="text" id="baseUrl" autocomplete="off" placeholder="https://api.example.com/v1" />
+      <p class="opt-hint" data-i18n="optBaseUrlDesc">OpenAI-compatible endpoint, e.g. https://api.openai.com/v1</p>
     </section>
 
     <section class="opt-field">

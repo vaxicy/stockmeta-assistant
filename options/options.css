@@ -91,6 +91,17 @@ h1 {
 .opt-status.ok { color: #137333; }
 .opt-status.err { color: #d93025; }
 
+.is-hidden { display: none !important; }
+
+/* provider selector */
+#providerSelect {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+
 /* language selector */
 .opt-lang-field {
   flex-direction: row;
