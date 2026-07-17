@@ -21,7 +21,8 @@
     a { color: #2563eb; }
     strong { color: #102a43; }
     [data-lang] { display: none; }
-    body[data-lang="zh"] [data-lang="zh"],
+    [data-lang="zh"] { display: block; }
+    body[data-lang="en"] [data-lang="zh"] { display: none; }
     body[data-lang="en"] [data-lang="en"] { display: block; }
   </style>
 </head>
