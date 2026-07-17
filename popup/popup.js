@@ -2,16 +2,16 @@
 (function () {
   const PP_I18N = {
     en: {
-      extName: 'StockMeta Assistant',
+      extName: 'StockMeta Assistant for Adobe Stock',
       extDescription: 'Generate Adobe Stock titles and keywords from your current asset using a vision model, then fill them in with one click. Does not auto-submit.',
-      optTitle: 'StockMeta Assistant — Settings',
+      optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
       optTestOk: 'Connection OK. Model responded.',
       optTestMissing: 'Please enter an API Key first.',
     },
     zh: {
-      extName: 'StockMeta 助手',
+      extName: 'StockMeta Assistant for Adobe Stock',
       extDescription: '使用视觉模型从当前素材生成 Adobe Stock 标题与关键词，一键填入。不会自动提交。',
-      optTitle: 'StockMeta 助手 — 设置',
+      optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
       optTestOk: '连接成功，模型已响应。',
       optTestMissing: '请先填写 API Key。',
     },

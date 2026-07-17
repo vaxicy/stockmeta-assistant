@@ -12,7 +12,7 @@ const DEFAULTS = {
 // the browser UI language (chrome.i18n.getMessage always follows the browser).
 const OPT_I18N = {
   en: {
-    optTitle: 'StockMeta Assistant — Settings',
+    optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
     optLang: 'Language',
     optLangAuto: 'Follow browser',
     optApiKey: 'SiliconFlow API Key',
@@ -43,7 +43,7 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
   },
   zh: {
-    optTitle: 'StockMeta 助手 — 设置',
+    optTitle: 'StockMeta Assistant for Adobe Stock — Settings',
     optLang: '语言',
     optLangAuto: '跟随浏览器',
     optApiKey: 'SiliconFlow API Key',

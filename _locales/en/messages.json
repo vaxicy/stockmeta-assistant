@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "StockMeta Assistant",
+    "message": "StockMeta Assistant for Adobe Stock",
     "description": "Extension name"
   },
   "extDescription": {
@@ -8,7 +8,7 @@
     "description": "Extension description"
   },
   "optTitle": {
-    "message": "StockMeta Assistant — Settings",
+    "message": "StockMeta Assistant for Adobe Stock — Settings",
     "description": "Options page title"
   },
   "optApiKey": {
