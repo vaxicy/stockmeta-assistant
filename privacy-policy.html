@@ -6,65 +6,82 @@
   <title>StockMeta Assistant 隐私政策 / Privacy Policy</title>
   <style>
     :root { color-scheme: light; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.7; color: #1f2933; max-width: 820px; margin: 0 auto; padding: 32px 20px 64px; }
-    h1 { font-size: 24px; margin-bottom: 4px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.7; color: #1f2933; max-width: 820px; margin: 0 auto; padding: 24px 20px 64px; }
+    .lang-switch { position: sticky; top: 0; background: #fff; padding: 12px 0; border-bottom: 1px solid #e4e7eb; margin-bottom: 24px; display: flex; gap: 8px; align-items: center; }
+    .lang-switch .label { font-size: 13px; color: #7b8794; margin-right: 4px; }
+    .lang-btn { border: 1px solid #cbd2d9; background: #fff; color: #486581; padding: 6px 16px; border-radius: 999px; cursor: pointer; font-size: 14px; transition: all .15s; }
+    .lang-btn:hover { border-color: #9aa5b1; }
+    .lang-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
     h2 { font-size: 18px; margin-top: 32px; border-bottom: 1px solid #e4e7eb; padding-bottom: 6px; }
     .sub { color: #7b8794; font-size: 14px; margin-bottom: 24px; }
     ul { padding-left: 20px; }
     li { margin: 6px 0; }
     code { background: #f0f4f8; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
-    .section-en { margin-top: 48px; border-top: 2px dashed #e4e7eb; padding-top: 24px; }
     a { color: #2563eb; }
     strong { color: #102a43; }
+    [data-lang] { display: none; }
+    body[data-lang="zh"] [data-lang="zh"],
+    body[data-lang="en"] [data-lang="en"] { display: block; }
   </style>
 </head>
-<body>
-  <h1>StockMeta Assistant 隐私政策</h1>
-  <div class="sub">生效日期 / Effective: 2026-07-18 ・ 开发者 / Developer: vaxicy</div>
+<body data-lang="zh">
+  <div class="lang-switch">
+    <span class="label">语言 / Language</span>
+    <button class="lang-btn" data-set="zh">中文</button>
+    <button class="lang-btn" data-set="en">English</button>
+  </div>
 
-  <p><strong>StockMeta Assistant</strong> 是一款 Chrome 扩展，帮助 Adobe Stock 供稿人在后台页面基于当前选中的素材图片生成英文标题与关键词，并一键填入编辑表单。本政策说明扩展如何处理数据。</p>
+  <!-- ===================== 中文 ===================== -->
+  <div data-lang="zh">
+    <h1>StockMeta Assistant 隐私政策</h1>
+    <div class="sub">生效日期 / Effective: 2026-07-18 ・ 开发者 / Developer: vaxicy</div>
 
-  <h2>1. 我们收集的数据</h2>
-  <p>本扩展<strong>不收集任何个人身份信息</strong>，也不向开发者服务器上传任何数据。扩展仅在本地运行，涉及的数据包括：</p>
-  <ul>
-    <li><strong>素材图片</strong>：您在 Adobe Stock 后台选中的素材缩略图。扩展会将其缩放（最长边 ≤ 1024px）并转换为 JPEG（质量 0.82）的 base64 数据，<strong>仅用于发送给您配置的 AI 服务商</strong>以生成标题/关键词。图片<strong>不会</strong>发送给开发者。</li>
-    <li><strong>API Key 与设置</strong>：您填写的 AI 提供商、API Key、模型 ID、Base URL、关键词数量、界面语言，<strong>仅存储在您本地</strong>的 <code>chrome.storage.local</code>，不会上传给开发者。</li>
-  </ul>
+    <p><strong>StockMeta Assistant</strong> 是一款 Chrome 扩展，帮助 Adobe Stock 供稿人在后台页面基于当前选中的素材图片生成英文标题与关键词，并一键填入编辑表单。本政策说明扩展如何处理数据。</p>
 
-  <h2>2. 数据的使用方式</h2>
-  <ul>
-    <li>图片 base64 与提示词通过标准 <code>fetch</code> 请求，<strong>直接发送到您选择的 AI 服务商端点</strong>（如 <code>api.siliconflow.cn</code> 或 <code>api.openai.com</code>），用于模型推理。</li>
-    <li>API Key 仅用于对该服务商进行身份认证，<strong>不经过开发者服务器</strong>。</li>
-    <li>生成结果（标题/关键词）仅在当前页面填充或复制到剪贴板，<strong>不会被开发者收集或存储</strong>。</li>
-  </ul>
+    <h2>1. 我们处理的数据</h2>
+    <p>本扩展<strong>不收集任何个人身份信息</strong>，也不向开发者服务器上传任何数据。涉及的数据仅包括：</p>
+    <ul>
+      <li><strong>素材图片</strong>：您在 Adobe Stock 后台选中的素材缩略图。扩展会将其缩放（最长边 ≤ 1024px）并转换为 JPEG（质量 0.82）的 base64 数据，<strong>仅用于发送给您配置的 AI 服务商</strong>以生成标题/关键词。图片<strong>不会</strong>发送给开发者。</li>
+      <li><strong>API Key 与设置</strong>：您填写的 AI 提供商、API Key、模型 ID、Base URL、关键词数量、界面语言，<strong>仅存储在您本地</strong>的 <code>chrome.storage.local</code>，不会上传给开发者。</li>
+    </ul>
 
-  <h2>3. 数据共享与第三方</h2>
-  <p>除您主动配置的 AI 服务商外，本扩展<strong>不与任何第三方共享数据</strong>。可能涉及的第三方服务：</p>
-  <ul>
-    <li>SiliconFlow（<code>siliconflow.cn</code>）</li>
-    <li>OpenAI（<code>openai.com</code>）</li>
-    <li>任何您自定义的 OpenAI 兼容端点</li>
-  </ul>
-  <p>请参考上述第三方各自的隐私政策，了解它们如何处理您发送的图片与 Key。</p>
+    <h2>2. 数据的使用方式</h2>
+    <ul>
+      <li>图片 base64 与提示词通过标准 <code>fetch</code> 请求，<strong>直接发送到您选择的 AI 服务商端点</strong>（如 <code>api.siliconflow.cn</code> 或 <code>api.openai.com</code>），用于模型推理。</li>
+      <li>API Key 仅用于对该服务商进行身份认证，<strong>不经过开发者服务器</strong>。</li>
+      <li>生成结果（标题/关键词）仅在当前页面填充或复制到剪贴板，<strong>不会被开发者收集或存储</strong>。</li>
+    </ul>
 
-  <h2>4. 数据存储与安全</h2>
-  <ul>
-    <li>所有设置均保存在浏览器本地，卸载扩展或清除浏览器存储即被删除。</li>
-    <li>图片数据仅在生成请求期间存在于内存中，不会持久化到磁盘或开发者服务器。</li>
-    <li>扩展不包含任何远程执行的代码（无远程 JS / Wasm 注入）。</li>
-  </ul>
+    <h2>3. 数据共享与第三方</h2>
+    <p>除您主动配置的 AI 服务商外，本扩展<strong>不与任何第三方共享数据</strong>。可能涉及的第三方服务：</p>
+    <ul>
+      <li>SiliconFlow（<code>siliconflow.cn</code>）</li>
+      <li>OpenAI（<code>openai.com</code>）</li>
+      <li>任何您自定义的 OpenAI 兼容端点</li>
+    </ul>
+    <p>请参考上述第三方各自的隐私政策，了解它们如何处理您发送的图片与 Key。</p>
 
-  <h2>5. 您的权利</h2>
-  <ul>
-    <li>您可以随时在扩展设置页清除 API Key 与配置。</li>
-    <li>卸载扩展即可彻底删除本地所有相关数据。</li>
-  </ul>
+    <h2>4. 数据存储与安全</h2>
+    <ul>
+      <li>所有设置均保存在浏览器本地，卸载扩展或清除浏览器存储即被删除。</li>
+      <li>图片数据仅在生成请求期间存在于内存中，不会持久化到磁盘或开发者服务器。</li>
+      <li>扩展不包含任何远程执行的代码（无远程 JS / Wasm 注入）。</li>
+    </ul>
 
-  <h2>6. 联系我们</h2>
-  <p>如有隐私相关问题，请通过 GitHub Issues 联系开发者：<a href="https://github.com/vaxicy/stockmeta-assistant/issues">github.com/vaxicy/stockmeta-assistant/issues</a></p>
+    <h2>5. 您的权利</h2>
+    <ul>
+      <li>您可以随时在扩展设置页清除 API Key 与配置。</li>
+      <li>卸载扩展即可彻底删除本地所有相关数据。</li>
+    </ul>
 
-  <div class="section-en">
-    <h1>StockMeta Assistant — Privacy Policy (English)</h1>
+    <h2>6. 联系我们</h2>
+    <p>如有隐私相关问题，请通过 GitHub Issues 联系开发者：<a href="https://github.com/vaxicy/stockmeta-assistant/issues">github.com/vaxicy/stockmeta-assistant/issues</a></p>
+  </div>
+
+  <!-- ===================== English ===================== -->
+  <div data-lang="en">
+    <h1>StockMeta Assistant — Privacy Policy</h1>
     <div class="sub">Effective: 2026-07-18 ・ Developer: vaxicy</div>
 
     <p><strong>StockMeta Assistant</strong> is a Chrome extension that helps Adobe Stock contributors generate English titles and keywords from the currently selected asset image on the contributor dashboard, and fill them into the edit form with one click. This policy explains how the extension handles data.</p>
@@ -108,5 +125,27 @@
     <h2>6. Contact</h2>
     <p>For privacy questions, contact the developer via GitHub Issues: <a href="https://github.com/vaxicy/stockmeta-assistant/issues">github.com/vaxicy/stockmeta-assistant/issues</a></p>
   </div>
+
+  <script>
+    (function () {
+      var body = document.body;
+      var btns = document.querySelectorAll('.lang-btn');
+      function setLang(lang) {
+        body.setAttribute('data-lang', lang);
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        btns.forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-set') === lang);
+        });
+        try { localStorage.setItem('pp_lang', lang); } catch (e) {}
+      }
+      var saved;
+      try { saved = localStorage.getItem('pp_lang'); } catch (e) {}
+      var initial = saved || (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en');
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () { setLang(b.getAttribute('data-set')); });
+      });
+      setLang(initial);
+    })();
+  </script>
 </body>
 </html>
