@@ -1,0 +1,98 @@
+{
+  "extName": {
+    "message": "StockMeta 助手",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "使用视觉模型从当前素材生成 Adobe Stock 标题与关键词，一键填入。不会自动提交。",
+    "description": "Extension description"
+  },
+  "optTitle": {
+    "message": "StockMeta 助手 — 设置",
+    "description": "Options page title"
+  },
+  "optApiKey": {
+    "message": "SiliconFlow API Key",
+    "description": "API key label"
+  },
+  "optApiKeyDesc": {
+    "message": "保存在本地 chrome.storage.local，绝不硬编码。",
+    "description": "API key hint"
+  },
+  "optModel": {
+    "message": "视觉模型 ID",
+    "description": "Model id label"
+  },
+  "optModelDesc": {
+    "message": "例如 Qwen/Qwen3-Omni-30B-A3B-Captioner",
+    "description": "Model hint"
+  },
+  "optKeywordCount": {
+    "message": "关键词数量",
+    "description": "Keyword count label"
+  },
+  "optKeywordCountDesc": {
+    "message": "请求生成的关键词数量（1–50）。",
+    "description": "Keyword count hint"
+  },
+  "optTest": {
+    "message": "测试连接",
+    "description": "Test button"
+  },
+  "optSave": {
+    "message": "保存",
+    "description": "Save button"
+  },
+  "optSaved": {
+    "message": "设置已保存。",
+    "description": "Saved message"
+  },
+  "optTestOk": {
+    "message": "连接成功，模型已响应。",
+    "description": "Test success"
+  },
+  "optTestFail": {
+    "message": "连接失败：",
+    "description": "Test failure prefix"
+  },
+  "optTestMissing": {
+    "message": "请先填写 API Key。",
+    "description": "Missing key"
+  },
+  "optLang": {
+    "message": "语言",
+    "description": "Language selector label"
+  },
+  "optLangAuto": {
+    "message": "跟随浏览器",
+    "description": "Auto language option"
+  },
+  "optTutorialLink": {
+    "message": "如何接入 SiliconFlow？",
+    "description": "Tutorial link text"
+  },
+  "optTutorialTitle": {
+    "message": "如何接入 SiliconFlow",
+    "description": "Tutorial modal title"
+  },
+  "optTutorialStep1": {
+    "message": "注册 / 登录 SiliconFlow，打开 API Keys 页面。",
+    "description": "Tutorial step 1"
+  },
+  "optTutorialStep2": {
+    "message": "创建一个新的 API Key 并复制。",
+    "description": "Tutorial step 2"
+  },
+  "optTutorialStep3": {
+    "message": "将 Key 粘贴到上方并点击保存，然后测试连接。",
+    "description": "Tutorial step 3"
+  },
+  "optTutorialGo": {
+    "message": "前往 SiliconFlow",
+    "description": "Tutorial go button"
+  },
+  "optTutorialClose": {
+    "message": "关闭",
+    "description": "Tutorial close button"
+  }
+}

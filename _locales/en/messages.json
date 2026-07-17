@@ -1,0 +1,98 @@
+{
+  "extName": {
+    "message": "StockMeta Assistant",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Generate Adobe Stock titles and keywords from your current asset using a vision model, then fill them in with one click. Does not auto-submit.",
+    "description": "Extension description"
+  },
+  "optTitle": {
+    "message": "StockMeta Assistant — Settings",
+    "description": "Options page title"
+  },
+  "optApiKey": {
+    "message": "SiliconFlow API Key",
+    "description": "API key label"
+  },
+  "optApiKeyDesc": {
+    "message": "Stored locally in chrome.storage.local. Never hardcoded.",
+    "description": "API key hint"
+  },
+  "optModel": {
+    "message": "Vision Model ID",
+    "description": "Model id label"
+  },
+  "optModelDesc": {
+    "message": "e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner",
+    "description": "Model hint"
+  },
+  "optKeywordCount": {
+    "message": "Keyword Count",
+    "description": "Keyword count label"
+  },
+  "optKeywordCountDesc": {
+    "message": "Number of keywords to request (1–50).",
+    "description": "Keyword count hint"
+  },
+  "optTest": {
+    "message": "Test Connection",
+    "description": "Test button"
+  },
+  "optSave": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "optSaved": {
+    "message": "Settings saved.",
+    "description": "Saved message"
+  },
+  "optTestOk": {
+    "message": "Connection OK. Model responded.",
+    "description": "Test success"
+  },
+  "optTestFail": {
+    "message": "Connection failed:",
+    "description": "Test failure prefix"
+  },
+  "optTestMissing": {
+    "message": "Please enter an API Key first.",
+    "description": "Missing key"
+  },
+  "optLang": {
+    "message": "Language",
+    "description": "Language selector label"
+  },
+  "optLangAuto": {
+    "message": "Follow browser",
+    "description": "Auto language option"
+  },
+  "optTutorialLink": {
+    "message": "How to connect SiliconFlow?",
+    "description": "Tutorial link text"
+  },
+  "optTutorialTitle": {
+    "message": "How to connect SiliconFlow",
+    "description": "Tutorial modal title"
+  },
+  "optTutorialStep1": {
+    "message": "Register / log in at SiliconFlow and open the API Keys page.",
+    "description": "Tutorial step 1"
+  },
+  "optTutorialStep2": {
+    "message": "Create a new API Key and copy it.",
+    "description": "Tutorial step 2"
+  },
+  "optTutorialStep3": {
+    "message": "Paste the key above and click Save, then Test Connection.",
+    "description": "Tutorial step 3"
+  },
+  "optTutorialGo": {
+    "message": "Go to SiliconFlow",
+    "description": "Tutorial go button"
+  },
+  "optTutorialClose": {
+    "message": "Close",
+    "description": "Tutorial close button"
+  }
+}

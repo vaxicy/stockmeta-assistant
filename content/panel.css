@@ -1,0 +1,201 @@
+/* content/panel.css — injected AI Assistant side panel */
+#stockmeta-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 320px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  z-index: 2147483647;
+  background: #ffffff;
+  color: #1f2430;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+
+#stockmeta-panel * {
+  box-sizing: border-box;
+}
+
+#stockmeta-panel.sm-collapsed .sm-body {
+  display: none;
+}
+
+.sm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #1a73e8;
+  color: #fff;
+  border-radius: 12px 12px 0 0;
+  cursor: move;
+  user-select: none;
+}
+
+.sm-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sm-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sm-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sm-status {
+  font-size: 12px;
+  color: #4a5568;
+  min-height: 16px;
+}
+
+.sm-status.sm-error {
+  color: #d93025;
+  font-weight: 600;
+}
+
+.sm-preview-wrap {
+  width: 100%;
+  background: #f1f3f5;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+}
+
+.sm-preview {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  display: block;
+}
+
+.sm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sm-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #2d3340;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sm-count {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.sm-textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  color: #1f2430;
+  background: #fff;
+}
+
+.sm-textarea:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.sm-row {
+  display: flex;
+  gap: 8px;
+}
+
+.sm-row-main {
+  margin-top: 2px;
+}
+
+.sm-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1f2430;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sm-btn:hover {
+  background: #eef2f7;
+}
+
+.sm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sm-btn.sm-primary {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+
+.sm-btn.sm-primary:hover {
+  background: #1666c9;
+}
+
+.sm-btn.sm-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  padding: 4px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.sm-btn.sm-icon:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.sm-toast {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: #1f2430;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.sm-toast.sm-show {
+  opacity: 1;
+  transform: translateY(0);
+}

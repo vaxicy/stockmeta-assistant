@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title data-i18n="optTitle">StockMeta Assistant — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main class="opt-wrap">
+    <h1 data-i18n="optTitle">StockMeta Assistant — Settings</h1>
+
+    <section class="opt-field opt-lang-field">
+      <label for="langSelect" data-i18n="optLang">Language</label>
+      <select id="langSelect">
+        <option value="auto" data-i18n="optLangAuto">Follow browser</option>
+        <option value="en">English</option>
+        <option value="zh">简体中文</option>
+      </select>
+    </section>
+
+    <section class="opt-field">
+      <label for="apiKey" data-i18n="optApiKey">SiliconFlow API Key</label>
+      <input type="password" id="apiKey" autocomplete="off" placeholder="sk-..." />
+      <p class="opt-hint" data-i18n="optApiKeyDesc">Stored locally in chrome.storage.local. Never hardcoded.</p>
+    </section>
+
+    <section class="opt-field">
+      <label for="model" data-i18n="optModel">Vision Model ID</label>
+      <input type="text" id="model" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" />
+      <p class="opt-hint" data-i18n="optModelDesc">e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner</p>
+    </section>
+
+    <section class="opt-field">
+      <label for="keywordCount" data-i18n="optKeywordCount">Keyword Count</label>
+      <input type="number" id="keywordCount" min="1" max="50" step="1" />
+      <p class="opt-hint" data-i18n="optKeywordCountDesc">Number of keywords to request (1–50).</p>
+    </section>
+
+    <div class="opt-actions">
+      <button id="testBtn" class="opt-btn" data-i18n="optTest">Test Connection</button>
+      <button id="saveBtn" class="opt-btn opt-primary" data-i18n="optSave">Save</button>
+    </div>
+
+    <p id="status" class="opt-status" role="status" aria-live="polite"></p>
+
+    <p class="opt-tutorial-line">
+      <a href="#" id="tutorialLink" data-i18n="optTutorialLink">How to connect SiliconFlow?</a>
+    </p>
+  </main>
+
+  <!-- Tutorial modal -->
+  <div class="opt-modal-mask" id="tutorialMask" hidden>
+    <div class="opt-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="opt-modal-head">
+        <h2 id="tutorialTitle" data-i18n="optTutorialTitle">How to connect SiliconFlow</h2>
+        <button class="opt-modal-close" id="tutorialClose" aria-label="Close">×</button>
+      </div>
+      <ol class="opt-modal-steps">
+        <li data-i18n="optTutorialStep1">Register / log in at SiliconFlow and open the API Keys page.</li>
+        <li data-i18n="optTutorialStep2">Create a new API Key and copy it.</li>
+        <li data-i18n="optTutorialStep3">Paste the key above and click Save, then Test Connection.</li>
+      </ol>
+      <div class="opt-modal-foot">
+        <button class="opt-btn opt-primary" id="tutorialGo" data-i18n="optTutorialGo">Go to SiliconFlow</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
