@@ -13,9 +13,10 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "icons")
 BG = (26, 115, 232)        # #1a73e8 brand blue
 FG = (255, 255, 255)       # white glyph
 WHITE = (255, 255, 255)    # white tile
+META = (255, 255, 255)     # white metadata rows
 
-# Which candidate becomes the shipped 16/48/128 icon (set after user picks).
-FINAL = "F"
+# Which candidate becomes the shipped 16/48/128 icon.
+FINAL = "K"
 
 
 def tile_white(px, py):
@@ -300,12 +301,30 @@ def sample_J(px, py):
     return WHITE, True
 
 
+def sample_K(px, py):
+    # StockMeta final: blue app tile with a centered 1:1 image asset mark.
+    if not tile(px, py):
+        return (0, 0, 0), False
+
+    card_outer = in_rounded_rect(px, py, 0.21, 0.21, 0.79, 0.79, 0.075)
+    card_inner = in_rounded_rect(px, py, 0.29, 0.31, 0.71, 0.70, 0.045)
+    frame = card_outer and not card_inner
+    mountain = point_in_triangle(px, py, (0.31, 0.70), (0.49, 0.49), (0.66, 0.70))
+    ridge = point_in_triangle(px, py, (0.48, 0.70), (0.63, 0.55), (0.73, 0.70))
+    sun = circle(px, py, 0.65, 0.39, 0.045)
+
+    if frame or mountain or ridge or sun:
+        return FG, True
+    return BG, True
+
+
 NEWS = {
     "F": sample_F,
     "G": sample_G,
     "H": sample_H,
     "I": sample_I,
     "J": sample_J,
+    "K": sample_K,
 }
 
 
