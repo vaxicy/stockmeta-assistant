@@ -409,14 +409,15 @@ def shot_adobe(lang):
     draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
     top = 56
     draw_adobe_grid(d, img, W, H, top, lang)
-    # floating panel on the right
-    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="generate")
+    # floating panel on the right — real content panel (no icon, blue buttons)
+    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="generate",
+               show_icon=False, preview_kind="photo", buttons="disabled")
     # step badge
     draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step2"], font(13, True))
     return img
 
 
-def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=True,
+def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=False,
                 preview_kind="photo", buttons="disabled"):
     """Draw the extension side panel.
     stage: 'generate' highlights the generate button and leaves fields empty;
@@ -449,7 +450,8 @@ def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=True,
     draw_gear(d, bx + 14, y + 21, 7, WHITE)
     bx2 = x + w - 72
     rr(d, (bx2, y + 7, bx2 + 28, y + 35), 6, fill=(255, 255, 255, 38))
-    d.line((bx2 + 9, y + 21, bx2 + 19, y + 21), fill=WHITE, width=2)
+    # collapse button (minus sign, centered) — matches real content panel
+    d.line((bx2 + 11, y + 21, bx2 + 17, y + 21), fill=WHITE, width=2)
     # status
     cur = y + header_h + pad
     status_key = "statusIdle" if stage == "generate" else "statusDone"
@@ -533,7 +535,7 @@ def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=True,
     cur += rb + 8
     # row main
     if stage == "apply":
-        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), GREEN, WHITE)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), BLUE, WHITE)
         draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), SOFT, INK)
     elif buttons == "enabled":
         draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), BLUE, WHITE)
@@ -628,6 +630,117 @@ def shot_settings(lang):
 # =========================================================================
 # SCREENSHOT 3 — Adobe Stock + panel (one-click apply)
 # =========================================================================
+def draw_popup_window(d, img, x, y, lang, stage="apply"):
+    """Draw the standalone extension popup (300px) matching the real popup UI.
+    stage: 'generate' = initial state (empty fields, disabled buttons);
+           'apply' = generated state (filled fields, active buttons).
+    """
+    s = SAMPLE[lang]
+    w = 300
+    header_h = 44
+    pad = 12
+    cw = w - 2 * pad
+    cx = x + pad
+    # body
+    rr(d, (x, y, x + w, y + 640), 12, fill=WHITE, outline=(216, 222, 233), width=1)
+    # header (blue, no icon)
+    rr(d, (x, y, x + w, y + header_h + 14), 12, fill=BLUE)
+    d.rectangle((x, y + header_h - 14, x + w, y + header_h + 14), fill=BLUE)
+    draw_text(d, (x + 12, y + header_h / 2), s["panelTitle"], font(14, True), WHITE, anchor="lm")
+    # settings gear + minimize/collapse (from right to left)
+    bx = x + w - 36
+    rr(d, (bx, y + 7, bx + 28, y + 35), 6, fill=(255, 255, 255, 38))
+    draw_gear(d, bx + 14, y + 21, 7, WHITE)
+    bx2 = x + w - 72
+    rr(d, (bx2, y + 7, bx2 + 28, y + 35), 6, fill=(255, 255, 255, 38))
+    # collapse button: minus sign (matches real popup / content panel)
+    d.line((bx2 + 11, y + 21, bx2 + 17, y + 21), fill=WHITE, width=2)
+    cur = y + header_h + 12
+    # status
+    if stage == "generate":
+        draw_text(d, (cx, cur), s["statusIdle"], font(12), SUB, anchor="la")
+    else:
+        draw_text(d, (cx, cur), s["statusDone"], font(12), (74, 85, 104), anchor="la")
+    cur += 20
+    # preview
+    ph = 150
+    rr(d, (cx, cur, cx + cw, cur + ph + 10), 8, fill=PANEL_BG)
+    paste(img, make_photo(cw - 24, ph), (cx + 6, cur + 6, cx + cw - 6, cur + 6 + ph))
+    cur += ph + 10 + 10
+    # generate button
+    bh = 38
+    draw_button(d, (cx, cur, cx + cw, cur + bh), s["generate"], font(13, True), BLUE, WHITE)
+    cur += bh + 12
+    # title
+    draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+    cur += 16
+    th = 48
+    rr(d, (cx, cur, cx + cw, cur + th), 8, fill=WHITE, outline=BORDER, width=1)
+    if stage == "generate":
+        d.text((cx + cw / 2, cur + th / 2), s["titleLabel"], font=font(11), fill=SUB, anchor="mm")
+    else:
+        center_wrapped(d, (cx + 8, cur + 4, cx + cw - 8, cur + th - 4), SAMPLE_TITLE[lang], font(12), INK, line_h=16, anchor_top=True)
+    cur += th + 8
+    # row1 buttons
+    rb = 34
+    half = (cw - 8) / 2
+    if stage == "generate":
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), disabled_color, disabled_text)
+    else:
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), SOFT, INK)
+    cur += rb + 12
+    # keywords
+    draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
+    if stage != "generate":
+        draw_text(d, (cx + cw, cur), s["kwCount"], font(11), SUB, anchor="ra")
+    cur += 16
+    kh = 100
+    rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=WHITE, outline=BORDER, width=1)
+    if stage == "generate":
+        d.text((cx + cw / 2, cur + kh / 2), s["keywordsLabel"], font=font(11), fill=SUB, anchor="mm")
+    else:
+        kw_text = ", ".join(SAMPLE_KW[lang])
+        center_wrapped(d, (cx + 8, cur + 6, cx + cw - 8, cur + kh - 6), kw_text, font(11), INK, line_h=15, anchor_top=True)
+    cur += kh + 8
+    # row2 buttons
+    if stage == "generate":
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), disabled_color, disabled_text)
+    else:
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), SOFT, INK)
+    cur += rb + 12
+    # row main
+    if stage == "generate":
+        disabled_color = (238, 240, 243)
+        disabled_text = (160, 165, 175)
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), disabled_color, disabled_text)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), disabled_color, disabled_text)
+    else:
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), BLUE, WHITE)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), SOFT, INK)
+
+
+def shot_adobe(lang):
+    W, H = 1280, 800
+    img = Image.new("RGBA", (W, H), WHITE)
+    d = ImageDraw.Draw(img)
+    draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
+    top = 56
+    draw_adobe_grid(d, img, W, H, top, lang)
+    # real standalone popup window on the right — initial state (matches user's screenshot)
+    draw_popup_window(d, img, W - 300 - 24, top + 70, lang, stage="generate")
+    # step badge
+    draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step2"], font(13, True))
+    return img
+
+
 def shot_popup(lang):
     W, H = 1280, 800
     img = Image.new("RGBA", (W, H), WHITE)
@@ -635,9 +748,8 @@ def shot_popup(lang):
     draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
     top = 56
     draw_adobe_grid(d, img, W, H, top, lang)
-    # floating panel on the right — popup initial state (matches real popup)
-    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="generate",
-               show_icon=False, preview_kind="box", buttons="enabled")
+    # real standalone popup window on the right (generated state)
+    draw_popup_window(d, img, W - 300 - 24, top + 70, lang, stage="apply")
     # step badge
     draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step3"], font(13, True))
     return img
