@@ -149,7 +149,7 @@ def draw_step_badge(draw, x, y, text, f):
 SAMPLE = {
     "en": {
         "panelTitle": "StockMeta Assistant",
-        "statusIdle": "Ready. Click Generate to create title and description.",
+        "statusIdle": "Ready. Please select an asset.",
         "statusDone": "Title & description ready.",
         "generate": "Generate Title & Description",
         "titleLabel": "Title",
@@ -207,7 +207,7 @@ SAMPLE = {
     },
     "zh": {
         "panelTitle": "StockMeta Assistant",
-        "statusIdle": "就绪。点击“生成标题和描述”。",
+        "statusIdle": "就绪。请选择一个素材。",
         "statusDone": "标题和描述已生成。",
         "generate": "生成标题和描述",
         "titleLabel": "标题",
@@ -267,7 +267,7 @@ SAMPLE = {
 
 SAMPLE_TITLE = {
     "en": "Golden retriever puppy playing with a red ball on green grass in a sunny garden",
-    "zh": "阳光花园里金色寻回犬幼犬玩红色球",
+    "zh": "Golden retriever puppy playing with a red ball on green grass in a sunny garden",
 }
 SAMPLE_KW = {
     "en": [
@@ -277,10 +277,10 @@ SAMPLE_KW = {
         "childhood", "toy", "green", "spring", "warm", "portrait", "close-up",
     ],
     "zh": [
-        "狗", "幼犬", "金毛", "宠物", "动物", "玩耍", "球", "红色", "花园", "草地",
-        "阳光", "户外", "可爱", "快乐", "夏天", "自然", "伴侣", "趣味", "活跃",
-        "生活", "忠诚", "毛茸茸", "微笑", "童年", "玩具", "绿色", "春天", "温暖",
-        "肖像", "特写",
+        "dog", "puppy", "golden retriever", "pet", "animal", "play", "ball", "red",
+        "garden", "grass", "sunny", "outdoor", "cute", "happy", "summer", "nature",
+        "companion", "fun", "active", "lifestyle", "loyal", "fluffy", "smile",
+        "childhood", "toy", "green", "spring", "warm", "portrait", "close-up",
     ],
 }
 
@@ -302,6 +302,21 @@ def make_photo(w, h, seed=0):
     d.polygon([(w * 0.4, h * 0.7), (w * 0.75, h * 0.35), (w, h * 0.7)], fill=(96, 138, 130, 255))
     # ground
     d.rectangle((0, int(h * 0.7), w, h), fill=(120, 180, 110, 255))
+    return img
+
+def make_box(w, h):
+    """Draw a warehouse / cardboard-box placeholder photo."""
+    img = Image.new("RGBA", (w, h), (228, 232, 236, 255))
+    d = ImageDraw.Draw(img)
+    d.rectangle((0, 0, w, h), fill=(228, 232, 236, 255))
+    bx, by = int(w * 0.26), int(h * 0.32)
+    bw, bh = int(w * 0.48), int(h * 0.42)
+    d.rectangle((bx, by, bx + bw, by + bh), fill=(201, 162, 111, 255),
+                outline=(170, 130, 85, 255), width=2)
+    # packing tape
+    d.rectangle((bx, by + bh // 2 - 7, bx + bw, by + bh // 2 + 7), fill=(223, 193, 153, 255))
+    # vertical flap line
+    d.line((bx + bw // 2, by, bx + bw // 2, by + bh // 2 - 7), fill=(170, 130, 85, 255), width=2)
     return img
 
 def paste(img, photo, box):
@@ -401,10 +416,14 @@ def shot_adobe(lang):
     return img
 
 
-def draw_panel(d, img, x, y, w, lang, stage="apply"):
+def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=True,
+                preview_kind="photo", buttons="disabled"):
     """Draw the extension side panel.
     stage: 'generate' highlights the generate button and leaves fields empty;
            'apply' shows filled content and highlights the Apply All button.
+    show_icon: draw the extension icon in the header.
+    preview_kind: 'photo' (landscape) or 'box' (warehouse placeholder).
+    buttons: 'disabled' (greyed) or 'enabled' (blue, clickable).
     """
     s = SAMPLE[lang]
     header_h = 44
@@ -416,10 +435,14 @@ def draw_panel(d, img, x, y, w, lang, stage="apply"):
     # header (top rounded, bottom square)
     rr(d, (x, y, x + w, y + header_h + 14), 12, fill=BLUE)
     d.rectangle((x, y + header_h - 14, x + w, y + header_h + 14), fill=BLUE)
-    # icon
-    icon = Image.open(os.path.join(ROOT, "icons", "icon48.png")).convert("RGBA").resize((22, 22))
-    img.paste(icon, (x + 12, y + 11), icon)
-    draw_text(d, (x + 42, y + header_h / 2), s["panelTitle"], font(14, True), WHITE, anchor="lm")
+    # icon (optional)
+    if show_icon:
+        icon = Image.open(os.path.join(ROOT, "icons", "icon48.png")).convert("RGBA").resize((22, 22))
+        img.paste(icon, (x + 12, y + 11), icon)
+        title_x = x + 42
+    else:
+        title_x = x + 12
+    draw_text(d, (title_x, y + header_h / 2), s["panelTitle"], font(14, True), WHITE, anchor="lm")
     # header buttons
     bx = x + w - 36
     rr(d, (bx, y + 7, bx + 28, y + 35), 6, fill=(255, 255, 255, 38))
@@ -436,7 +459,10 @@ def draw_panel(d, img, x, y, w, lang, stage="apply"):
     # preview
     ph = 150
     rr(d, (cx, cur, cx + cw, cur + ph + 12), 8, fill=PANEL_BG)
-    paste(img, make_photo(cw - 24, ph), (cx + 6, cur + 6, cx + cw - 6, cur + 6 + ph))
+    if preview_kind == "box":
+        paste(img, make_box(cw - 24, ph), (cx + 6, cur + 6, cx + cw - 6, cur + 6 + ph))
+    else:
+        paste(img, make_photo(cw - 24, ph), (cx + 6, cur + 6, cx + cw - 6, cur + 6 + ph))
     cur += ph + 12 + 10
     # generate button
     bh = 38
@@ -483,6 +509,9 @@ def draw_panel(d, img, x, y, w, lang, stage="apply"):
     if stage == "apply":
         draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), SOFT, INK)
         draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), SOFT, INK)
+    elif buttons == "enabled":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyTitle"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyTitle"], font(12, True), SOFT, INK)
     else:
         disabled_color = (238, 240, 243)
         disabled_text = (160, 165, 175)
@@ -491,6 +520,9 @@ def draw_panel(d, img, x, y, w, lang, stage="apply"):
     cur += rb + 8
     # row 2
     if stage == "apply":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), SOFT, INK)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), SOFT, INK)
+    elif buttons == "enabled":
         draw_button(d, (cx, cur, cx + half, cur + rb), s["applyKeywords"], font(12, True), SOFT, INK)
         draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["copyKeywords"], font(12, True), SOFT, INK)
     else:
@@ -502,6 +534,9 @@ def draw_panel(d, img, x, y, w, lang, stage="apply"):
     # row main
     if stage == "apply":
         draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), GREEN, WHITE)
+        draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), SOFT, INK)
+    elif buttons == "enabled":
+        draw_button(d, (cx, cur, cx + half, cur + rb), s["applyAll"], font(12, True), BLUE, WHITE)
         draw_button(d, (cx + half + 8, cur, cx + cw, cur + rb), s["retry"], font(12, True), SOFT, INK)
     else:
         disabled_color = (238, 240, 243)
@@ -600,8 +635,9 @@ def shot_popup(lang):
     draw_browser(d, W, H, "https://contributor.stock.adobe.com/en/files")
     top = 56
     draw_adobe_grid(d, img, W, H, top, lang)
-    # floating panel on the right with generated content and apply buttons
-    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="apply")
+    # floating panel on the right — popup initial state (matches real popup)
+    draw_panel(d, img, W - 320 - 24, top + 70, 320, lang, stage="generate",
+               show_icon=False, preview_kind="box", buttons="enabled")
     # step badge
     draw_step_badge(d, 24, top + 70, SAMPLE[lang]["step3"], font(13, True))
     return img
