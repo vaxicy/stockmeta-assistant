@@ -165,6 +165,7 @@
       KEYWORD_APPLY_NOT_VERIFIED: 'errKeywordVerify',
       KEYWORD_INPUT_NOT_FOUND: 'errKeywordVerify',
       TITLE_INPUT_NOT_FOUND: 'errTitleVerify',
+      EXTENSION_CONTEXT_INVALIDATED: 'errContextInvalid',
     };
     let key;
     if (map[errCode]) {
@@ -246,16 +247,30 @@
 
   function sendGenerate(imageBase64) {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { type: 'GENERATE_METADATA', imageBase64 },
-        (resp) => {
-          if (chrome.runtime.lastError) {
-            resolve({ ok: false, error: 'NETWORK_ERROR' });
-          } else {
-            resolve(resp || { ok: false, error: 'UNKNOWN' });
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'GENERATE_METADATA', imageBase64 },
+          (resp) => {
+            if (chrome.runtime.lastError) {
+              const msg = String(chrome.runtime.lastError.message || '');
+              if (msg.includes('Extension context invalidated')) {
+                resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+              } else {
+                resolve({ ok: false, error: 'NETWORK_ERROR' });
+              }
+            } else {
+              resolve(resp || { ok: false, error: 'UNKNOWN' });
+            }
           }
+        );
+      } catch (err) {
+        const msg = err && err.message ? err.message : '';
+        if (String(msg).includes('Extension context invalidated')) {
+          resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+        } else {
+          resolve({ ok: false, error: 'NETWORK_ERROR' });
         }
-      );
+      }
     });
   }
 

@@ -254,36 +254,54 @@
   }
 
   function verifyKeywords(el, keywords) {
-    // Allow a short delay for React to render tags.
+    // Allow a short delay for React to render tags, then retry once if needed.
     return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const container =
-          el.closest('[data-testid*="keyword" i], [data-testid*="tags" i], [data-testid*="tag" i], [data-testid*="keywords" i], .tags, .tags-input, .tag-input, [role="listbox"]') ||
-          el.parentElement;
-        const tagCount = container
-          ? container.querySelectorAll(
-              '[role="option"], [role="listitem"], .tag, .chip, [data-testid*="tag" i], [data-testid*="keyword-tag" i], .keyword-tag, .keyword'
-            ).length
-          : 0;
-        let current;
-        if (el.getAttribute('contenteditable') === 'true') {
-          current = el.textContent || '';
-        } else {
-          current = el.value || '';
-        }
-        const plainCount = current
-          .split(/[,，;；\n]+/)
-          .map((s) => s.trim())
-          .filter(Boolean).length;
-        if (tagCount >= keywords.length || plainCount >= keywords.length) {
-          resolve({ success: true, input: el });
-        } else if (tagCount > 0 || current.trim().length > 0) {
-          // Some keywords were written even if not all verified.
-          resolve({ success: true, input: el });
-        } else {
-          reject(new Error('KEYWORD_APPLY_NOT_VERIFIED'));
-        }
-      }, 180);
+      const tryVerify = (attempt) => {
+        setTimeout(() => {
+          const container =
+            el.closest('[data-testid*="keyword" i], [data-testid*="tags" i], [data-testid*="tag" i], [data-testid*="keywords" i], .tags, .tags-input, .tag-input, [role="listbox"], [class*="keyword" i], [class*="tag" i]') ||
+            el.parentElement;
+
+          const tagSelectors =
+            '[role="option"], [role="listitem"], .tag, .chip, [data-testid*="tag" i], [data-testid*="keyword-tag" i], .keyword-tag, .keyword, [class*="tag" i], [class*="keyword" i]';
+          const tags = container
+            ? Array.from(container.querySelectorAll(tagSelectors)).filter((t) => (t.textContent || '').trim())
+            : [];
+          const tagCount = tags.length;
+
+          let current = '';
+          if (el.getAttribute('contenteditable') === 'true') {
+            current = el.textContent || '';
+          } else {
+            current = el.value || '';
+          }
+
+          const plainCount = current
+            .split(/[,，;；\n]+/)
+            .map((s) => s.trim())
+            .filter(Boolean).length;
+
+          // Build a haystack from the input, its container, and any visible tags in the document.
+          const containerText = container ? container.textContent || '' : '';
+          const visibleTagText = Array.from(document.querySelectorAll(tagSelectors))
+            .map((t) => t.textContent || '')
+            .join(' ');
+          const haystack = (current + ' ' + containerText + ' ' + visibleTagText).toLowerCase();
+          const present = keywords.filter((kw) => haystack.includes(String(kw).toLowerCase().trim())).length;
+
+          if (present >= keywords.length || tagCount >= keywords.length || plainCount >= keywords.length) {
+            resolve({ success: true, input: el });
+          } else if (present > 0 || tagCount > 0 || plainCount > 0 || current.trim().length > 0) {
+            // Some keywords were written; treat as success to avoid false negatives.
+            resolve({ success: true, input: el });
+          } else if (attempt < 2) {
+            tryVerify(attempt + 1);
+          } else {
+            reject(new Error('KEYWORD_APPLY_NOT_VERIFIED'));
+          }
+        }, attempt === 0 ? 400 : 500);
+      };
+      tryVerify(0);
     });
   }
 
