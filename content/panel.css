@@ -114,15 +114,15 @@
 /* Per-field regenerate (refresh) icon button */
 .sm-refresh {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   padding: 0;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
-  background: #f1f3f5;
-  border: 1px solid #cbd5e1;
-  color: #1a73e8;
-  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #6b7280;
+  border-radius: 5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -132,10 +132,12 @@
 
 .sm-refresh:hover:not(:disabled) {
   background: #e2e8f0;
+  color: #1a73e8;
+  border-color: #cbd5e1;
 }
 
 .sm-refresh:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   color: #94a3b8;
   border-color: #e2e8f0;

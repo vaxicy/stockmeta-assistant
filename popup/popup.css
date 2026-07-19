@@ -16,10 +16,39 @@ body {
   gap: 10px;
 }
 
+.pp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .pp-title {
   font-size: 16px;
   margin: 0;
   color: #1a73e8;
+}
+
+.pp-icon-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  background: #f1f3f5;
+  border: 1px solid #cbd5e1;
+  color: #1a73e8;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pp-icon-btn:hover {
+  background: #e2e8f0;
 }
 
 .pp-status {

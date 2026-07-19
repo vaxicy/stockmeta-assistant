@@ -5,6 +5,7 @@
       extName: 'StockMeta Assistant',
       extDescription: 'Generate Adobe Stock titles and keywords from your current asset using a vision model, then fill them in with one click. Does not auto-submit.',
       optTitle: 'Settings',
+      openUpload: 'Open Adobe Stock Uploads',
       optTestOk: 'Connection OK. Model responded.',
       optTestMissing: 'Please enter an API Key first.',
     },
@@ -12,6 +13,7 @@
       extName: 'StockMeta Assistant',
       extDescription: '使用视觉模型从当前素材生成 Adobe Stock 标题与关键词，一键填入。不会自动提交。',
       optTitle: '设置',
+      openUpload: '前往 Adobe Stock 上传页面',
       optTestOk: '连接成功，模型已响应。',
       optTestMissing: '请先填写 API Key。',
     },
@@ -62,6 +64,9 @@
     }
     document.getElementById('pp-options').addEventListener('click', () => {
       chrome.runtime.openOptionsPage();
+    });
+    document.getElementById('pp-upload').addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://contributor.stock.adobe.com/en/uploads' });
     });
   }
 
