@@ -35,7 +35,10 @@
         </div>
         <button class="sm-btn sm-primary" id="sm-generate" data-i18n="generate"></button>
         <div class="sm-field">
-          <label class="sm-label" data-i18n="titleLabel"></label>
+          <label class="sm-label">
+            <span data-i18n="titleLabel"></span>
+            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" title="Regenerate Title" disabled>↻</button>
+          </label>
           <textarea id="sm-title" class="sm-textarea" rows="2" readonly></textarea>
           <div class="sm-row">
             <button class="sm-btn" id="sm-apply-title" data-i18n="applyTitle"></button>
@@ -45,7 +48,10 @@
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="keywordsLabel"></span>
-            <span class="sm-count" id="sm-kw-count"></span>
+            <span class="sm-label-right">
+              <span class="sm-count" id="sm-kw-count"></span>
+              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" title="Regenerate Keywords" disabled>↻</button>
+            </span>
           </label>
           <textarea id="sm-keywords" class="sm-textarea" rows="6" readonly></textarea>
           <div class="sm-row">
@@ -81,6 +87,8 @@
       copyText(state.keywords.join(', '), 'copied')
     );
     panel.querySelector('#sm-retry').addEventListener('click', onGenerate);
+    panel.querySelector('#sm-regen-title').addEventListener('click', () => onGenerateField('title'));
+    panel.querySelector('#sm-regen-kw').addEventListener('click', () => onGenerateField('keywords'));
     panel.querySelector('#sm-settings').addEventListener('click', openOptions);
     panel.querySelector('#sm-collapse').addEventListener('click', toggleCollapse);
   }
@@ -213,6 +221,7 @@
     panel.querySelector('#sm-title').value = '';
     panel.querySelector('#sm-keywords').value = '';
     panel.querySelector('#sm-kw-count').textContent = '';
+    updateRegenButtons();
   }
 
   // ---------------------------------------------------------------- generate
@@ -274,10 +283,84 @@
     });
   }
 
+  // Regenerate a single field (title or keywords) without touching the other.
+  function sendGenerateField(imageBase64, mode) {
+    const type = mode === 'title' ? 'GENERATE_TITLE' : 'GENERATE_KEYWORDS';
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type, imageBase64 }, (resp) => {
+          if (chrome.runtime.lastError) {
+            const msg = String(chrome.runtime.lastError.message || '');
+            if (msg.includes('Extension context invalidated')) {
+              resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+            } else {
+              resolve({ ok: false, error: 'NETWORK_ERROR' });
+            }
+          } else {
+            resolve(resp || { ok: false, error: 'UNKNOWN' });
+          }
+        });
+      } catch (err) {
+        const msg = err && err.message ? err.message : '';
+        if (String(msg).includes('Extension context invalidated')) {
+          resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+        } else {
+          resolve({ ok: false, error: 'NETWORK_ERROR' });
+        }
+      }
+    });
+  }
+
+  async function onGenerateField(mode) {
+    const btn = panel.querySelector(mode === 'title' ? '#sm-regen-title' : '#sm-regen-kw');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('sm-spinning');
+    try {
+      setStatus(mode === 'title' ? 'statusGeneratingTitle' : 'statusGeneratingKeywords');
+      const imageBase64 = await Img.getCurrentImageBase64();
+      const resp = await sendGenerateField(imageBase64, mode);
+      if (!resp.ok) {
+        setError(resp.error);
+        return;
+      }
+      if (mode === 'title') {
+        if (!resp.title) {
+          setError('EMPTY_RESPONSE');
+          return;
+        }
+        state.title = resp.title;
+      } else {
+        if (!Array.isArray(resp.keywords) || !resp.keywords.length) {
+          setError('EMPTY_RESPONSE');
+          return;
+        }
+        state.keywords = resp.keywords;
+      }
+      renderResults();
+      setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
+    } catch (err) {
+      const code = err && err.message ? err.message : 'UNKNOWN';
+      setError(code, err);
+    } finally {
+      btn.classList.remove('sm-spinning');
+      updateRegenButtons();
+    }
+  }
+
   function renderResults() {
     panel.querySelector('#sm-title').value = state.title;
     panel.querySelector('#sm-keywords').value = state.keywords.join('\n');
     panel.querySelector('#sm-kw-count').textContent = `${state.keywords.length} ${t('keywordCountNote')}`;
+    updateRegenButtons();
+  }
+
+  // Enable/disable the per-field regenerate buttons based on existing results.
+  function updateRegenButtons() {
+    const titleBtn = panel.querySelector('#sm-regen-title');
+    const kwBtn = panel.querySelector('#sm-regen-kw');
+    if (titleBtn) titleBtn.disabled = !state.title;
+    if (kwBtn) kwBtn.disabled = !state.keywords.length;
   }
 
   // ---------------------------------------------------------------- apply

@@ -105,6 +105,51 @@
   font-size: 11px;
 }
 
+.sm-label-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Per-field regenerate (refresh) icon button */
+.sm-refresh {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  background: #f1f3f5;
+  border: 1px solid #cbd5e1;
+  color: #1a73e8;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sm-refresh:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.sm-refresh:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.sm-refresh.sm-spinning {
+  animation: sm-spin 0.8s linear infinite;
+}
+
+@keyframes sm-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .sm-textarea {
   width: 100%;
   border: 1px solid #cbd5e1;

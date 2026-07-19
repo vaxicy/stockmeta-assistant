@@ -2,26 +2,53 @@
 import { getConfig } from '../services/config.js';
 import { generateMetadata } from '../services/aiProvider.js';
 
-function buildPrompt(keywordCount) {
+function buildPrompt(keywordCount, mode = 'all') {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
-  return [
+  const parts = [
     'You are helping a contributor upload an asset to Adobe Stock.',
     'Look at the provided image and describe ONLY what is visibly present.',
-    'Generate:',
-    `1. One concise English Adobe Stock title (max 70 characters, no brand names, no fictional places, no Chinese or non-English characters).`,
-    `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`,
-    'Rules:',
-    '- Describe only visible content. Do not invent brands, places, or events.',
-    '- All output must be in English. Do not include Chinese or any non-English words.',
-    '- Do NOT output Markdown. Return ONLY a JSON object.',
-    '- JSON format: {"title":"...","keywords":["...","..."]}',
-  ].join('\n');
+  ];
+  if (mode === 'title') {
+    parts.push('Generate ONLY:');
+    parts.push(
+      '1. One concise English Adobe Stock title (max 70 characters, no brand names, no fictional places, no Chinese or non-English characters).'
+    );
+  } else if (mode === 'keywords') {
+    parts.push('Generate ONLY:');
+    parts.push(
+      `1. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
+    );
+  } else {
+    parts.push('Generate:');
+    parts.push(
+      '1. One concise English Adobe Stock title (max 70 characters, no brand names, no fictional places, no Chinese or non-English characters).'
+    );
+    parts.push(
+      `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
+    );
+  }
+  parts.push('Rules:');
+  parts.push('- Describe only visible content. Do not invent brands, places, or events.');
+  parts.push('- All output must be in English. Do not include Chinese or any non-English words.');
+  parts.push('- Do NOT output Markdown. Return ONLY a JSON object.');
+  if (mode === 'title') {
+    parts.push('- JSON format: {"title":"..."}');
+  } else if (mode === 'keywords') {
+    parts.push('- JSON format: {"keywords":["...","..."]}');
+  } else {
+    parts.push('- JSON format: {"title":"...","keywords":["...","..."]}');
+  }
+  return parts.join('\n');
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return;
 
-  if (message.type === 'GENERATE_METADATA') {
+  if (
+    message.type === 'GENERATE_METADATA' ||
+    message.type === 'GENERATE_TITLE' ||
+    message.type === 'GENERATE_KEYWORDS'
+  ) {
     (async () => {
       try {
         const cfg = await getConfig();
@@ -29,14 +56,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ ok: false, error: 'MISSING_API_KEY' });
           return;
         }
-        console.log('[StockMeta] generateMetadata model:', cfg.model);
+        const mode =
+          message.type === 'GENERATE_TITLE'
+            ? 'title'
+            : message.type === 'GENERATE_KEYWORDS'
+            ? 'keywords'
+            : 'all';
+        console.log('[StockMeta] generateMetadata model:', cfg.model, 'mode:', mode);
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
           provider: cfg.provider,
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount),
+          prompt: buildPrompt(cfg.keywordCount, mode),
           timeoutMs: cfg.timeoutMs,
         });
         sendResponse({ ok: true, title: result.title, keywords: result.keywords });

@@ -44,6 +44,12 @@
       errContextInvalid: 'Extension disconnected. Please refresh the page and try again.',
       errUnknown: 'Unexpected error.',
       keywordCountNote: 'keywords',
+      regenerateTitle: 'Regenerate title',
+      regenerateKeywords: 'Regenerate keywords',
+      statusGeneratingTitle: 'Generating title…',
+      statusGeneratingKeywords: 'Generating keywords…',
+      statusTitleReady: 'Title updated.',
+      statusKeywordsReady: 'Keywords updated.',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -85,6 +91,12 @@
       errContextInvalid: '扩展连接已断开，请刷新页面后重试。',
       errUnknown: '未知错误。',
       keywordCountNote: '个关键词',
+      regenerateTitle: '重新生成标题',
+      regenerateKeywords: '重新生成关键词',
+      statusGeneratingTitle: '正在生成标题…',
+      statusGeneratingKeywords: '正在生成关键词…',
+      statusTitleReady: '标题已更新。',
+      statusKeywordsReady: '关键词已更新。',
     },
   };
 
@@ -143,6 +155,10 @@
     scope.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       const key = el.getAttribute('data-i18n-placeholder');
       el.setAttribute('placeholder', t(key));
+    });
+    scope.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-title');
+      el.setAttribute('title', t(key));
     });
   }
 
