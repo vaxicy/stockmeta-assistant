@@ -108,12 +108,14 @@ h1 {
   align-items: center;
   gap: 12px;
 }
-.opt-lang-field label { font-weight: 600; font-size: 14px; }
+.opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; }
 .opt-lang-field select {
-  padding: 8px 10px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 14px;
+  line-height: 34px;
   background: #fff;
 }
 
