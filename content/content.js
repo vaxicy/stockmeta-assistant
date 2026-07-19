@@ -24,8 +24,8 @@
       <div class="sm-header">
         <span class="sm-title" data-i18n="panelTitle"></span>
         <div class="sm-header-actions">
-          <button class="sm-btn sm-icon" id="sm-settings" title="Settings">⚙</button>
-          <button class="sm-btn sm-icon" id="sm-collapse" title="Collapse">–</button>
+          <button class="sm-btn sm-icon" id="sm-settings" data-i18n-title="openOptions">⚙</button>
+          <button class="sm-btn sm-icon" id="sm-collapse" data-i18n-title="collapse">–</button>
         </div>
       </div>
       <div class="sm-body">
@@ -113,7 +113,8 @@
     state.collapsed = !state.collapsed;
     panel.classList.toggle('sm-collapsed', state.collapsed);
     panel.querySelector('#sm-collapse').textContent = state.collapsed ? '+' : '–';
-    panel.querySelector('#sm-collapse').title = state.collapsed ? t('expand') : t('collapse');
+    panel.querySelector('#sm-collapse').setAttribute('data-tooltip', state.collapsed ? t('expand') : t('collapse'));
+    panel.querySelector('#sm-collapse').removeAttribute('title');
   }
 
   // ---------------------------------------------------------------- draggable

@@ -39,6 +39,11 @@
     document.querySelectorAll('[data-i18n]').forEach((el) => {
       el.textContent = msg(el.getAttribute('data-i18n'));
     });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-title');
+      el.setAttribute('data-tooltip', msg(key));
+      el.removeAttribute('title');
+    });
     document.title = msg('extName');
     document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
   }

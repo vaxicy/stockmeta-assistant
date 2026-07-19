@@ -158,7 +158,8 @@
     });
     scope.querySelectorAll('[data-i18n-title]').forEach((el) => {
       const key = el.getAttribute('data-i18n-title');
-      el.setAttribute('title', t(key));
+      el.setAttribute('data-tooltip', t(key));
+      el.removeAttribute('title');
     });
   }
 
