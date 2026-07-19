@@ -112,7 +112,7 @@
 }
 
 /* Per-field regenerate (refresh) icon button */
-.sm-refresh {
+.sm-btn.sm-refresh {
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
@@ -130,20 +130,27 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.sm-refresh:hover:not(:disabled) {
+.sm-btn.sm-refresh:hover:not(:disabled) {
   background: #e2e8f0;
   color: #1a73e8;
   border-color: #cbd5e1;
 }
 
-.sm-refresh:disabled {
+.sm-btn.sm-refresh:disabled {
   opacity: 0.35;
   cursor: not-allowed;
   color: #94a3b8;
   border-color: #e2e8f0;
 }
 
-.sm-refresh.sm-spinning {
+/* Only the icon spins, not the whole button */
+.sm-refresh-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-btn.sm-refresh.sm-spinning .sm-refresh-icon {
   animation: sm-spin 0.8s linear infinite;
 }
 

@@ -37,7 +37,7 @@
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
-            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" title="Regenerate Title" disabled>↻</button>
+            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" title="Regenerate Title" disabled><span class="sm-refresh-icon">↻</span></button>
           </label>
           <textarea id="sm-title" class="sm-textarea" rows="2" readonly></textarea>
           <div class="sm-row">
@@ -50,7 +50,7 @@
             <span data-i18n="keywordsLabel"></span>
             <span class="sm-label-right">
               <span class="sm-count" id="sm-kw-count"></span>
-              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" title="Regenerate Keywords" disabled>↻</button>
+              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" title="Regenerate Keywords" disabled><span class="sm-refresh-icon">↻</span></button>
             </span>
           </label>
           <textarea id="sm-keywords" class="sm-textarea" rows="6" readonly></textarea>

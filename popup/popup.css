@@ -31,13 +31,11 @@ body {
 
 .pp-icon-btn {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  font-size: 14px;
-  line-height: 1;
-  background: #f1f3f5;
-  border: 1px solid #cbd5e1;
+  background: transparent;
+  border: none;
   color: #1a73e8;
   border-radius: 6px;
   display: inline-flex;
@@ -48,7 +46,8 @@ body {
 }
 
 .pp-icon-btn:hover {
-  background: #e2e8f0;
+  background: #e8f0fe;
+  color: #1666c9;
 }
 
 .pp-status {
