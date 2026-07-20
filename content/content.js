@@ -37,7 +37,7 @@
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
-            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" title="Regenerate Title" disabled><span class="sm-refresh-icon">↻</span></button>
+            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" disabled><span class="sm-refresh-icon">↻</span></button>
           </label>
           <textarea id="sm-title" class="sm-textarea" rows="2" readonly></textarea>
           <div class="sm-row">
@@ -50,7 +50,7 @@
             <span data-i18n="keywordsLabel"></span>
             <span class="sm-label-right">
               <span class="sm-count" id="sm-kw-count"></span>
-              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" title="Regenerate Keywords" disabled><span class="sm-refresh-icon">↻</span></button>
+              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" disabled><span class="sm-refresh-icon">↻</span></button>
             </span>
           </label>
           <textarea id="sm-keywords" class="sm-textarea" rows="6" readonly></textarea>
@@ -113,8 +113,6 @@
     state.collapsed = !state.collapsed;
     panel.classList.toggle('sm-collapsed', state.collapsed);
     panel.querySelector('#sm-collapse').textContent = state.collapsed ? '+' : '–';
-    panel.querySelector('#sm-collapse').setAttribute('data-tooltip', state.collapsed ? t('expand') : t('collapse'));
-    panel.querySelector('#sm-collapse').removeAttribute('title');
   }
 
   // ---------------------------------------------------------------- draggable
@@ -184,7 +182,7 @@
     } else {
       key = 'errUnknown';
     }
-    console.error('[StockMeta] error code:', errCode, detail || '');
+    console.warn('[StockMeta] error code:', errCode, detail || '');
     setStatus(key, true);
   }
 
@@ -448,7 +446,7 @@
   function refreshLang() {
     applyStaticI18n(panel);
     const collapseBtn = panel.querySelector('#sm-collapse');
-    if (collapseBtn) collapseBtn.title = state.collapsed ? t('expand') : t('collapse');
+    if (collapseBtn) collapseBtn.textContent = state.collapsed ? t('expand') : t('collapse');
     if (state.title || state.keywords.length) renderResults();
     else setStatus('statusIdle');
   }

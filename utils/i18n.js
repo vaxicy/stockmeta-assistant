@@ -157,8 +157,8 @@
       el.setAttribute('placeholder', t(key));
     });
     scope.querySelectorAll('[data-i18n-title]').forEach((el) => {
-      const key = el.getAttribute('data-i18n-title');
-      el.setAttribute('data-tooltip', t(key));
+      // Tooltip removed — data-tooltip/title stripped to prevent clipped popups.
+      el.removeAttribute('data-tooltip');
       el.removeAttribute('title');
     });
   }

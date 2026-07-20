@@ -2,6 +2,43 @@
 import { getConfig } from '../services/config.js';
 import { generateMetadata } from '../services/aiProvider.js';
 
+// In-memory config cache. The SW re-reads storage only when the cache is
+// empty or invalidated, so a config change made in the options page is picked
+// up immediately via chrome.storage.onChanged (instead of relying on a fresh
+// read that could momentarily return defaults during a cold start).
+let configCache = null;
+
+async function getConfigCached() {
+  if (configCache) return configCache;
+  try {
+    configCache = await getConfig();
+  } catch (err) {
+    console.warn('[StockMeta] getConfig failed, falling back to defaults:', err && err.message);
+    if (!configCache) configCache = await getConfig();
+  }
+  return configCache;
+}
+
+// Any change from the options page invalidates the cache so the next read is
+// fresh. This is what makes "re-save" (or any settings change) take effect
+// without reloading the extension.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount', 'timeoutMs'].some((k) => k in changes)) {
+    configCache = null;
+  }
+});
+
+// Prewarm cache on service worker startup.
+getConfigCached();
+
+// Self-correct a possible transient empty storage read during cold start:
+// invalidate and re-read shortly after startup, once storage is guaranteed ready.
+setTimeout(() => {
+  configCache = null;
+  getConfigCached();
+}, 800);
+
 function buildPrompt(keywordCount, mode = 'all') {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
   const parts = [
@@ -51,7 +88,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   ) {
     (async () => {
       try {
-        const cfg = await getConfig();
+        const cfg = await getConfigCached();
         if (!cfg.apiKey) {
           sendResponse({ ok: false, error: 'MISSING_API_KEY' });
           return;
@@ -93,7 +130,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'TEST_CONNECTION') {
     (async () => {
       try {
-        const cfg = await getConfig();
+        const cfg = await getConfigCached();
         if (!cfg.apiKey) {
           sendResponse({ ok: false, error: 'MISSING_API_KEY' });
           return;

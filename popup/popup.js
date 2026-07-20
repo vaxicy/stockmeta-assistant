@@ -40,8 +40,6 @@
       el.textContent = msg(el.getAttribute('data-i18n'));
     });
     document.querySelectorAll('[data-i18n-title]').forEach((el) => {
-      const key = el.getAttribute('data-i18n-title');
-      el.setAttribute('data-tooltip', msg(key));
       el.removeAttribute('title');
     });
     document.title = msg('extName');
@@ -54,6 +52,30 @@
     el.className = 'pp-status' + (kind ? ' ' + kind : '');
   }
 
+  // Strip all native title attributes to prevent clipped tooltip in Chrome popup.
+  function stripAllTitles() {
+    document.querySelectorAll('[title]').forEach((el) => el.removeAttribute('title'));
+  }
+
+  // MutationObserver: intercept any dynamically-added title attributes.
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'attributes' && m.attributeName === 'title') {
+        m.target.removeAttribute('title');
+      }
+      if (m.type === 'childList') {
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 && node.hasAttribute && node.hasAttribute('title')) {
+            node.removeAttribute('title');
+          }
+          if (node.querySelectorAll) {
+            node.querySelectorAll('[title]').forEach((el) => el.removeAttribute('title'));
+          }
+        });
+      }
+    }
+  }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
+
   async function init() {
     const stored = await chrome.storage.local.get(['apiKey', 'lang']);
     if (stored.lang === 'zh' || stored.lang === 'en') {
@@ -62,6 +84,7 @@
       currentLang = getBrowserLang();
     }
     applyStaticI18n();
+    stripAllTitles(); // Remove any remaining native title attributes
     if (stored.apiKey) {
       setStatus('✓ ' + msg('optTestOk').split('.')[0], 'ok');
     } else {
