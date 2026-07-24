@@ -1,31 +1,58 @@
-# StockMeta Assistant
+<div align="center">
 
-> 为 Adobe Stock 供稿者（Contributor）打造的 Chrome 扩展，用视觉大模型一键生成图片的**英文标题（Title）与关键词（Keywords）**，并填充进 Adobe Stock 上传表单。**永不自动提交。**
+# 🎯 StockMeta Assistant
 
-A Chrome extension (Manifest V3) that helps Adobe Stock contributors generate English **titles and keywords** for their current asset using a vision model (SiliconFlow), then fills them into the Adobe Stock form with one click. **It never auto-submits.**
+**为 Adobe Stock 供稿者打造的 Chrome 扩展** —— 用视觉大模型一键生成图片的**英文标题与关键词**，并填充进上传表单。
+
+A Chrome extension that helps Adobe Stock contributors generate English **titles & keywords** with a vision model, then fills them into the upload form.
+
+<br>
+
+![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![License](https://img.shields.io/badge/license-Non--Commercial-red)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Developer_Console-4285F4?logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore/devconsole/bd5c56c6-aa1a-43cc-98b7-e88a5441667e/afiigmeicppdepjodjeemfhmeimmbeio/edit)
+
+</div>
+
+---
+
+> 💡 **永不自动提交** —— 扩展只负责生成与填写元数据，是否上传由你手动决定。
+
+## 📑 目录 / Contents
+
+- [功能特性 / Features](#-功能特性--features)
+- [Chrome 网上应用店 / Chrome Web Store](#-chrome-网上应用店--chrome-web-store)
+- [使用流程 / Workflow](#-使用流程--workflow)
+- [安装 / Install](#-安装开发者模式--install-developer-mode)
+- [技术实现 / How It Works](#-技术实现--how-it-works)
+- [项目结构 / Structure](#-项目结构--project-structure)
+- [调试 / Debugging](#-调试--debugging)
+- [已知限制 / Limitations](#-已知限制--notes--limitations)
+- [许可证 / License](#-许可证--license)
 
 ---
 
 ## ✨ 功能特性 / Features
 
-- **AI 一键生成**：在 Adobe Stock Contributor 页面右侧注入侧边面板，读取当前选中素材图片，调用视觉大模型返回英文标题 + 关键词。
-- **单字段独立刷新**：生成后可单独「重新生成标题」或「重新生成关键词」，无需整段重来。
-- **一键应用 / 复制**：支持 `应用标题`、`应用关键词`、`全部应用`，以及 `复制标题`、`复制关键词`；生成结果可手动编辑。
-- **图片预览**：面板内实时显示当前素材缩略图。
-- **中英双语界面**：跟随浏览器语言或手动切换（英文 / 中文），所有动态文案均随语言切换。
-- **设置页**：配置 SiliconFlow API Key、视觉模型 ID、关键词数量（1–50，默认 30），并支持「测试连接」。
-- **弹窗入口**：扩展图标弹窗提供 Adobe Stock 上传页直达入口与设置入口。
-- **自定义 Tooltip**：用 CSS 自绘提示替代原生 `title`，避免样式冲突。
-- **面板折叠**：可折叠 / 展开面板，最小化占用屏幕空间。
-- **健壮的错误处理**：覆盖 API Key 缺失、模型不存在、网络错误、超时、图片读取失败、JSON 解析失败、模型返回空内容等场景，扩展不会崩溃。
-- **原生实现**：Manifest V3 + 原生 HTML/CSS/JS，无 React / Vue / TypeScript 依赖。
+| 功能 | 说明 |
+| --- | --- |
+| 🤖 **AI 一键生成** | 在 Contributor 页面右侧注入面板，读取当前选中图片，调用视觉大模型返回英文标题 + 关键词。 |
+| 🔁 **单字段独立刷新** | 生成后可单独「重新生成标题」或「重新生成关键词」，无需整段重来。 |
+| 📋 **一键应用 / 复制** | 支持 `应用标题`、`应用关键词`、`全部应用`，以及 `复制标题`、`复制关键词`；结果可手动编辑。 |
+| 🖼️ **图片预览** | 面板内实时显示当前素材缩略图。 |
+| 🌐 **中英双语界面** | 跟随浏览器语言或手动切换，所有动态文案均随语言切换。 |
+| ⚙️ **设置页** | 配置 SiliconFlow API Key、视觉模型 ID、关键词数量（1–50，默认 30），支持「测试连接」。 |
+| 🚀 **弹窗入口** | 扩展图标弹窗提供 Adobe Stock 上传页与设置直达入口。 |
+| 💬 **自定义 Tooltip** | 用 CSS 自绘提示替代原生 `title`，避免样式冲突。 |
+| ↔️ **面板折叠** | 可折叠 / 展开面板，最小化占用屏幕空间。 |
+| 🛡️ **健壮错误处理** | 覆盖 Key 缺失、模型不存在、网络/超时、图片读取、JSON 解析、空内容等场景，扩展不崩溃。 |
+| 🧱 **原生实现** | Manifest V3 + 原生 HTML/CSS/JS，无框架依赖。 |
 
 ---
 
 ## 🔗 Chrome 网上应用店 / Chrome Web Store
 
-- 开发者后台（编辑 listings）：
-  https://chrome.google.com/webstore/devconsole/bd5c56c6-aa1a-43cc-98b7-e88a5441667e/afiigmeicppdepjodjeemfhmeimmbeio/edit
+[![Open Developer Console](https://img.shields.io/badge/Open_Developer_Console-4285F4?logo=googlechrome&logoColor=white&style=for-the-badge)](https://chrome.google.com/webstore/devconsole/bd5c56c6-aa1a-43cc-98b7-e88a5441667e/afiigmeicppdepjodjeemfhmeimmbeio/edit)
 
 > 公开安装地址以 Chrome 网上应用店实际上线页面为准。
 
@@ -35,7 +62,7 @@ A Chrome extension (Manifest V3) that helps Adobe Stock contributors generate En
 
 1. 打开 Adobe Stock Contributor 页面：`https://contributor.stock.adobe.com/*`
 2. 右侧自动注入 **StockMeta Assistant** 面板。
-3. 点击 **Generate Title & Keywords**（生成标题和关键词）——读取当前图片并调用视觉模型，返回标题 + 关键词。
+3. 点击 **Generate Title & Keywords** —— 读取当前图片并调用视觉模型，返回标题 + 关键词。
 4. 查看 / 编辑结果，然后点击 **Apply Title**、**Apply Keywords** 或 **Apply All**；也可 **Copy** 或 **Retry**。
 5. 在 Adobe Stock 页面**手动提交**素材。
 
@@ -125,9 +152,9 @@ window.StockMetaDebug.findKeywordInput()  // 关键词输入框
 
 本项目采用 **非商业使用许可证（Non-Commercial License）**。
 
-- 允许个人非商业使用、学习研究与非商业分发（须保留版权与许可声明）。
-- **禁止商业使用**，如需商业授权请联系作者。
+- ✅ 允许：个人非商业使用、学习研究与非商业分发（须保留版权与许可声明）。
+- ❌ 禁止：商业使用，如需商业授权请联系作者。
 
 详见 [LICENSE](./LICENSE) 文件。
 
-This project is licensed under the **Non-Commercial License** — personal / non-commercial use and study are permitted; commercial use is prohibited without written permission. See [LICENSE](./LICENSE).
+*This project is licensed under the **Non-Commercial License** — personal / non-commercial use and study are permitted; commercial use is prohibited without written permission. See [LICENSE](./LICENSE).*
