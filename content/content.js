@@ -9,7 +9,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], lastImageSrc: null, collapsed: false };
+  let state = { title: '', keywords: [], lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -37,7 +37,7 @@
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
-            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle" disabled><span class="sm-refresh-icon">↻</span></button>
+            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle"><span class="sm-refresh-icon">↻</span></button>
           </label>
           <textarea id="sm-title" class="sm-textarea" rows="2" readonly></textarea>
           <div class="sm-row">
@@ -50,7 +50,7 @@
             <span data-i18n="keywordsLabel"></span>
             <span class="sm-label-right">
               <span class="sm-count" id="sm-kw-count"></span>
-              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords" disabled><span class="sm-refresh-icon">↻</span></button>
+              <button class="sm-btn sm-refresh" id="sm-regen-kw" data-i18n-title="regenerateKeywords"><span class="sm-refresh-icon">↻</span></button>
             </span>
           </label>
           <textarea id="sm-keywords" class="sm-textarea" rows="6" readonly></textarea>
@@ -64,7 +64,6 @@
           <button class="sm-btn" id="sm-retry" data-i18n="retry"></button>
         </div>
       </div>
-      <div class="sm-toast" id="sm-toast"></div>
     `;
     document.documentElement.appendChild(root);
     panel = root;
@@ -151,6 +150,7 @@
     const el = panel.querySelector('#sm-status');
     el.textContent = t(key);
     el.classList.toggle('sm-error', !!isError);
+    state.lastStatus = { key, isError: !!isError };
   }
 
   function setError(errCode, detail) {
@@ -186,12 +186,14 @@
     setStatus(key, true);
   }
 
+  // Feedback previously shown in a floating toast is now surfaced in the panel
+  // status line (#sm-status): transient confirmations auto-revert to idle,
+  // validation/error keys render in red.
   function toast(msgKey) {
-    const el = panel.querySelector('#sm-toast');
-    el.textContent = t(msgKey);
-    el.classList.add('sm-show');
+    const isError = /^(err|no)/.test(msgKey);
+    setStatus(msgKey, isError);
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => el.classList.remove('sm-show'), 1800);
+    toast._t = setTimeout(() => setStatus('statusIdle'), 1800);
   }
 
   // ---------------------------------------------------------------- preview
@@ -354,12 +356,14 @@
     updateRegenButtons();
   }
 
-  // Enable/disable the per-field regenerate buttons based on existing results.
+  // The per-field regenerate buttons are always clickable, even before any
+  // result exists, so the user can generate title/keywords on first entry
+  // (no extra button needed). onGenerateField already handles the empty state.
   function updateRegenButtons() {
     const titleBtn = panel.querySelector('#sm-regen-title');
     const kwBtn = panel.querySelector('#sm-regen-kw');
-    if (titleBtn) titleBtn.disabled = !state.title;
-    if (kwBtn) kwBtn.disabled = !state.keywords.length;
+    if (titleBtn) titleBtn.disabled = false;
+    if (kwBtn) kwBtn.disabled = false;
   }
 
   // ---------------------------------------------------------------- apply
@@ -395,12 +399,38 @@
       }
       if (state.title) Dom.setAdobeTitle(state.title);
       if (state.keywords.length) await Dom.replaceAdobeKeywords(state.keywords);
+      if (await getAutoCheckAI()) checkAIDeclarationBoxes();
       toast('appliedAll');
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       console.error('[StockMeta] apply all failed:', code, err);
       setError(code, err);
     }
+  }
+
+  // When enabled in settings, tick the two Adobe Stock AI declaration
+  // checkboxes after "Apply All". Silent no-op if elements are missing.
+  function getAutoCheckAI() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(['autoCheckAI'], (s) => resolve(!!s.autoCheckAI));
+      } catch (_) {
+        resolve(false);
+      }
+    });
+  }
+
+  function checkAIDeclarationBoxes() {
+    const ids = [
+      'content-tagger-generative-ai-checkbox',
+      'content-tagger-generative-ai-property-release-checkbox',
+    ];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && !el.checked) {
+        el.click(); // .click() triggers React's controlled onChange reliably
+      }
+    });
   }
 
   async function copyText(text, msgKey) {
@@ -446,9 +476,11 @@
   function refreshLang() {
     applyStaticI18n(panel);
     const collapseBtn = panel.querySelector('#sm-collapse');
-    if (collapseBtn) collapseBtn.textContent = state.collapsed ? t('expand') : t('collapse');
+    if (collapseBtn) collapseBtn.textContent = state.collapsed ? '+' : '–';
     if (state.title || state.keywords.length) renderResults();
-    else setStatus('statusIdle');
+    // Always re-render the status line in the new language, regardless of
+    // whether results exist (renderResults does not touch the status text).
+    setStatus(state.lastStatus.key, state.lastStatus.isError);
   }
 
   // ---------------------------------------------------------------- boot
