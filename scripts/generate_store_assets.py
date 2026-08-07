@@ -376,8 +376,11 @@ def render_shot(name, view, lang, out_path):
         page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": 1280, "height": 800})
         browser.close()
 
-    # overlay a caption bar at the bottom
+    # Resize to 1280x800 (Chrome Web Store requirement) and strip alpha
     img = Image.open(out_path).convert("RGBA")
+    if img.size != (1280, 800):
+        img = img.resize((1280, 800), Image.LANCZOS)
+    # overlay a caption bar at the bottom
     W, H = img.size
     bar_h = int(H * 0.09)
     bar = Image.new("RGBA", (W, bar_h), CAPTION_BG + (255,))
@@ -388,7 +391,7 @@ def render_shot(name, view, lang, out_path):
     tw, th = text_size(d, text, f)
     d.text((40, H - bar_h + (bar_h - th) // 2), text, font=f, fill=WHITE)
     img.convert("RGB").save(out_path)
-    print("saved", out_path)
+    print("saved", out_path, img.size)
 
 SHOTS_CAPTIONS = {name: cap for name, view, cap in SHOTS}
 
