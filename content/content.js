@@ -436,12 +436,20 @@
   }
 
   function clickSaveWorkButton() {
-    let btn = document.querySelector('button.button.button--act[role="button"]');
+    // Priority 1: exact match by data-t attribute (from F12 inspection)
+    let btn = document.querySelector('button[data-t="save-work"]');
+    // Priority 2: match by combined class chain
+    if (!btn) btn = document.querySelector('button.button.button--act.icon__center-align');
+    // Priority 3: fallback to text content search
     if (!btn) {
-      btn = Array.from(document.querySelectorAll('button[role="button"]'))
+      btn = Array.from(document.querySelectorAll('button[role="button"], button'))
         .find((b) => /save\s*work/i.test((b.textContent || '').trim()));
     }
-    if (btn) btn.click(); // native click triggers Adobe's React handler
+    if (btn) {
+      setTimeout(() => btn.click(), 200);
+    } else {
+      console.warn('[StockMeta] Save work button not found');
+    }
   }
 
   function checkAIDeclarationBoxes() {
