@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>StockMeta Assistant — Store Screenshot</title>
+<style>
+  :root{
+    --blue:#1a73e8; --blue-d:#1666c9; --ink:#1f2430; --sub:#6b7280;
+    --border:#cbd5e1; --bg:#f5f7fa; --panel:#f1f3f5; --soft:#f8fafc;
+    --green:#137333; --chrome:#e8eaed;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Microsoft YaHei",sans-serif;
+    color:var(--ink); background:#fff; width:1280px; height:800px; overflow:hidden;
+  }
+
+  /* ---- mock photo (clear SVG landscape) ---- */
+  .mock-photo{
+    width:100%; height:100%; border-radius:6px; display:block;
+    background:linear-gradient(180deg,#aee0ff 0%,#bfeaff 55%,#d9f3ff 75%,#79b46e 75%,#5fa257 100%);
+    position:relative; overflow:hidden;
+  }
+  .mock-photo .sun{position:absolute; top:18px; right:22px; width:42px; height:42px; border-radius:50%; background:#ffd65c; box-shadow:0 0 0 10px rgba(255,214,92,.35);}
+  .mock-photo .mtn{position:absolute; bottom:25%; left:0; right:0; height:40%;
+    background:linear-gradient(180deg,#7aa093,#5e8a7c); clip-path:polygon(0% 100%,0% 55%,35% 20%,70% 60%,100% 30%,100% 100%);}
+  .mock-photo .mtn2{position:absolute; bottom:25%; left:0; right:0; height:35%;
+    background:linear-gradient(180deg,#608f7e,#476f61); clip-path:polygon(40% 100%,40% 35%,75% 0%,100% 45%,100% 100%);}
+  .mock-photo .dog{position:absolute; bottom:26%; left:44%; width:46px; height:34px;
+    background:#f0a850; border-radius:40% 40% 35% 35%;}
+  .mock-photo .dog:before{content:""; position:absolute; top:-14px; left:26px; width:20px; height:20px;
+    background:#f0a850; border-radius:50%;}
+  .mock-photo .dog:after{content:""; position:absolute; top:-6px; left:38px; width:8px; height:8px;
+    background:#1f2430; border-radius:50%;}
+
+  /* ---- browser chrome ---- */
+  .browser-top{height:56px; background:var(--chrome); display:flex; align-items:center; position:relative; border-bottom:1px solid #d2d5d8;}
+  .traffic{display:flex; gap:8px; margin-left:18px;}
+  .traffic i{width:12px; height:12px; border-radius:50%; display:inline-block;}
+  .traffic .r{background:#ff5f56;} .traffic .y{background:#ffbd2e;} .traffic .g{background:#27c93f;}
+  .addrbar{margin-left:24px; flex:1; height:30px; background:#fff; border:1px solid #d2d5d8; border-radius:15px;
+    display:flex; align-items:center; padding:0 14px; font-size:13px; color:#5a6069;}
+  .puzzle{position:absolute; right:18px; top:17px; width:22px; height:22px; border:1px solid #b4b8be; border-radius:5px;
+    background:#fff; display:flex; align-items:center; justify-content:center;}
+  .puzzle svg{width:14px; height:14px;}
+
+  /* ---- Adobe Stock page ---- */
+  .adobe-nav{display:flex; align-items:center; height:50px; background:#fff; border-bottom:1px solid #dadce0; padding:0 24px;}
+  .adobe-nav .logo{font-weight:700; font-size:16px; color:var(--ink); margin-right:40px;}
+  .adobe-nav .nav-item{font-size:13px; color:var(--ink); margin-right:26px; cursor:pointer;}
+  .adobe-nav .nav-item.active{color:var(--blue); font-weight:600;}
+  .adobe-tabs{display:flex; gap:6px; padding:10px 24px 0;}
+  .adobe-tabs .tab{font-size:12px; padding:8px 16px; border-radius:8px 8px 0 0; color:var(--sub); background:#f0f5ff; color:var(--blue); font-weight:600;}
+  .adobe-tabs .tab.plain{background:transparent; color:var(--sub); font-weight:400;}
+  .adobe-banner{margin:12px 24px 0; background:#fff8e1; color:#967c00; font-size:11px; padding:10px 14px; border-radius:6px;}
+  .adobe-toolbar{display:flex; align-items:center; justify-content:space-between; padding:14px 24px 0;}
+  .adobe-toolbar .ft{font-size:12px; color:var(--ink);}
+  .adobe-toolbar .sort{font-size:11px; border:1px solid var(--border); border-radius:6px; padding:7px 14px; color:var(--ink);}
+  .adobe-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; padding:18px 24px;}
+  .adobe-grid .cell{aspect-ratio:1/1; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--panel); position:relative;}
+  .adobe-grid .cell.sel{outline:3px solid var(--blue); outline-offset:2px;}
+  .adobe-foot{padding:6px 24px; font-size:12px; color:var(--sub);}
+
+  /* ---- extension side panel (floating) ---- */
+  .panel{position:absolute; top:126px; right:24px; width:320px; background:#fff; border:1px solid #d8dee9;
+    border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.18); overflow:hidden; font-size:13px;}
+  .panel-head{display:flex; align-items:center; justify-content:space-between; padding:10px 12px;
+    background:var(--blue); color:#fff; border-radius:12px 12px 0 0;}
+  .panel-head .title{font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px;}
+  .panel-head .title img{width:22px; height:22px; border-radius:5px;}
+  .panel-head .actions{display:flex; gap:6px;}
+  .icon-btn{width:28px; height:28px; border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.15);
+    border-radius:6px; display:inline-flex; align-items:center; justify-content:center; color:#fff; cursor:pointer;}
+  .icon-btn svg{width:16px; height:16px;}
+  .panel-body{padding:12px; display:flex; flex-direction:column; gap:10px;}
+  .status{font-size:12px; color:#4a5568; min-height:16px;}
+  .status.ok{color:var(--green);}
+  .preview{background:var(--panel); border-radius:8px; padding:6px; display:flex; justify-content:center;}
+  .preview .mock-photo{max-width:100%; height:150px;}
+  .btn{width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--soft);
+    color:var(--ink); font-size:13px; font-weight:600; cursor:pointer; text-align:center;}
+  .btn.primary{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field .label{display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:12px; color:#2d3340;}
+  .field .label .refresh{width:20px; height:20px; border:1px solid #e2e8f0; background:#f8fafc; border-radius:5px;
+    display:inline-flex; align-items:center; justify-content:center; color:#6b7280; font-size:12px;}
+  .field .label .refresh svg{width:12px; height:12px;}
+  .field .count{font-weight:400; font-size:11px; color:#6b7280;}
+  textarea.ta{width:100%; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:12px;
+    font-family:inherit; color:var(--ink); background:#fff; resize:none; line-height:1.45; min-height:48px;}
+  textarea.ta.kw{min-height:120px;}
+  .row{display:flex; gap:8px;}
+  .row .btn{flex:1;}
+  .row-main{margin-top:2px;}
+  .generate-wrap{position:relative;}
+  .generate-wrap .btn.primary{border:2px solid #ffd65c;}
+
+  /* ---- step badge ---- */
+  .step-badge{position:absolute; top:126px; left:24px; background:var(--blue); color:#fff; font-weight:700;
+    font-size:13px; padding:8px 14px; border-radius:20px; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+
+  /* ---- options page ---- */
+  .opt-wrap{max-width:560px; margin:40px auto; padding:24px 28px; background:#fff; border-radius:14px;
+    box-shadow:0 6px 24px rgba(0,0,0,.08);}
+  .opt-wrap h1{font-size:20px; margin:0 0 16px;}
+  .opt-field{margin-bottom:16px; display:flex; flex-direction:column; gap:6px;}
+  .opt-field>label{font-weight:600; font-size:14px;}
+  .opt-field input[type=text],.opt-field input[type=password],.opt-field input[type=number]{
+    padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; width:100%;}
+  .opt-field input:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,115,232,.2);}
+  .opt-hint{margin:0; font-size:12px; color:#6b7280;}
+  .opt-lang{display:flex; align-items:center; gap:12px;}
+  .opt-lang label{font-weight:600; font-size:14px; line-height:36px;}
+  .opt-lang select,.opt-field select{height:36px; padding:0 10px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:#fff;}
+  .opt-toggle{display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px;}
+  .opt-toggle input{width:18px; height:18px; accent-color:var(--blue); cursor:pointer;}
+  .opt-actions{display:flex; gap:12px; margin-top:8px;}
+  .opt-btn{flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--soft);
+    font-size:14px; font-weight:600; cursor:pointer;}
+  .opt-btn.primary{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .opt-status{margin-top:8px; font-size:13px; color:var(--green); min-height:14px;}
+  .opt-tut{margin-top:0; padding-top:8px; border-top:1px solid #eef2f7; font-size:13px;}
+  .opt-tut a{color:var(--blue); text-decoration:none;}
+  .opt-tut .sep{color:#cbd5e1; margin:0 6px;}
+
+  /* ---- standalone popup window (full render) ---- */
+  .popup-win{position:absolute; top:126px; right:24px; width:300px; border:1px solid #d8dee9; border-radius:12px;
+    box-shadow:0 8px 30px rgba(0,0,0,.18); overflow:hidden; background:#fff; font-size:13px;}
+  .popup-win .panel-body{gap:12px;}
+
+  .hidden{display:none !important;}
+</style>
+</head>
+<body data-lang="en">
+
+  <!-- Browser top bar -->
+  <div class="browser-top">
+    <div class="traffic"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+    <div class="addrbar" id="addrbar">https://contributor.stock.adobe.com/en/files</div>
+    <div class="puzzle" title="Extensions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#667085" stroke-width="2"><path d="M4 6h4v4H4zM10 6h4v4h-4zM16 6h4v4h-4zM4 14h4v4H4zM10 14h4v4h-4zM16 14h4v4h-4z"/></svg>
+    </div>
+  </div>
+
+  <!-- ===== VIEWS ===== -->
+
+  <!-- View: Adobe Stock + floating panel (generate) -->
+  <div class="view" id="view-adobe">
+    <div class="adobe-nav">
+      <span class="logo" data-i18n="adobeTitle">Adobe Stock</span>
+      <span class="nav-item" data-i18n="navDashboard">Dashboard</span>
+      <span class="nav-item active" data-i18n="navFiles">Uploaded Files</span>
+      <span class="nav-item" data-i18n="navInsights">Insights</span>
+      <span class="nav-item" data-i18n="navAccount">Contributor Account</span>
+    </div>
+    <div class="adobe-tabs">
+      <span class="tab" data-i18n="tabNew">New</span>
+      <span class="tab plain" data-i18n="tabReview">In review</span>
+      <span class="tab plain" data-i18n="tabReminder">Reminder</span>
+      <span class="tab plain" data-i18n="tabNotAccepted">Not accepted</span>
+      <span class="tab plain" data-i18n="tabIssues">Upload issues</span>
+      <span class="tab plain" data-i18n="tabReleases">Releases</span>
+    </div>
+    <div class="adobe-banner" data-i18n="adobeBanner">Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.</div>
+    <div class="adobe-toolbar">
+      <span class="ft" data-i18n="adobeFileTypes">File types: All (42)</span>
+      <span class="sort" data-i18n="adobeSort">Upload date ▼</span>
+    </div>
+    <div class="adobe-grid" id="adobeGrid"></div>
+    <div class="adobe-foot" data-i18n="adobeSaveWork">Save work</div>
+
+    <!-- floating side panel -->
+    <div class="panel" id="sidePanel">
+      <div class="panel-head">
+        <span class="title"><img id="panelIcon" alt="" /> <span data-i18n="extName">StockMeta Assistant</span></span>
+        <span class="actions">
+          <span class="icon-btn" title="Collapse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+          </span>
+          <span class="icon-btn" title="Upload to Adobe Stock">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"/><path d="M21 3l-9 9"/><path d="M19 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></svg>
+          </span>
+          <span class="icon-btn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+        </span>
+      </div>
+      <div class="panel-body">
+        <div class="status" data-i18n="statusIdle">Ready. Please select an asset.</div>
+        <div class="preview"><div class="mock-photo"><span class="sun"></span><span class="mtn"></span><span class="mtn2"></span><span class="dog"></span></div></div>
+        <div class="generate-wrap"><button class="btn primary" data-i18n="generate">Generate Title &amp; Keywords</button></div>
+        <div class="field">
+          <span class="label"><span data-i18n="titleLabel">Title</span>
+            <span class="refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+          </span>
+          <textarea class="ta" readonly data-i18n-ph="titleLabel">Title</textarea>
+        </div>
+        <div class="field">
+          <span class="label"><span data-i18n="keywordsLabel">Keywords</span>
+            <span class="refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+          </span>
+          <textarea class="ta kw" readonly data-i18n-ph="keywordsLabel">Keywords</textarea>
+        </div>
+        <div class="row">
+          <button class="btn" data-i18n="applyTitle">Apply Title</button>
+          <button class="btn" data-i18n="copyTitle">Copy Title</button>
+        </div>
+        <div class="row">
+          <button class="btn" data-i18n="applyKeywords">Apply Keywords</button>
+          <button class="btn" data-i18n="copyKeywords">Copy Keywords</button>
+        </div>
+        <div class="row row-main">
+          <button class="btn primary" data-i18n="applyAll">Apply All</button>
+          <button class="btn" data-i18n="retry">Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-badge" data-i18n="step2">2. Open Adobe Stock and generate</div>
+  </div>
+
+  <!-- View: Adobe Stock + popup window (apply state) -->
+  <div class="view hidden" id="view-popup">
+    <div class="adobe-nav">
+      <span class="logo" data-i18n="adobeTitle">Adobe Stock</span>
+      <span class="nav-item" data-i18n="navDashboard">Dashboard</span>
+      <span class="nav-item active" data-i18n="navFiles">Uploaded Files</span>
+      <span class="nav-item" data-i18n="navInsights">Insights</span>
+      <span class="nav-item" data-i18n="navAccount">Contributor Account</span>
+    </div>
+    <div class="adobe-tabs">
+      <span class="tab" data-i18n="tabNew">New</span>
+      <span class="tab plain" data-i18n="tabReview">In review</span>
+      <span class="tab plain" data-i18n="tabReminder">Reminder</span>
+      <span class="tab plain" data-i18n="tabNotAccepted">Not accepted</span>
+      <span class="tab plain" data-i18n="tabIssues">Upload issues</span>
+      <span class="tab plain" data-i18n="tabReleases">Releases</span>
+    </div>
+    <div class="adobe-banner" data-i18n="adobeBanner">Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.</div>
+    <div class="adobe-toolbar">
+      <span class="ft" data-i18n="adobeFileTypes">File types: All (42)</span>
+      <span class="sort" data-i18n="adobeSort">Upload date ▼</span>
+    </div>
+    <div class="adobe-grid" id="adobeGrid2"></div>
+    <div class="adobe-foot" data-i18n="adobeSaveWork">Save work</div>
+
+    <!-- standalone popup window -->
+    <div class="popup-win">
+      <div class="panel-head">
+        <span class="title"><img id="popupIcon" alt="" /> <span data-i18n="extName">StockMeta Assistant</span></span>
+        <span class="actions">
+          <span class="icon-btn" title="Collapse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></span>
+          <span class="icon-btn" title="Upload to Adobe Stock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"/><path d="M21 3l-9 9"/><path d="M19 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></svg></span>
+          <span class="icon-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        </span>
+      </div>
+      <div class="panel-body">
+        <div class="status ok" data-i18n="statusDone">Title &amp; keywords ready.</div>
+        <div class="preview"><div class="mock-photo"><span class="sun"></span><span class="mtn"></span><span class="mtn2"></span><span class="dog"></span></div></div>
+        <div class="generate-wrap"><button class="btn primary" data-i18n="generate">Generate Title &amp; Keywords</button></div>
+        <div class="field">
+          <span class="label"><span data-i18n="titleLabel">Title</span>
+            <span class="refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+          </span>
+          <textarea class="ta" readonly id="popupTitle"></textarea>
+        </div>
+        <div class="field">
+          <span class="label"><span data-i18n="keywordsLabel">Keywords</span>
+            <span class="refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+            <span class="count" data-i18n="kwCount">30 keywords</span>
+          </span>
+          <textarea class="ta kw" readonly id="popupKw"></textarea>
+        </div>
+        <div class="row">
+          <button class="btn" data-i18n="applyTitle">Apply Title</button>
+          <button class="btn" data-i18n="copyTitle">Copy Title</button>
+        </div>
+        <div class="row">
+          <button class="btn" data-i18n="applyKeywords">Apply Keywords</button>
+          <button class="btn" data-i18n="copyKeywords">Copy Keywords</button>
+        </div>
+        <div class="row row-main">
+          <button class="btn primary" data-i18n="applyAll">Apply All</button>
+          <button class="btn" data-i18n="retry">Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-badge" data-i18n="step3">3. One-click apply to fill</div>
+  </div>
+
+  <!-- View: Options / Settings -->
+  <div class="view hidden" id="view-options">
+    <div class="opt-wrap">
+      <h1 data-i18n="optTitle">Settings</h1>
+      <div class="opt-field opt-lang">
+        <label data-i18n="lang">Language</label>
+        <select><option data-i18n="langAuto">Follow browser</option><option>English</option><option>简体中文</option></select>
+      </div>
+      <div class="opt-field">
+        <label data-i18n="provider">AI Provider</label>
+        <select><option data-i18n="providerSiliconFlow">SiliconFlow</option><option data-i18n="providerOpenAI">OpenAI</option><option data-i18n="providerCustom">Custom</option></select>
+      </div>
+      <div class="opt-field">
+        <label data-i18n="apiKey">API Key</label>
+        <input type="text" value="sk-••••••••••••••••••••••" readonly />
+        <p class="opt-hint" data-i18n="apiKeyDesc">Stored locally in chrome.storage.local. Never hardcoded.</p>
+      </div>
+      <div class="opt-field">
+        <label data-i18n="model">Vision Model ID</label>
+        <input type="text" value="Qwen/Qwen3-Omni-30B-A3B-Captioner" readonly />
+        <p class="opt-hint" data-i18n="modelDesc">e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner</p>
+      </div>
+      <div class="opt-field">
+        <label data-i18n="kwCountLabel">Keyword Count</label>
+        <input type="text" value="30" readonly />
+        <p class="opt-hint" data-i18n="kwCountDesc">Number of keywords to request (1–50).</p>
+      </div>
+      <div class="opt-field">
+        <label class="opt-toggle"><input type="checkbox" checked /> <span data-i18n="autoCheckAI">Auto-check AI declaration boxes</span></label>
+        <p class="opt-hint" data-i18n="autoCheckAIDesc">Also tick the two AI declaration boxes on the Adobe Stock form.</p>
+      </div>
+      <div class="opt-field">
+        <label class="opt-toggle"><input type="checkbox" checked /> <span data-i18n="autoSave">Auto-save after Apply</span></label>
+        <p class="opt-hint" data-i18n="autoSaveDesc">Automatically click Save work after applying metadata.</p>
+      </div>
+      <div class="opt-actions">
+        <button class="opt-btn" data-i18n="test">Test Connection</button>
+        <button class="opt-btn primary" data-i18n="save">Save</button>
+      </div>
+      <p class="opt-status" data-i18n="saved">Settings saved.</p>
+      <p class="opt-tut">
+        <a href="#" data-i18n="tutorial">How to get an API Key?</a>
+        <span class="sep">·</span>
+        <a href="#" data-i18n="support">Support the author</a>
+      </p>
+    </div>
+    <div class="step-badge" data-i18n="step1">1. Configure AI settings</div>
+  </div>
+
+<script>
+  // i18n dictionary (zh / en)
+  const I18N = {
+    en:{
+      extName:"StockMeta Assistant",
+      adobeTitle:"Adobe Stock",
+      navDashboard:"Dashboard", navFiles:"Uploaded Files", navInsights:"Insights", navAccount:"Contributor Account",
+      tabNew:"New", tabReview:"In review", tabReminder:"Reminder", tabNotAccepted:"Not accepted", tabIssues:"Upload issues", tabReleases:"Releases",
+      adobeBanner:"Do not submit generative AI content with titles that imply an actual depiction of newsworthy events.",
+      adobeFileTypes:"File types: All (42)", adobeSort:"Upload date ▼", adobeSaveWork:"Save work",
+      statusIdle:"Ready. Please select an asset.", statusDone:"Title & keywords ready.",
+      generate:"Generate Title & Keywords", titleLabel:"Title", keywordsLabel:"Keywords",
+      applyTitle:"Apply Title", copyTitle:"Copy Title", applyKeywords:"Apply Keywords", copyKeywords:"Copy Keywords",
+      applyAll:"Apply All", retry:"Retry", kwCount:"30 keywords",
+      step1:"1. Configure AI settings", step2:"2. Open Adobe Stock and generate", step3:"3. One-click apply to fill",
+      optTitle:"Settings", lang:"Language", langAuto:"Follow browser",
+      provider:"AI Provider", providerSiliconFlow:"SiliconFlow", providerOpenAI:"OpenAI", providerCustom:"Custom",
+      apiKey:"API Key", apiKeyDesc:"Stored locally in chrome.storage.local. Never hardcoded.",
+      model:"Vision Model ID", modelDesc:"e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner",
+      kwCountLabel:"Keyword Count", kwCountDesc:"Number of keywords to request (1–50).",
+      autoCheckAI:"Auto-check AI declaration boxes", autoCheckAIDesc:"Also tick the two AI declaration boxes on the Adobe Stock form.",
+      autoSave:"Auto-save after Apply", autoSaveDesc:"Automatically click Save work after applying metadata.",
+      test:"Test Connection", save:"Save", saved:"Settings saved.",
+      tutorial:"How to get an API Key?", support:"Support the author"
+    },
+    zh:{
+      extName:"StockMeta Assistant",
+      adobeTitle:"Adobe Stock",
+      navDashboard:"面板", navFiles:"已上传文件", navInsights:"数据", navAccount:"供稿人账户",
+      tabNew:"新建", tabReview:"审核中", tabReminder:"提醒", tabNotAccepted:"未接受", tabIssues:"上传问题", tabReleases:"发布",
+      adobeBanner:"请勿提交标题暗示实际新闻事件描绘的生成式 AI 内容。",
+      adobeFileTypes:"文件类型：全部 (42)", adobeSort:"上传时间 ▼", adobeSaveWork:"保存工作",
+      statusIdle:"就绪。请选择一个素材。", statusDone:"标题和关键词已生成。",
+      generate:"生成标题和关键词", titleLabel:"标题", keywordsLabel:"关键词",
+      applyTitle:"应用标题", copyTitle:"复制标题", applyKeywords:"应用关键词", copyKeywords:"复制关键词",
+      applyAll:"全部应用", retry:"重试", kwCount:"30 个关键词",
+      step1:"1. 配置 AI 设置", step2:"2. 打开 Adobe Stock 点击生成", step3:"3. 一键应用自动填充",
+      optTitle:"设置", lang:"语言", langAuto:"跟随浏览器",
+      provider:"AI 提供商", providerSiliconFlow:"SiliconFlow", providerOpenAI:"OpenAI", providerCustom:"自定义",
+      apiKey:"API Key", apiKeyDesc:"保存在本地 chrome.storage.local，绝不硬编码。",
+      model:"视觉模型 ID", modelDesc:"例如 Qwen/Qwen3-Omni-30B-A3B-Captioner",
+      kwCountLabel:"关键词数量", kwCountDesc:"请求生成的关键词数量（1–50）。",
+      autoCheckAI:"自动勾选 AI 声明复选框", autoCheckAIDesc:"同时勾选 Adobe Stock 表单上的两项 AI 声明。",
+      autoSave:"应用后自动保存", autoSaveDesc:"应用元数据后自动点击保存工作。",
+      test:"测试连接", save:"保存", saved:"设置已保存。",
+      tutorial:"如何获取 API Key？", support:"支持作者"
+    }
+  };
+  const SAMPLE_TITLE = "Golden retriever puppy playing with a red ball on green grass in a sunny garden";
+  const SAMPLE_KW = ["dog","puppy","golden retriever","pet","animal","play","ball","red","garden","grass","sunny","outdoor","cute","happy","summer","nature","companion","fun","active","lifestyle","loyal","fluffy","smile","childhood","toy","green","spring","warm","portrait","close-up"];
+
+  function buildGrid(el){
+    el.innerHTML = "";
+    for(let i=0;i<10;i++){
+      const c = document.createElement("div");
+      c.className = "cell" + (i===2?" sel":"");
+      c.innerHTML = '<div class="mock-photo"><span class="sun"></span><span class="mtn"></span><span class="mtn2"></span><span class="dog"></span></div>';
+      el.appendChild(c);
+    }
+  }
+
+  function applyLang(lang){
+    document.body.setAttribute("data-lang", lang);
+    const dict = I18N[lang];
+    document.querySelectorAll("[data-i18n]").forEach(el=>{
+      const k = el.getAttribute("data-i18n");
+      if(dict[k]!==undefined) el.textContent = dict[k];
+    });
+    // placeholder texts
+    document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+      const k = el.getAttribute("data-i18n-ph");
+      if(dict[k]!==undefined) el.setAttribute("placeholder", dict[k]);
+    });
+    // address bar
+    const ab = document.getElementById("addrbar");
+    if(ab) ab.textContent = "https://contributor.stock.adobe.com/" + (lang==="zh"?"zh":"en") + "/files";
+    // icon
+    const ic = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAGGUlEQVR4nI2TS2gTQRjHf2d2t9ttt9122y0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ2FpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaa";
+  }
+
+  function setContent(lang, view){
+    const dict = I18N[lang];
+    if(view==="popup" || view==="apply"){
+      const t = document.getElementById("popupTitle");
+      const k = document.getElementById("popupKw");
+      if(t) t.value = SAMPLE_TITLE;
+      if(k) k.value = SAMPLE_KW.join(", ");
+    }
+  }
+
+  // expose API for the python screenshot driver
+  window.__shot = function(view, lang){
+    document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
+    const map = {"adobe":"view-adobe","popup":"view-popup","options":"view-options"};
+    const vid = map[view];
+    if(vid) document.getElementById(vid).classList.remove("hidden");
+    applyLang(lang);
+    buildGrid(document.getElementById("adobeGrid"));
+    buildGrid(document.getElementById("adobeGrid2"));
+    setContent(lang, view);
+    // hide step badge on non-matching? keep it.
+  };
+  // default
+  window.__shot("adobe","en");
+</script>
+</body>
+</html>
