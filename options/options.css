@@ -93,6 +93,23 @@ h1 {
 
 .is-hidden { display: none !important; }
 
+/* toggle switch field */
+.opt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.opt-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #1a73e8;
+  cursor: pointer;
+}
+
 /* provider selector */
 #providerSelect {
   padding: 8px 10px;

@@ -1,0 +1,35 @@
+=== 中文详细说明 ===
+
+StockMeta Assistant 是一款专为 Adobe Stock 供稿人打造的 AI 辅助插件。它读取你正在上传的素材（图片或插画），借助视觉模型自动生成贴合平台的标题与关键词，并一键填入 Adobe Stock 表单，帮你把几分钟的重复录入压缩到一次点击。
+
+核心功能
+- AI 视觉识别：直接分析当前素材，自动生成描述性标题与最多 50 个关键词，覆盖主体、场景、情绪与风格。
+- 多 AI 提供商：内置 SiliconFlow、OpenAI 以及自定义（OpenAI 兼容）端点，自由切换并填写自己的 API Key。
+- 字段级重新生成：标题或关键词旁边各带一个刷新按钮，可单独重新生成其中一项，不必重做全部。
+- 一键填入：支持「应用标题」「应用关键词」「全部应用」三种粒度，也支持单独复制文本到剪贴板。
+- 自动勾选 AI 声明：应用元数据时可自动勾选 Adobe Stock 表单上的「使用生成式 AI 工具创建」与「人物与财产均为虚构」两项声明（可选）。
+- 应用后自动保存：应用标题或关键词后自动点击页面上的「保存工作」按钮（可选）。
+- 中英双语界面：界面随浏览器语言或手动选择在中文 / 英文之间切换。
+- 可拖拽、可折叠侧边面板：生成结果常驻在 Adobe Stock 页面右侧，不遮挡你的编辑区。
+- 弹出页快捷入口：一键跳转到 Adobe Stock 上传页面，并展示连接状态。
+- 隐私安全：API Key 仅保存在浏览器本地 chrome.storage.local，绝不上传或硬编码到扩展中。
+
+StockMeta Assistant 只负责把生成好的文案填入表单，不会自动提交或发布你的作品，最终审核与发布仍由你掌控。
+
+=== English Detailed Description ===
+
+StockMeta Assistant is an AI helper built for Adobe Stock contributors. It reads the asset you are uploading (a photo or illustration), uses a vision model to generate a fitting title and keywords, and fills them into the Adobe Stock form in one click, turning minutes of repetitive typing into a single action.
+
+Key features
+- AI vision recognition: analyzes your current asset and automatically generates a descriptive title plus up to 50 keywords covering subject, scene, mood, and style.
+- Multiple AI providers: built-in SiliconFlow, OpenAI, and a custom (OpenAI-compatible) endpoint, so you can switch freely and bring your own API Key.
+- Per-field regeneration: a refresh button sits next to the title and the keywords, letting you regenerate just one of them without redoing everything.
+- One-click fill: choose "Apply Title", "Apply Keywords", or "Apply All", and copy either field to the clipboard on its own.
+- Auto-check AI declaration: when applying metadata, optionally tick the "Created using generative AI tools" and "People and Property are fictional" boxes on the Adobe Stock form.
+- Auto-save after Apply: optionally click the "Save work" button on Adobe Stock right after applying your title or keywords.
+- Bilingual interface: the UI follows your browser language or switches manually between Chinese and English.
+- Draggable, collapsible side panel: results stay pinned to the right side of the Adobe Stock page without blocking your editing area.
+- Popup shortcut: jump straight to the Adobe Stock uploads page and see your connection status at a glance.
+- Privacy first: your API Key is stored only in the browser's local chrome.storage.local, never uploaded or hardcoded into the extension.
+
+StockMeta Assistant only fills the generated text into the form. It never auto-submits or publishes your work, so you stay in full control of review and release.

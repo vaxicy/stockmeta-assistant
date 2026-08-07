@@ -113,6 +113,21 @@ def draw_button(draw, box, text, f, fill, text_color, r=8):
     rr(draw, box, r, fill=fill)
     center_text(draw, box, text, f, text_color)
 
+def draw_toggle_row(draw, x, y, w, title, desc, on=True):
+    """Draw a settings row with a label + description on the left and a toggle on the right."""
+    draw.text((x, y), title, font=font(14, True), fill=INK, anchor="la")
+    draw.text((x, y + 24), desc, font=font(12), fill=SUB, anchor="la")
+    tw, th = 44, 24
+    tx, ty = x + w - tw, y + 6
+    if on:
+        rr(draw, (tx, ty, tx + tw, ty + th), th // 2, fill=BLUE)
+        # knob
+        draw.ellipse((tx + tw - th + 2, ty + 2, tx + tw - 2, ty + th - 2), fill=WHITE)
+    else:
+        rr(draw, (tx, ty, tx + tw, ty + th), th // 2, fill=(214, 218, 224))
+        draw.ellipse((tx + 2, ty + 2, tx + th - 2, ty + th - 2), fill=WHITE)
+
+
 def draw_gear(draw, cx, cy, r, color):
     draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=color, width=2)
     for a in range(0, 360, 60):
@@ -134,6 +149,29 @@ def draw_check(draw, cx, cy, size, color):
     draw.line((pts[0], pts[1]), fill=color, width=2)
     draw.line((pts[1], pts[2]), fill=color, width=2)
 
+def draw_refresh(draw, cx, cy, r, color):
+    """Draw a circular refresh (↻) glyph centered at (cx, cy)."""
+    draw.arc((cx - r, cy - r, cx + r, cy + r), start=40, end=320, fill=color, width=2)
+    # arrow head
+    import math
+    a = math.radians(320)
+    hx = cx + r * math.cos(a)
+    hy = cy + r * math.sin(a)
+    draw.line((hx - 4, hy - 2, hx, hy), fill=color, width=2)
+    draw.line((hx, hy, hx + 2, hy - 4), fill=color, width=2)
+
+def draw_upload(draw, cx, cy, r, color):
+    """Draw an upload (arrow into tray) glyph centered at (cx, cy)."""
+    # arrow shaft
+    draw.line((cx, cy - r, cx, cy + 1), fill=color, width=2)
+    # arrow head
+    draw.line((cx - 4, cy - 4, cx, cy + 1), fill=color, width=2)
+    draw.line((cx + 4, cy - 4, cx, cy + 1), fill=color, width=2)
+    # tray
+    draw.line((cx - r, cy + 3, cx + r, cy + 3), fill=color, width=2)
+    draw.line((cx - r, cy + 3, cx - r + 3, cy + 7), fill=color, width=2)
+    draw.line((cx + r, cy + 3, cx + r - 3, cy + 7), fill=color, width=2)
+
 def draw_step_badge(draw, x, y, text, f):
     """Draw a numbered tutorial badge at top-left (x, y)."""
     pad_x, pad_y = 12, 8
@@ -150,8 +188,8 @@ SAMPLE = {
     "en": {
         "panelTitle": "StockMeta Assistant",
         "statusIdle": "Ready. Please select an asset.",
-        "statusDone": "Title & description ready.",
-        "generate": "Generate Title & Description",
+        "statusDone": "Title & keywords ready.",
+        "generate": "Generate Title & Keywords",
         "titleLabel": "Title",
         "keywordsLabel": "Keywords",
         "applyTitle": "Apply Title",
@@ -172,6 +210,10 @@ SAMPLE = {
         "modelDesc": "e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner",
         "kwCountLabel": "Keyword Count",
         "kwCountDesc": "Number of keywords to request (1–50).",
+        "autoCheckAI": "Auto-check AI declaration boxes",
+        "autoCheckAIDesc": "Also tick the two AI declaration boxes on the Adobe Stock form.",
+        "autoSave": "Auto-save after Apply",
+        "autoSaveDesc": "Automatically click Save work after applying metadata.",
         "test": "Test Connection",
         "save": "Save",
         "saved": "Settings saved.",
@@ -208,8 +250,8 @@ SAMPLE = {
     "zh": {
         "panelTitle": "StockMeta Assistant",
         "statusIdle": "就绪。请选择一个素材。",
-        "statusDone": "标题和描述已生成。",
-        "generate": "生成标题和描述",
+        "statusDone": "标题和关键词已生成。",
+        "generate": "生成标题和关键词",
         "titleLabel": "标题",
         "keywordsLabel": "关键词",
         "applyTitle": "应用标题",
@@ -230,6 +272,10 @@ SAMPLE = {
         "modelDesc": "例如 Qwen/Qwen3-Omni-30B-A3B-Captioner",
         "kwCountLabel": "关键词数量",
         "kwCountDesc": "请求生成的关键词数量（1–50）。",
+        "autoCheckAI": "自动勾选 AI 声明复选框",
+        "autoCheckAIDesc": "同时勾选 Adobe Stock 表单上的两项 AI 声明。",
+        "autoSave": "应用后自动保存",
+        "autoSaveDesc": "应用元数据后自动点击保存工作。",
         "test": "测试连接",
         "save": "保存",
         "saved": "设置已保存。",
@@ -476,12 +522,14 @@ def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=False,
     if stage == "generate":
         # empty placeholders for title and keywords
         draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+        draw_refresh(d, cx + cw - 12, cur + 8, 8, SUB)
         cur += 16 + 6
         th = 48
         rr(d, (cx, cur, cx + cw, cur + th), 8, fill=(250, 251, 252), outline=BORDER, width=1)
         d.text((cx + cw / 2, cur + th / 2), s["titleLabel"], font=font(11), fill=SUB, anchor="mm")
         cur += th + 10
         draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
+        draw_refresh(d, cx + cw - 12, cur + 8, 8, SUB)
         cur += 16 + 6
         kh = 120
         rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=(250, 251, 252), outline=BORDER, width=1)
@@ -490,6 +538,7 @@ def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=False,
     else:
         # title field
         draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+        draw_refresh(d, cx + cw - 12, cur + 8, 8, SUB)
         cur += 16 + 6
         th = 48
         rr(d, (cx, cur, cx + cw, cur + th), 8, fill=WHITE, outline=BORDER, width=1)
@@ -497,7 +546,8 @@ def draw_panel(d, img, x, y, w, lang, stage="apply", show_icon=False,
         cur += th + 10
         # keywords field
         draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
-        draw_text(d, (cx + cw, cur), s["kwCount"], font(11), SUB, anchor="ra")
+        draw_refresh(d, cx + cw - 12, cur + 8, 8, SUB)
+        draw_text(d, (cx + cw - 28, cur), s["kwCount"], font(11), SUB, anchor="ra")
         cur += 16 + 6
         kh = 120
         rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=WHITE, outline=BORDER, width=1)
@@ -560,7 +610,7 @@ def shot_settings(lang):
     cw = 560
     cx = (W - cw) / 2
     cy = top + 30
-    ch = 700
+    ch = 820
     rr(d, (cx, cy, cx + cw, cy + ch), 14, fill=WHITE, outline=(230, 233, 238), width=1)
     d.rectangle((cx, cy, cx + cw, cy + ch), outline=None)
     ix = cx + 28
@@ -608,6 +658,12 @@ def shot_settings(lang):
     cur += 50
     draw_text(d, (ix, cur), SAMPLE[lang]["kwCountDesc"], font(12), SUB, anchor="la")
     cur += 40
+    # auto-check AI declaration toggle
+    draw_toggle_row(d, ix, cur, iw, SAMPLE[lang]["autoCheckAI"], SAMPLE[lang]["autoCheckAIDesc"], on=True)
+    cur += 64
+    # auto-save after apply toggle
+    draw_toggle_row(d, ix, cur, iw, SAMPLE[lang]["autoSave"], SAMPLE[lang]["autoSaveDesc"], on=True)
+    cur += 76
     # buttons
     bw = (iw - 12) / 2
     draw_button(d, (ix, cur, ix + bw, cur + 44), SAMPLE[lang]["test"], font(14, True), SOFT, INK)
@@ -647,14 +703,18 @@ def draw_popup_window(d, img, x, y, lang, stage="apply"):
     rr(d, (x, y, x + w, y + header_h + 14), 12, fill=BLUE)
     d.rectangle((x, y + header_h - 14, x + w, y + header_h + 14), fill=BLUE)
     draw_text(d, (x + 12, y + header_h / 2), s["panelTitle"], font(14, True), WHITE, anchor="lm")
-    # settings gear + minimize/collapse (from right to left)
+    # settings gear + upload + minimize/collapse (from right to left)
     bx = x + w - 36
     rr(d, (bx, y + 7, bx + 28, y + 35), 6, fill=(255, 255, 255, 38))
     draw_gear(d, bx + 14, y + 21, 7, WHITE)
     bx2 = x + w - 72
     rr(d, (bx2, y + 7, bx2 + 28, y + 35), 6, fill=(255, 255, 255, 38))
+    # upload icon (arrow into tray) — matches real popup pp-upload button
+    draw_upload(d, bx2 + 14, y + 21, 7, WHITE)
+    bx3 = x + w - 108
+    rr(d, (bx3, y + 7, bx3 + 28, y + 35), 6, fill=(255, 255, 255, 38))
     # collapse button: minus sign (matches real popup / content panel)
-    d.line((bx2 + 11, y + 21, bx2 + 17, y + 21), fill=WHITE, width=2)
+    d.line((bx3 + 11, y + 21, bx3 + 17, y + 21), fill=WHITE, width=2)
     cur = y + header_h + 12
     # status
     if stage == "generate":
@@ -673,6 +733,7 @@ def draw_popup_window(d, img, x, y, lang, stage="apply"):
     cur += bh + 12
     # title
     draw_text(d, (cx, cur), s["titleLabel"], font(12, True), INK, anchor="la")
+    draw_refresh(d, cx + cw - 10, cur + 8, 8, SUB)
     cur += 16
     th = 48
     rr(d, (cx, cur, cx + cw, cur + th), 8, fill=WHITE, outline=BORDER, width=1)
@@ -695,8 +756,9 @@ def draw_popup_window(d, img, x, y, lang, stage="apply"):
     cur += rb + 12
     # keywords
     draw_text(d, (cx, cur), s["keywordsLabel"], font(12, True), INK, anchor="la")
+    draw_refresh(d, cx + cw - 10, cur + 8, 8, SUB)
     if stage != "generate":
-        draw_text(d, (cx + cw, cur), s["kwCount"], font(11), SUB, anchor="ra")
+        draw_text(d, (cx + cw - 26, cur), s["kwCount"], font(11), SUB, anchor="ra")
     cur += 16
     kh = 100
     rr(d, (cx, cur, cx + cw, cur + kh), 8, fill=WHITE, outline=BORDER, width=1)
