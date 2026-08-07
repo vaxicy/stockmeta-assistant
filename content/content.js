@@ -384,6 +384,9 @@
         await Dom.replaceAdobeKeywords(state.keywords);
         toast('appliedKeywords');
       }
+      // 单独应用时也触发 AI 勾选 + 自动保存（与 onApplyAll 行为一致）
+      if (await getAutoCheckAI()) checkAIDeclarationBoxes();
+      if (await getAutoSaveAfterApply()) clickSaveWorkButton();
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       console.error('[StockMeta] apply failed:', which, code, err);
