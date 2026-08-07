@@ -400,6 +400,7 @@
       if (state.title) Dom.setAdobeTitle(state.title);
       if (state.keywords.length) await Dom.replaceAdobeKeywords(state.keywords);
       if (await getAutoCheckAI()) checkAIDeclarationBoxes();
+      if (await getAutoSaveAfterApply()) clickSaveWorkButton();
       toast('appliedAll');
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
@@ -418,6 +419,29 @@
         resolve(false);
       }
     });
+  }
+
+  // When enabled in settings, click Adobe Stock's "Save work" button after
+  // "Apply All". Silent no-op if the button is missing. The button is matched
+  // by the act button class seen in devtools; if absent we fall back to a
+  // text match on visible buttons.
+  function getAutoSaveAfterApply() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(['autoSaveAfterApply'], (s) => resolve(!!s.autoSaveAfterApply));
+      } catch (_) {
+        resolve(false);
+      }
+    });
+  }
+
+  function clickSaveWorkButton() {
+    let btn = document.querySelector('button.button.button--act[role="button"]');
+    if (!btn) {
+      btn = Array.from(document.querySelectorAll('button[role="button"]'))
+        .find((b) => /save\s*work/i.test((b.textContent || '').trim()));
+    }
+    if (btn) btn.click(); // native click triggers Adobe's React handler
   }
 
   function checkAIDeclarationBoxes() {

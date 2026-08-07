@@ -35,6 +35,10 @@ const OPT_I18N = {
     optModelDesc: 'e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optKeywordCount: 'Keyword Count',
     optKeywordCountDesc: 'Number of keywords to request (1–50).',
+    optAutoCheckAI: 'Auto-check AI declaration boxes',
+    optAutoCheckAIDesc: 'When applying all, also tick the two AI declaration checkboxes on the Adobe Stock form. Optional.',
+    optAutoSaveAfterApply: 'Auto-save after Apply All',
+    optAutoSaveAfterApplyDesc: 'After applying all metadata, automatically click the "Save work" button on Adobe Stock. Optional.',
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
@@ -72,6 +76,10 @@ const OPT_I18N = {
     optModelDesc: '例如 Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optKeywordCount: '关键词数量',
     optKeywordCountDesc: '请求生成的关键词数量（1–50）。',
+    optAutoCheckAI: '自动勾选 AI 声明复选框',
+    optAutoCheckAIDesc: '点击「全部应用」时，同时勾选 Adobe Stock 表单上的「使用生成式 AI 工具创建」与「人物与财产均为虚构」两项。可选，非强制。',
+    optAutoSaveAfterApply: '全部应用后自动保存',
+    optAutoSaveAfterApplyDesc: '点击「全部应用」后，自动点击 Adobe Stock 页面上的「保存」按钮。可选，非强制。',
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
@@ -140,13 +148,15 @@ function getDefaultModelFor(provider) {
 }
 
 async function load() {
-  const stored = await chrome.storage.local.get(['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount']);
+  const stored = await chrome.storage.local.get(['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount', 'autoCheckAI', 'autoSaveAfterApply']);
   const provider = stored.provider ?? DEFAULTS.provider;
   document.getElementById('providerSelect').value = provider;
   document.getElementById('baseUrl').value = stored.baseUrl ?? DEFAULTS.baseUrl;
   document.getElementById('apiKey').value = stored.apiKey ?? DEFAULTS.apiKey;
   document.getElementById('model').value = stored.model ?? getDefaultModelFor(provider);
   document.getElementById('keywordCount').value = stored.keywordCount ?? DEFAULTS.keywordCount;
+  document.getElementById('autoCheckAI').checked = !!(stored.autoCheckAI);
+  document.getElementById('autoSaveAfterApply').checked = !!(stored.autoSaveAfterApply);
   updateProviderUI();
 }
 
@@ -158,8 +168,10 @@ async function onSave() {
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
   if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
   keywordCount = Math.max(1, Math.min(50, keywordCount));
+  const autoCheckAI = document.getElementById('autoCheckAI').checked;
+  const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
 
-  await chrome.storage.local.set({ apiKey, provider, baseUrl, model, keywordCount });
+  await chrome.storage.local.set({ apiKey, provider, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply });
   setStatus(msg('optSaved'), 'ok');
 }
 

@@ -9,6 +9,8 @@ export const DEFAULT_CONFIG = {
   model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner',
   keywordCount: 30,
   timeoutMs: 60000,
+  autoCheckAI: false,
+  autoSaveAfterApply: false,
 };
 
 export async function getConfig() {
@@ -19,6 +21,8 @@ export async function getConfig() {
     'model',
     'keywordCount',
     'timeoutMs',
+    'autoCheckAI',
+    'autoSaveAfterApply',
   ]);
   return {
     apiKey: stored.apiKey ?? DEFAULT_CONFIG.apiKey,
@@ -27,6 +31,8 @@ export async function getConfig() {
     model: stored.model ?? DEFAULT_CONFIG.model,
     keywordCount: stored.keywordCount ?? DEFAULT_CONFIG.keywordCount,
     timeoutMs: stored.timeoutMs ?? DEFAULT_CONFIG.timeoutMs,
+    autoCheckAI: stored.autoCheckAI ?? DEFAULT_CONFIG.autoCheckAI,
+    autoSaveAfterApply: stored.autoSaveAfterApply ?? DEFAULT_CONFIG.autoSaveAfterApply,
   };
 }
 
