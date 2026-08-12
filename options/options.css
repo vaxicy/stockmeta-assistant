@@ -147,6 +147,7 @@ h1 {
 .opt-lang-field select {
   height: 36px;
   line-height: 34px;
+  min-width: 120px;
 }
 
 /* tutorial link */
