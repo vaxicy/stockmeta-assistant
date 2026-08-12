@@ -111,12 +111,30 @@ h1 {
 }
 
 /* provider selector */
-#providerSelect {
-  padding: 8px 10px;
+#providerSelect,
+.opt-lang-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 8px 28px 8px 12px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
-  background: #fff;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  cursor: pointer;
+  color: #1f2430;
+}
+
+#providerSelect:hover,
+.opt-lang-field select:hover {
+  border-color: #94a3b8;
+}
+
+#providerSelect:focus,
+.opt-lang-field select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
 /* language selector */
@@ -128,12 +146,7 @@ h1 {
 .opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; }
 .opt-lang-field select {
   height: 36px;
-  padding: 0 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 14px;
   line-height: 34px;
-  background: #fff;
 }
 
 /* tutorial link */
