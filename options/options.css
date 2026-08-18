@@ -1,6 +1,19 @@
 /* options/options.css */
 * { box-sizing: border-box; }
 
+/* 完全隐藏滚动条，但保留滚动能力（WebKit） */
+body::-webkit-scrollbar,
+.opt-modal::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+/* Firefox 兜底 */
+body,
+.opt-modal {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -116,11 +129,11 @@ h1 {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  padding: 8px 28px 8px 12px;
+  padding: 8px 32px 8px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 14px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
   cursor: pointer;
   color: #1f2430;
 }
@@ -145,8 +158,6 @@ h1 {
 }
 .opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; }
 .opt-lang-field select {
-  height: 36px;
-  line-height: 34px;
   flex: 0 0 auto;
 }
 
@@ -216,6 +227,9 @@ h1 {
 .opt-modal-mask[hidden] { display: none; }
 .opt-modal {
   width: min(440px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #fff;
   border-radius: 14px;
   padding: 20px 22px;

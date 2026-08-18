@@ -1,4 +1,17 @@
 /* content/panel.css — injected AI Assistant side panel */
+/* 完全隐藏滚动条，但保留滚动能力（WebKit） */
+#stockmeta-panel::-webkit-scrollbar,
+.sm-textarea::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+/* Firefox 兜底 */
+#stockmeta-panel,
+.sm-textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 #stockmeta-panel {
   position: fixed;
   top: 16px;
