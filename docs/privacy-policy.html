@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-  <input class="lang-input" type="radio" name="lang" id="lang-zh" checked>
+  <input class="lang-input" type="radio" name="lang" id="lang-zh">
   <input class="lang-input" type="radio" name="lang" id="lang-en">
 
   <div class="lang-switch">
@@ -130,5 +130,39 @@
     <h2>6. Contact</h2>
     <p>For privacy questions, contact the developer via GitHub Issues: <a href="https://github.com/vaxicy/stockmeta-assistant/issues">github.com/vaxicy/stockmeta-assistant/issues</a></p>
   </div>
+
+  <script>
+    (function () {
+      var STORAGE_KEY = 'stockmeta_privacy_lang';
+      var zhInput = document.getElementById('lang-zh');
+      var enInput = document.getElementById('lang-en');
+
+      function detectDefaultLang() {
+        try {
+          var saved = localStorage.getItem(STORAGE_KEY);
+          if (saved === 'zh' || saved === 'en') return saved;
+        } catch (_) {}
+        var browser = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+        return browser.indexOf('zh') === 0 ? 'zh' : 'en';
+      }
+
+      function applyLang(lang) {
+        try {
+          localStorage.setItem(STORAGE_KEY, lang);
+        } catch (_) {}
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        if (lang === 'zh') {
+          zhInput.checked = true;
+        } else {
+          enInput.checked = true;
+        }
+      }
+
+      applyLang(detectDefaultLang());
+
+      zhInput.addEventListener('change', function () { if (zhInput.checked) applyLang('zh'); });
+      enInput.addEventListener('change', function () { if (enInput.checked) applyLang('en'); });
+    })();
+  </script>
 </body>
 </html>
