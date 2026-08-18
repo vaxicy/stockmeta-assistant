@@ -97,7 +97,8 @@ export async function generateMetadata({ apiKey, provider, baseUrl, model, image
     let detail = '';
     try {
       const t = await res.text();
-      detail = t.slice(0, 200);
+      detail = t.slice(0, 500);
+      console.error('[StockMeta] Non-OK response body:', detail);
     } catch (_) {}
     throw new Error('HTTP_' + res.status + (detail ? ': ' + detail : ''));
   }
@@ -105,12 +106,19 @@ export async function generateMetadata({ apiKey, provider, baseUrl, model, image
   let data;
   try {
     data = await res.json();
-  } catch (_) {
+  } catch (e) {
+    // Surface the raw body for easier diagnosis of malformed responses.
+    let raw = '';
+    try {
+      raw = await res.text();
+    } catch (_) {}
+    console.error('[StockMeta] Failed to parse JSON response. Raw:', raw.slice(0, 500));
     throw new Error('BAD_RESPONSE');
   }
 
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {
+    console.error('[StockMeta] Empty choices/content. Full data:', JSON.stringify(data).slice(0, 500));
     throw new Error('EMPTY_CONTENT');
   }
 

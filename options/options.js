@@ -160,7 +160,7 @@ async function load() {
   updateProviderUI();
 }
 
-async function onSave() {
+function collectSettings() {
   const apiKey = document.getElementById('apiKey').value.trim();
   const provider = getProvider();
   const baseUrl = document.getElementById('baseUrl').value.trim();
@@ -170,9 +170,23 @@ async function onSave() {
   keywordCount = Math.max(1, Math.min(50, keywordCount));
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
+  return { apiKey, provider, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
+}
 
-  await chrome.storage.local.set({ apiKey, provider, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply });
+async function onSave() {
+  const s = collectSettings();
+  await chrome.storage.local.set(s);
   setStatus(msg('optSaved'), 'ok');
+}
+
+let autoSaveTimer = null;
+function autoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(async () => {
+    const s = collectSettings();
+    await chrome.storage.local.set(s);
+    setStatus(msg('optSaved'), 'ok');
+  }, 300);
 }
 
 function onTest() {
@@ -236,6 +250,20 @@ async function initProviderSelect() {
       modelInput.value = getDefaultModelFor(provider);
     }
     updateProviderUI();
+    autoSave();
+  });
+}
+
+function initAutoSave() {
+  const debounced = ['apiKey', 'baseUrl', 'model', 'keywordCount'];
+  debounced.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', autoSave);
+  });
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply'];
+  immediate.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', autoSave);
   });
 }
 
@@ -335,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initProviderSelect();
   initTutorial();
   initSupport();
+  initAutoSave();
   document.getElementById('saveBtn').addEventListener('click', onSave);
   document.getElementById('testBtn').addEventListener('click', onTest);
 });
