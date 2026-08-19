@@ -35,7 +35,15 @@
 
     <section class="opt-field">
       <label for="apiKey" data-i18n="optApiKey">API Key</label>
-      <input type="password" id="apiKey" autocomplete="off" placeholder="Enter your API key" />
+      <div class="opt-input-wrap">
+        <input type="password" id="apiKey" autocomplete="off" placeholder="Enter your API key" />
+        <button type="button" id="apiKeyToggle" class="opt-input-toggle" aria-label="Show API key" title="Show / hide API key">
+          <svg class="opt-eye-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path class="opt-eye-open" d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 11a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z" fill="currentColor"/>
+            <path class="opt-eye-off" d="M2 4.27l1.46 1.46C3.1 6.06 2.4 7.07 1.8 8.27L2 8.73C3.06 10.9 7.1 16 12 16c1.7 0 3.2-.5 4.5-1.27l1.46 1.46L20 16.27 2 4.27zm10 3.73a4 4 0 01.5 7.95l-1.4-1.4A2 2 0 0012 8zM12 6c-4.9 0-8.94 5.1-10 7 .36.73 1.05 1.86 2.05 3.05l1.4-1.4A8.6 8.6 0 013.2 13C4.16 11.2 7.46 8 12 8c.9 0 1.76.12 2.56.34l-1.4-1.4A11 11 0 0012 6z" fill="currentColor" style="display:none"/>
+          </svg>
+        </button>
+      </div>
       <p class="opt-hint" data-i18n="optApiKeyDesc">Stored locally in chrome.storage.local. Never hardcoded.</p>
     </section>
 

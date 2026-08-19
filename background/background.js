@@ -170,9 +170,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let models = [];
         try {
           const data = await res.json();
-          models = (data.models || []).map((m) => m.id || m.name).filter(Boolean);
+          const list = data.models || data.data || data.list || (Array.isArray(data) ? data : []);
+          models = list
+            .map((m) => (m && (m.id || m.name || m.model)) || '')
+            .filter(Boolean);
         } catch (_) {}
-        const hasModel = !cfg.model || models.includes(cfg.model);
+        const hasModel =
+          !cfg.model || models.some((id) => id.toLowerCase() === cfg.model.toLowerCase());
         sendResponse({ ok: true, models, hasModel });
       } catch (err) {
         console.error('[StockMeta] testConnection error:', err && err.message);

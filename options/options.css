@@ -61,6 +61,44 @@ h1 {
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
+/* API Key input + eye toggle */
+.opt-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.opt-input-wrap input {
+  padding-right: 42px;
+}
+
+.opt-input-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.opt-input-toggle:hover {
+  color: #1f2430;
+  background: #eef2f7;
+}
+
+.opt-input-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.3);
+}
+
 .opt-hint {
   margin: 0;
   font-size: 12px;

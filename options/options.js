@@ -52,8 +52,8 @@ const OPT_I18N = {
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
-    optTestOk: 'Connection OK. Model responded.',
-    optTestModelWarn: 'Connection OK, but this Model ID was not found in the endpoint list — please double-check it.',
+    optTestOk: 'Connection successful. API key and endpoint are both working.',
+    optTestModelWarn: 'Model ID was not found in the endpoint model list — if this model actually works, you can ignore this notice.',
     optTestFail: 'Connection failed:',
     optTestMissing: 'Please enter an API Key first.',
     optTutorialLink: 'How to get an API Key?',
@@ -94,8 +94,8 @@ const OPT_I18N = {
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
-    optTestOk: '连接成功，模型已响应。',
-    optTestModelWarn: '连接成功，但该 Model ID 不在端点模型列表中，请确认填写是否正确。',
+    optTestOk: '连接成功，密钥与端点均正常。',
+    optTestModelWarn: '当前 Model ID 未在端点模型列表中匹配到，若该模型确实可用，可忽略此提示。',
     optTestFail: '连接失败：',
     optTestMissing: '请先填写 API Key。',
     optTutorialLink: '如何获取 API Key？',
@@ -401,6 +401,21 @@ function initTutorial() {
   });
 }
 
+function initApiKeyToggle() {
+  const input = document.getElementById('apiKey');
+  const btn = document.getElementById('apiKeyToggle');
+  if (!input || !btn) return;
+  const open = btn.querySelector('.opt-eye-open');
+  const off = btn.querySelector('.opt-eye-off');
+  btn.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-label', show ? 'Hide API key' : 'Show API key');
+    if (open) open.style.display = show ? 'none' : '';
+    if (off) off.style.display = show ? '' : 'none';
+  });
+}
+
 function initSupport() {
   const mask = document.getElementById('supportMask');
   const link = document.getElementById('supportLink');
@@ -444,6 +459,37 @@ function initSupport() {
   });
 }
 
+// Initialize every input from the stored settings. This is the single entry
+// point that used to be referenced as `load()` but was missing, which left all
+// the scalar fields blank and kept `currentProvider` stuck on its default —
+// so switching providers wrote into the wrong slot (the "three share one" bug)
+// and auto-save had nothing valid to persist.
+async function load() {
+  const stored = await chrome.storage.local.get([
+    'provider',
+    'providerConfigs',
+    'keywordCount',
+    'autoCheckAI',
+    'autoSaveAfterApply',
+  ]);
+  // Provider select + module pointer.
+  const provider = stored.provider || DEFAULTS.provider;
+  currentProvider = provider;
+  const sel = document.getElementById('providerSelect');
+  if (sel) sel.value = provider;
+  // Per-provider slot into the three endpoint inputs.
+  await applySlotToInputs(provider);
+  // Scalar fields.
+  const keywordInput = document.getElementById('keywordCount');
+  keywordInput.value = stored.keywordCount ?? DEFAULTS.keywordCount;
+  const ac = document.getElementById('autoCheckAI');
+  ac.checked = !!stored.autoCheckAI;
+  const as = document.getElementById('autoSaveAfterApply');
+  as.checked = !!stored.autoSaveAfterApply;
+  // Provider-aware UI hints / defaults.
+  updateProviderUI();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyStaticI18n();
   load();
@@ -451,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initProviderSelect();
   initTutorial();
   initSupport();
+  initApiKeyToggle();
   initAutoSave();
   document.getElementById('saveBtn').addEventListener('click', onSave);
   document.getElementById('testBtn').addEventListener('click', onTest);
