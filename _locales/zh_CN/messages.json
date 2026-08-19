@@ -19,6 +19,14 @@
     "message": "保存在本地 chrome.storage.local，绝不硬编码。",
     "description": "API key hint"
   },
+  "optShow": {
+    "message": "显示",
+    "description": "Show API key toggle"
+  },
+  "optHide": {
+    "message": "隐藏",
+    "description": "Hide API key toggle"
+  },
   "optModel": {
     "message": "视觉模型 ID",
     "description": "Model id label"

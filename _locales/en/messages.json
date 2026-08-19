@@ -19,6 +19,14 @@
     "message": "Stored locally in chrome.storage.local. Never hardcoded.",
     "description": "API key hint"
   },
+  "optShow": {
+    "message": "Show",
+    "description": "Show API key toggle"
+  },
+  "optHide": {
+    "message": "Hide",
+    "description": "Hide API key toggle"
+  },
   "optModel": {
     "message": "Vision Model ID",
     "description": "Model id label"

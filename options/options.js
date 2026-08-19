@@ -41,6 +41,8 @@ const OPT_I18N = {
     optBaseUrlDesc: 'OpenAI-compatible endpoint, e.g. https://api.openai.com/v1',
     optApiKey: 'API Key',
     optApiKeyDesc: 'Stored locally in chrome.storage.local. Never hardcoded.',
+    optShow: 'Show',
+    optHide: 'Hide',
     optModel: 'Vision Model ID',
     optModelDesc: 'e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optKeywordCount: 'Keyword Count',
@@ -83,6 +85,8 @@ const OPT_I18N = {
     optBaseUrlDesc: 'OpenAI 兼容的 endpoint，例如 https://api.openai.com/v1',
     optApiKey: 'API Key',
     optApiKeyDesc: '保存在本地 chrome.storage.local，绝不硬编码。',
+    optShow: '显示',
+    optHide: '隐藏',
     optModel: '视觉模型 ID',
     optModelDesc: '例如 Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optKeywordCount: '关键词数量',
@@ -405,14 +409,14 @@ function initApiKeyToggle() {
   const input = document.getElementById('apiKey');
   const btn = document.getElementById('apiKeyToggle');
   if (!input || !btn) return;
-  const open = btn.querySelector('.opt-eye-open');
-  const off = btn.querySelector('.opt-eye-off');
+  const showEl = btn.querySelector('.opt-show');
+  const hideEl = btn.querySelector('.opt-hide');
   btn.addEventListener('click', () => {
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     btn.setAttribute('aria-label', show ? 'Hide API key' : 'Show API key');
-    if (open) open.style.display = show ? 'none' : '';
-    if (off) off.style.display = show ? '' : 'none';
+    if (showEl) showEl.hidden = show;
+    if (hideEl) hideEl.hidden = !show;
   });
 }
 
