@@ -51,6 +51,10 @@
     "message": "连接成功，模型已响应。",
     "description": "Test success"
   },
+  "optTestModelWarn": {
+    "message": "连接成功，但该 Model ID 不在端点模型列表中，请确认填写是否正确。",
+    "description": "Test success but model missing"
+  },
   "optTestFail": {
     "message": "连接失败：",
     "description": "Test failure prefix"

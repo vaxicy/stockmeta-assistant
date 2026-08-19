@@ -77,7 +77,7 @@
   }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
 
   async function init() {
-    const stored = await chrome.storage.local.get(['apiKey', 'lang']);
+    const stored = await chrome.storage.local.get(['provider', 'providerConfigs', 'apiKey', 'lang']);
     if (stored.lang === 'zh' || stored.lang === 'en') {
       currentLang = stored.lang;
     } else {
@@ -85,7 +85,14 @@
     }
     applyStaticI18n();
     stripAllTitles(); // Remove any remaining native title attributes
-    if (stored.apiKey) {
+    // Determine whether the active provider has an API key stored.
+    let hasKey = !!stored.apiKey;
+    if (!hasKey && stored.providerConfigs) {
+      const provider = stored.provider || 'siliconflow';
+      const slot = stored.providerConfigs[provider];
+      hasKey = !!(slot && slot.apiKey);
+    }
+    if (hasKey) {
       setStatus('✓ ' + msg('optTestOk').split('.')[0], 'ok');
     } else {
       setStatus('⚠ ' + msg('optTestMissing'), 'warn');

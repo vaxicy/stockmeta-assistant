@@ -11,10 +11,47 @@ const DEFAULTS = {
 };
 
 const PROVIDER_DEFAULTS = {
-  siliconflow: { model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner', url: 'https://cloud.siliconflow.cn' },
-  openai: { model: 'gpt-4o-mini', url: 'https://platform.openai.com/api-keys' },
+  siliconflow: { model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner', url: 'https://api.siliconflow.cn/v1' },
+  openai: { model: 'gpt-4o-mini', url: 'https://api.openai.com/v1' },
   custom: { model: '', url: '' },
 };
+
+const PROVIDER_KEYS = ['siliconflow', 'openai', 'custom'];
+
+// Read a provider slot from the stored providerConfigs object (legacy-safe).
+function readProviderConfig(stored) {
+  const raw = (stored && stored.providerConfigs) || null;
+  const out = {};
+  for (const p of PROVIDER_KEYS) {
+    const def = PROVIDER_DEFAULTS[p];
+    const slot = (raw && raw[p]) || {};
+    out[p] = {
+      baseUrl: slot.baseUrl ?? def.url ?? '',
+      apiKey: slot.apiKey ?? '',
+      model: slot.model ?? def.model ?? '',
+    };
+  }
+  // Migrate legacy flat apiKey/baseUrl/model into the active provider slot.
+  if (stored && ('apiKey' in stored || 'baseUrl' in stored || 'model' in stored)) {
+    const provider = stored.provider || DEFAULTS.provider;
+    out[provider] = {
+      baseUrl: stored.baseUrl ?? out[provider].baseUrl,
+      apiKey: stored.apiKey ?? out[provider].apiKey,
+      model: stored.model ?? out[provider].model,
+    };
+  }
+  return out;
+}
+
+function getSlotFor(provider, configs) {
+  const slot = configs[provider] || PROVIDER_DEFAULTS[provider] || { baseUrl: '', apiKey: '', model: '' };
+  const def = PROVIDER_DEFAULTS[provider] || { model: DEFAULTS.model, url: '' };
+  return {
+    baseUrl: slot.baseUrl || '',
+    apiKey: slot.apiKey || '',
+    model: slot.model || def.model || '',
+  };
+}
 
 // Self-contained translations so the page can switch language independently of
 // the browser UI language (chrome.i18n.getMessage always follows the browser).
@@ -43,6 +80,7 @@ const OPT_I18N = {
     optSave: 'Save',
     optSaved: 'Settings saved.',
     optTestOk: 'Connection OK. Model responded.',
+    optTestModelWarn: 'Connection OK, but this Model ID was not found in the endpoint list — please double-check it.',
     optTestFail: 'Connection failed:',
     optTestMissing: 'Please enter an API Key first.',
     optTutorialLink: 'How to get an API Key?',
@@ -84,6 +122,7 @@ const OPT_I18N = {
     optSave: '保存',
     optSaved: '设置已保存。',
     optTestOk: '连接成功，模型已响应。',
+    optTestModelWarn: '连接成功，但该 Model ID 不在端点模型列表中，请确认填写是否正确。',
     optTestFail: '连接失败：',
     optTestMissing: '请先填写 API Key。',
     optTutorialLink: '如何获取 API Key？',
@@ -147,22 +186,55 @@ function getDefaultModelFor(provider) {
   return PROVIDER_DEFAULTS[provider]?.model || DEFAULTS.model;
 }
 
+let configsCache = null;
+
 async function load() {
-  const stored = await chrome.storage.local.get(['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount', 'autoCheckAI', 'autoSaveAfterApply']);
+  const stored = await chrome.storage.local.get(['provider', 'providerConfigs', 'apiKey', 'baseUrl', 'model', 'keywordCount', 'autoCheckAI', 'autoSaveAfterApply']);
   const provider = stored.provider ?? DEFAULTS.provider;
+  configsCache = readProviderConfig(stored);
   document.getElementById('providerSelect').value = provider;
-  document.getElementById('baseUrl').value = stored.baseUrl ?? DEFAULTS.baseUrl;
-  document.getElementById('apiKey').value = stored.apiKey ?? DEFAULTS.apiKey;
-  document.getElementById('model').value = stored.model ?? getDefaultModelFor(provider);
+  applySlotToInputs(provider);
   document.getElementById('keywordCount').value = stored.keywordCount ?? DEFAULTS.keywordCount;
   document.getElementById('autoCheckAI').checked = !!(stored.autoCheckAI);
   document.getElementById('autoSaveAfterApply').checked = !!(stored.autoSaveAfterApply);
   updateProviderUI();
 }
 
-function collectSettings() {
-  const apiKey = document.getElementById('apiKey').value.trim();
+function applySlotToInputs(provider) {
+  const slot = getSlotFor(provider, configsCache);
+  const baseUrlInput = document.getElementById('baseUrl');
+  const apiKeyInput = document.getElementById('apiKey');
+  const modelInput = document.getElementById('model');
+  // For known providers, fall back to the built-in endpoint if the slot is empty.
+  baseUrlInput.value = slot.baseUrl || PROVIDER_DEFAULTS[provider]?.url || '';
+  apiKeyInput.value = slot.apiKey;
+  modelInput.value = slot.model || getDefaultModelFor(provider);
+}
+
+// Write current inputs back into the active provider's slot and persist.
+async function persistSlot() {
   const provider = getProvider();
+  if (!configsCache) configsCache = {};
+  const slot = {
+    baseUrl: document.getElementById('baseUrl').value.trim(),
+    apiKey: document.getElementById('apiKey').value.trim(),
+    model: document.getElementById('model').value.trim(),
+  };
+  const configs = { ...configsCache };
+  configs[provider] = slot;
+  configsCache = configs;
+  const payload = {
+    provider,
+    providerConfigs: configs,
+    keywordCount: document.getElementById('keywordCount').value,
+  };
+  await chrome.storage.local.set(payload);
+  return configs;
+}
+
+function collectSettings() {
+  const provider = getProvider();
+  const apiKey = document.getElementById('apiKey').value.trim();
   const baseUrl = document.getElementById('baseUrl').value.trim();
   const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
@@ -170,7 +242,9 @@ function collectSettings() {
   keywordCount = Math.max(1, Math.min(50, keywordCount));
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
-  return { apiKey, provider, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
+  const configs = { ...(configsCache || {}) };
+  configs[provider] = { baseUrl, apiKey, model };
+  return { provider, providerConfigs: configs, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
 }
 
 async function onSave() {
@@ -183,8 +257,7 @@ let autoSaveTimer = null;
 function autoSave() {
   if (autoSaveTimer) clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(async () => {
-    const s = collectSettings();
-    await chrome.storage.local.set(s);
+    await persistSlot();
     setStatus(msg('optSaved'), 'ok');
   }, 300);
 }
@@ -202,7 +275,11 @@ function onTest() {
       return;
     }
     if (resp && resp.ok) {
-      setStatus(msg('optTestOk'), 'ok');
+      if (resp.hasModel) {
+        setStatus(msg('optTestOk'), 'ok');
+      } else {
+        setStatus(msg('optTestOk') + ' ' + msg('optTestModelWarn'), 'ok');
+      }
     } else {
       const errMap = {
         MISSING_API_KEY: 'optTestMissing',
@@ -223,9 +300,12 @@ function updateProviderUI() {
   const apiKeyLabel = document.querySelector('label[for="apiKey"]');
   const modelInput = document.getElementById('model');
   const modelHint = document.querySelector('p[data-i18n="optModelDesc"]');
+  const baseUrlHint = document.querySelector('p[data-i18n="optBaseUrlDesc"]');
 
+  // Base URL is always visible; it shows the built-in endpoint for known
+  // providers and is editable for custom endpoints.
   if (baseUrlField) {
-    baseUrlField.classList.toggle('is-hidden', provider !== 'custom');
+    baseUrlField.classList.remove('is-hidden');
   }
   if (apiKeyLabel) {
     apiKeyLabel.textContent = msg('optApiKey');
@@ -236,6 +316,11 @@ function updateProviderUI() {
   if (modelHint) {
     modelHint.textContent = provider === 'openai' ? 'e.g. gpt-4o-mini' : msg('optModelDesc');
   }
+  if (baseUrlHint) {
+    baseUrlHint.textContent = provider === 'custom'
+      ? msg('optBaseUrlDesc')
+      : '默认已填充该提供商的接口地址，一般无需修改。';
+  }
 
   updateTutorialLink();
 }
@@ -243,14 +328,16 @@ function updateProviderUI() {
 async function initProviderSelect() {
   const sel = document.getElementById('providerSelect');
   if (!sel) return;
-  sel.addEventListener('change', () => {
+  sel.addEventListener('change', async () => {
     const provider = sel.value;
+    // Save the current inputs into the old provider slot before switching.
+    await persistSlot();
+    applySlotToInputs(provider);
     const modelInput = document.getElementById('model');
     if (modelInput && !modelInput.value) {
       modelInput.value = getDefaultModelFor(provider);
     }
     updateProviderUI();
-    autoSave();
   });
 }
 
@@ -265,6 +352,9 @@ function initAutoSave() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
   });
+  // Persist the current slot whenever the provider changes.
+  const sel = document.getElementById('providerSelect');
+  if (sel) sel.addEventListener('change', autoSave);
 }
 
 async function initLangSelect() {

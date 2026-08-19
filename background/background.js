@@ -1,6 +1,6 @@
 // background/background.js  (MV3 service worker, ES module)
 import { getConfig } from '../services/config.js';
-import { generateMetadata } from '../services/aiProvider.js';
+import { generateMetadata, getEndpoint } from '../services/aiProvider.js';
 
 // In-memory config cache. The SW re-reads storage only when the cache is
 // empty or invalidated, so a config change made in the options page is picked
@@ -24,7 +24,7 @@ async function getConfigCached() {
 // without reloading the extension.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (['apiKey', 'provider', 'baseUrl', 'model', 'keywordCount', 'timeoutMs'].some((k) => k in changes)) {
+  if (['provider', 'providerConfigs', 'keywordCount', 'timeoutMs'].some((k) => k in changes)) {
     configCache = null;
   }
 });
@@ -135,18 +135,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ ok: false, error: 'MISSING_API_KEY' });
           return;
         }
-        const tiny =
-          'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCABAAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDnKKKK/VT4EKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//Z';
-        const result = await generateMetadata({
-          apiKey: cfg.apiKey,
-          provider: cfg.provider,
-          baseUrl: cfg.baseUrl,
-          model: cfg.model,
-          imageBase64: tiny,
-          prompt: 'Return JSON {"title":"test","keywords":["test"]} describing nothing.',
-          timeoutMs: cfg.timeoutMs,
-        });
-        sendResponse({ ok: true, title: result.title, keywords: result.keywords });
+        const endpoint = getEndpoint(cfg.provider, cfg.baseUrl) + '/models';
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), Math.min(cfg.timeoutMs || 60000, 15000));
+        let res;
+        try {
+          res = await fetch(endpoint, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${cfg.apiKey}` },
+            signal: controller.signal,
+          });
+        } catch (err) {
+          clearTimeout(timer);
+          if (err && err.name === 'AbortError') {
+            sendResponse({ ok: false, error: 'TIMEOUT' });
+            return;
+          }
+          sendResponse({ ok: false, error: 'NETWORK_ERROR' });
+          return;
+        }
+        clearTimeout(timer);
+        if (res.status === 401 || res.status === 403) {
+          sendResponse({ ok: false, error: 'INVALID_API_KEY' });
+          return;
+        }
+        if (res.status === 404) {
+          sendResponse({ ok: false, error: 'MODEL_NOT_FOUND' });
+          return;
+        }
+        if (!res.ok) {
+          sendResponse({ ok: false, error: 'HTTP_' + res.status });
+          return;
+        }
+        let models = [];
+        try {
+          const data = await res.json();
+          models = (data.models || []).map((m) => m.id || m.name).filter(Boolean);
+        } catch (_) {}
+        const hasModel = !cfg.model || models.includes(cfg.model);
+        sendResponse({ ok: true, models, hasModel });
       } catch (err) {
         console.error('[StockMeta] testConnection error:', err && err.message);
         sendResponse({ ok: false, error: err && err.message ? err.message : 'UNKNOWN' });

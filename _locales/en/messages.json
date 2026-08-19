@@ -51,6 +51,10 @@
     "message": "Connection OK. Model responded.",
     "description": "Test success"
   },
+  "optTestModelWarn": {
+    "message": "Connection OK, but this Model ID was not found in the endpoint list — please double-check it.",
+    "description": "Test success but model missing"
+  },
   "optTestFail": {
     "message": "Connection failed:",
     "description": "Test failure prefix"
