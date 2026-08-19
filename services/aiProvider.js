@@ -14,10 +14,20 @@ function isEnglishKeyword(k) {
   return k && typeof k === 'string' && !NON_ENGLISH_RE.test(k);
 }
 
+// Normalize a user-supplied base URL: drop trailing slash and any accidentally
+// pasted endpoint suffix (e.g. /chat/completions, /v1/chat/completions) so the
+// base always ends at the version prefix. Keeps the real request path clean.
+function normalizeBaseUrl(input) {
+  let b = (input || '').trim().replace(/\/+$/, '');
+  b = b.replace(/\/(chat|images|embeddings|audio)\/completions$/i, '');
+  b = b.replace(/\/v1\/messages$/i, '');
+  return b;
+}
+
 export function getEndpoint(provider, baseUrl) {
   const key = String(provider || 'siliconflow').toLowerCase();
   if (key === 'custom' && baseUrl) {
-    return String(baseUrl).replace(/\/$/, '');
+    return normalizeBaseUrl(baseUrl);
   }
   return DEFAULT_ENDPOINTS[key] || DEFAULT_ENDPOINTS.siliconflow;
 }

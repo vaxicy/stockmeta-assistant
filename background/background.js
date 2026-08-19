@@ -131,18 +131,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const cfg = await getConfigCached();
-        if (!cfg.apiKey) {
+        // Honor a one-shot override from the caller (options page) so the test
+        // can use the live DOM inputs even if storage/cache is briefly stale.
+        // We never mutate configCache here — this only affects this single call.
+        const ov = message.override || {};
+        const apiKey = (ov.apiKey != null ? String(ov.apiKey) : '').trim() || cfg.apiKey;
+        const provider = ov.provider || cfg.provider;
+        const baseUrl = ov.baseUrl || cfg.baseUrl;
+        const model = ov.model || cfg.model;
+        if (!apiKey) {
           sendResponse({ ok: false, error: 'MISSING_API_KEY' });
           return;
         }
-        const endpoint = getEndpoint(cfg.provider, cfg.baseUrl) + '/models';
+        const endpoint = getEndpoint(provider, baseUrl) + '/models';
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), Math.min(cfg.timeoutMs || 60000, 15000));
         let res;
         try {
           res = await fetch(endpoint, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${cfg.apiKey}` },
+            headers: { Authorization: `Bearer ${apiKey}` },
             signal: controller.signal,
           });
         } catch (err) {
@@ -176,7 +184,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .filter(Boolean);
         } catch (_) {}
         const hasModel =
-          !cfg.model || models.some((id) => id.toLowerCase() === cfg.model.toLowerCase());
+          !model || models.some((id) => id.toLowerCase() === model.toLowerCase());
         sendResponse({ ok: true, models, hasModel });
       } catch (err) {
         console.error('[StockMeta] testConnection error:', err && err.message);

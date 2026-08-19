@@ -260,14 +260,29 @@ function autoSave() {
   }, 300);
 }
 
-function onTest() {
+async function onTest() {
   const apiKey = document.getElementById('apiKey').value.trim();
   if (!apiKey) {
     setStatus(msg('optTestMissing'), 'err');
     return;
   }
   setStatus('…');
-  chrome.runtime.sendMessage({ type: 'TEST_CONNECTION' }, (resp) => {
+  // Flush the live DOM inputs into storage before testing. The background reads
+  // its config from chrome.storage, so a debounced autoSave (300ms) would leave
+  // it one step behind when the user types a fresh key after switching providers
+  // and clicks Test immediately. Without this flush, storage's
+  // providerConfigs[currentProvider].apiKey is still empty and the background
+  // returns MISSING_API_KEY even though the input clearly has a key.
+  await persistSlot();
+  const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
+  const model = document.getElementById('model').value.trim() || getDefaultModelFor(currentProvider);
+  // Also send a one-shot override in the message so background can use the live
+  // DOM values even if its cache wasn't invalidated yet. Background falls back
+  // to its cached/stored config if override fields are missing.
+  chrome.runtime.sendMessage({
+    type: 'TEST_CONNECTION',
+    override: { apiKey, baseUrl, model, provider: currentProvider },
+  }, (resp) => {
     if (chrome.runtime.lastError) {
       setStatus(msg('optTestFail') + ' ' + chrome.runtime.lastError.message, 'err');
       return;
@@ -348,6 +363,17 @@ function initAutoSave() {
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
+    // High-value fields (apiKey/baseUrl/model) also save immediately on blur so
+    // the background config cache can never be more than one tab-click behind.
+    // This avoids the "I typed a key, clicked Test, got MISSING_API_KEY" race
+    // when the 300ms debounce hasn't fired yet.
+    if (el && (id === 'apiKey' || id === 'baseUrl' || id === 'model')) {
+      el.addEventListener('blur', () => {
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+        persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
+      });
+    }
   });
   const immediate = ['autoCheckAI', 'autoSaveAfterApply'];
   immediate.forEach((id) => {
