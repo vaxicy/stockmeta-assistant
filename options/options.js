@@ -16,41 +16,14 @@ const PROVIDER_DEFAULTS = {
   custom: { model: '', url: '' },
 };
 
-const PROVIDER_KEYS = ['siliconflow', 'openai', 'custom'];
-
-// Read a provider slot from the stored providerConfigs object (legacy-safe).
-function readProviderConfig(stored) {
-  const raw = (stored && stored.providerConfigs) || null;
-  const out = {};
-  for (const p of PROVIDER_KEYS) {
-    const def = PROVIDER_DEFAULTS[p];
-    const slot = (raw && raw[p]) || {};
-    out[p] = {
-      baseUrl: slot.baseUrl ?? def.url ?? '',
-      apiKey: slot.apiKey ?? '',
-      model: slot.model ?? def.model ?? '',
-    };
-  }
-  // Migrate legacy flat apiKey/baseUrl/model into the active provider slot.
-  if (stored && ('apiKey' in stored || 'baseUrl' in stored || 'model' in stored)) {
-    const provider = stored.provider || DEFAULTS.provider;
-    out[provider] = {
-      baseUrl: stored.baseUrl ?? out[provider].baseUrl,
-      apiKey: stored.apiKey ?? out[provider].apiKey,
-      model: stored.model ?? out[provider].model,
-    };
-  }
-  return out;
-}
-
-function getSlotFor(provider, configs) {
-  const slot = configs[provider] || PROVIDER_DEFAULTS[provider] || { baseUrl: '', apiKey: '', model: '' };
-  const def = PROVIDER_DEFAULTS[provider] || { model: DEFAULTS.model, url: '' };
-  return {
-    baseUrl: slot.baseUrl || '',
-    apiKey: slot.apiKey || '',
-    model: slot.model || def.model || '',
-  };
+// Strip trailing slash, and common mis-pasted endpoint suffixes
+// (e.g. /chat/completions, /v1/chat/completions) so the base always ends
+// at the version prefix. Mirrors the ReplyPilot normalization.
+function normalizeBaseUrl(input) {
+  let b = (input || '').trim().replace(/\/+$/, '');
+  b = b.replace(/\/(chat|images|embeddings|audio)\/completions$/i, '');
+  b = b.replace(/\/v1\/messages$/i, '');
+  return b;
 }
 
 // Self-contained translations so the page can switch language independently of
@@ -177,79 +150,100 @@ function setStatus(text, kind) {
   el.className = 'opt-status' + (kind ? ' ' + kind : '');
 }
 
+// Module-level pointer to the slot currently shown in the inputs.
+// Switching providers must always write back to THIS before changing it,
+// otherwise the new select.value is used as the slot key and clobbers it.
+let currentProvider = DEFAULTS.provider;
+
 function getProvider() {
-  const sel = document.getElementById('providerSelect');
-  return sel ? sel.value : DEFAULTS.provider;
+  return currentProvider;
 }
 
 function getDefaultModelFor(provider) {
   return PROVIDER_DEFAULTS[provider]?.model || DEFAULTS.model;
 }
 
-let configsCache = null;
-
-async function load() {
-  const stored = await chrome.storage.local.get(['provider', 'providerConfigs', 'apiKey', 'baseUrl', 'model', 'keywordCount', 'autoCheckAI', 'autoSaveAfterApply']);
-  const provider = stored.provider ?? DEFAULTS.provider;
-  configsCache = readProviderConfig(stored);
-  document.getElementById('providerSelect').value = provider;
-  applySlotToInputs(provider);
-  document.getElementById('keywordCount').value = stored.keywordCount ?? DEFAULTS.keywordCount;
-  document.getElementById('autoCheckAI').checked = !!(stored.autoCheckAI);
-  document.getElementById('autoSaveAfterApply').checked = !!(stored.autoSaveAfterApply);
-  updateProviderUI();
+// Read ONLY the active provider's slot out of the stored providerConfigs.
+// Other providers are never read into memory and never touched on write.
+async function loadSlot(provider) {
+  const stored = await chrome.storage.local.get(['providerConfigs', 'apiKey', 'baseUrl', 'model']);
+  const raw = (stored && stored.providerConfigs) || null;
+  const slot = (raw && raw[provider]) || {};
+  const def = PROVIDER_DEFAULTS[provider] || { model: DEFAULTS.model, url: '' };
+  let baseUrl = slot.baseUrl ?? '';
+  let apiKey = slot.apiKey ?? '';
+  let model = slot.model ?? '';
+  // Migrate legacy flat apiKey/baseUrl/model into THIS provider's slot on first load.
+  if (stored && ('apiKey' in stored || 'baseUrl' in stored || 'model' in stored) && stored.provider === provider) {
+    baseUrl = stored.baseUrl ?? baseUrl;
+    apiKey = stored.apiKey ?? apiKey;
+    model = stored.model ?? model;
+  }
+  return { baseUrl, apiKey, model, def };
 }
 
-function applySlotToInputs(provider) {
-  const slot = getSlotFor(provider, configsCache);
+async function applySlotToInputs(provider) {
+  const { baseUrl, apiKey, model, def } = await loadSlot(provider);
   const baseUrlInput = document.getElementById('baseUrl');
   const apiKeyInput = document.getElementById('apiKey');
   const modelInput = document.getElementById('model');
-  // For known providers, fall back to the built-in endpoint if the slot is empty.
-  baseUrlInput.value = slot.baseUrl || PROVIDER_DEFAULTS[provider]?.url || '';
-  apiKeyInput.value = slot.apiKey;
-  modelInput.value = slot.model || getDefaultModelFor(provider);
+  baseUrlInput.value = normalizeBaseUrl(baseUrl) || def.url || '';
+  apiKeyInput.value = apiKey;
+  modelInput.value = model || getDefaultModelFor(provider);
 }
 
-// Write current inputs back into the active provider's slot and persist.
+// The single source of truth for writing: read the REAL stored providerConfigs,
+// patch only the current provider's slot, and write the whole object back.
+// Other providers' slots are preserved exactly as stored — never overwritten.
 async function persistSlot() {
-  const provider = getProvider();
-  if (!configsCache) configsCache = {};
+  const provider = currentProvider;
   const slot = {
-    baseUrl: document.getElementById('baseUrl').value.trim(),
+    baseUrl: normalizeBaseUrl(document.getElementById('baseUrl').value),
     apiKey: document.getElementById('apiKey').value.trim(),
     model: document.getElementById('model').value.trim(),
   };
-  const configs = { ...configsCache };
+  const stored = await chrome.storage.local.get(['providerConfigs']);
+  const configs = (stored && stored.providerConfigs) || {};
   configs[provider] = slot;
-  configsCache = configs;
-  const payload = {
-    provider,
-    providerConfigs: configs,
-    keywordCount: document.getElementById('keywordCount').value,
-  };
-  await chrome.storage.local.set(payload);
+  await chrome.storage.local.set({ provider, providerConfigs: configs });
   return configs;
 }
 
 function collectSettings() {
-  const provider = getProvider();
+  const provider = currentProvider;
   const apiKey = document.getElementById('apiKey').value.trim();
-  const baseUrl = document.getElementById('baseUrl').value.trim();
+  const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
   const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
   if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
   keywordCount = Math.max(1, Math.min(50, keywordCount));
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
-  const configs = { ...(configsCache || {}) };
-  configs[provider] = { baseUrl, apiKey, model };
-  return { provider, providerConfigs: configs, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
+  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
 }
 
 async function onSave() {
   const s = collectSettings();
-  await chrome.storage.local.set(s);
+  // Patch only the current provider's slot inside the stored providerConfigs,
+  // preserving every other provider's stored values. Then write the scalar
+  // settings alongside. Writing the whole object in a single set keeps it atomic.
+  const stored = await chrome.storage.local.get(['providerConfigs']);
+  const configs = (stored && stored.providerConfigs) || {};
+  configs[s.provider] = {
+    baseUrl: s.baseUrl,
+    apiKey: s.apiKey,
+    model: s.model,
+  };
+  await chrome.storage.local.set({
+    provider: s.provider,
+    providerConfigs: configs,
+    apiKey: s.apiKey,
+    baseUrl: s.baseUrl,
+    model: s.model,
+    keywordCount: s.keywordCount,
+    autoCheckAI: s.autoCheckAI,
+    autoSaveAfterApply: s.autoSaveAfterApply,
+  });
   setStatus(msg('optSaved'), 'ok');
 }
 
@@ -329,15 +323,19 @@ async function initProviderSelect() {
   const sel = document.getElementById('providerSelect');
   if (!sel) return;
   sel.addEventListener('change', async () => {
-    const provider = sel.value;
-    // Save the current inputs into the old provider slot before switching.
+    const nextProvider = sel.value;
+    // 1) Write the current inputs into the OLD slot (currentProvider) before leaving it.
     await persistSlot();
-    applySlotToInputs(provider);
+    // 2) Switch the module pointer, then load the new slot's values.
+    currentProvider = nextProvider;
+    await applySlotToInputs(nextProvider);
     const modelInput = document.getElementById('model');
     if (modelInput && !modelInput.value) {
-      modelInput.value = getDefaultModelFor(provider);
+      modelInput.value = getDefaultModelFor(nextProvider);
     }
     updateProviderUI();
+    // 3) Persist the provider switch itself.
+    await chrome.storage.local.set({ provider: nextProvider });
   });
 }
 
