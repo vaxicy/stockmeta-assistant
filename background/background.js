@@ -63,17 +63,23 @@ function buildPrompt(keywordCount, mode = 'all') {
     parts.push(
       `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
+    parts.push(
+      '3. Pick the single best Adobe Stock category for this image from this exact list: Animals, Buildings and Architecture, Business, Drinks, The Environment, States of Mind, Food, Graphic Resources, Hobbies and Leisure, Industry, Landscapes, Lifestyle, People, Plants and Flowers, Culture and Religion, Science, Social Issues, Sports, Technology, Transport, Travel.'
+    );
+    parts.push('4. Pick the file type from this exact list: Photos, Illustrations.');
   }
   parts.push('Rules:');
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');
   parts.push('- All output must be in English. Do not include Chinese or any non-English words.');
+  parts.push('- The category must be one of the listed categories, verbatim.');
+  parts.push('- The file type must be either "Photos" or "Illustrations", verbatim.');
   parts.push('- Do NOT output Markdown. Return ONLY a JSON object.');
   if (mode === 'title') {
     parts.push('- JSON format: {"title":"..."}');
   } else if (mode === 'keywords') {
     parts.push('- JSON format: {"keywords":["...","..."]}');
   } else {
-    parts.push('- JSON format: {"title":"...","keywords":["...","..."]}');
+    parts.push('- JSON format: {"title":"...","keywords":["...","..."],"category":"...","fileType":"..."}');
   }
   return parts.join('\n');
 }
@@ -109,7 +115,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           prompt: buildPrompt(cfg.keywordCount, mode),
           timeoutMs: cfg.timeoutMs,
         });
-        sendResponse({ ok: true, title: result.title, keywords: result.keywords });
+        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category, fileType: result.fileType });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);
         sendResponse({ ok: false, error: err && err.message ? err.message : 'UNKNOWN' });

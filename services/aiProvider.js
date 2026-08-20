@@ -47,7 +47,7 @@ export function getDefaultModel(provider) {
  * @param {string} opts.imageBase64  data URL, e.g. "data:image/jpeg;base64,...."
  * @param {string} opts.prompt
  * @param {number} opts.timeoutMs
- * @returns {Promise<{title:string, keywords:string[]}>}
+ * @returns {Promise<{title:string, keywords:string[], category:string, fileType:string}>}
  */
 export async function generateMetadata({ apiKey, provider, baseUrl, model, imageBase64, prompt, timeoutMs = 60000 }) {
   if (!apiKey) {
@@ -134,7 +134,7 @@ export async function generateMetadata({ apiKey, provider, baseUrl, model, image
 
   console.log('[StockMeta] Raw model response length:', content.length);
   const result = parseModelJson(content);
-  if (!result.title && !result.keywords.length) {
+  if (!result.title && !result.keywords.length && !result.category && !result.fileType) {
     throw new Error('EMPTY_RESPONSE');
   }
   return result;
@@ -175,5 +175,7 @@ export function parseModelJson(content) {
       .filter((w) => w.length > 2 && !/\d/.test(w));
     keywords = [...new Set([...keywords, ...titleWords])];
   }
-  return { title, keywords };
+  const category = typeof parsed.category === 'string' ? parsed.category.trim() : '';
+  const fileType = typeof parsed.fileType === 'string' ? parsed.fileType.trim() : '';
+  return { title, keywords, category, fileType };
 }

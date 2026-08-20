@@ -305,12 +305,89 @@
     });
   }
 
+  // --- Adobe category / file type pickers (React Spectrum selects) ---
+  // The Category and File type fields on the Adobe content-tagger are React Spectrum
+  // dropdowns. We open the trigger button, wait for the listbox, then click the
+  // option whose label matches the desired value.
+  const CATEGORY_SELECTORS = [
+    '[data-t*="content-tagger-category"]',
+    '[data-testid*="category" i]',
+    '[aria-haspopup="listbox"][aria-label*="ategor" i]',
+    '[aria-haspopup="listbox"][id*="category" i]',
+  ];
+  const FILETYPE_SELECTORS = [
+    '[data-t*="content-tagger-file-type"]',
+    '[data-t*="file-type"]',
+    '[data-testid*="file-type" i]',
+    '[data-testid*="filetype" i]',
+    '[aria-haspopup="listbox"][aria-label*="file type" i]',
+    '[aria-haspopup="listbox"][id*="filetype" i]',
+  ];
+
+  function findFirst(selectors) {
+    for (const sel of selectors) {
+      const list = document.querySelectorAll(sel);
+      for (const el of list) {
+        if (typeof el.getBoundingClientRect === 'function' && (el.getBoundingClientRect().width || el.getBoundingClientRect().height)) {
+          return el;
+        }
+      }
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function findDropdownTrigger(selectors) {
+    return findFirst(selectors);
+  }
+
+  async function pickAdobeDropdown(selectors, value) {
+    const trigger = findDropdownTrigger(selectors);
+    if (!trigger) throw new Error('SELECT_TRIGGER_NOT_FOUND');
+    const btn = trigger.tagName === 'BUTTON' ? trigger : trigger.querySelector('button') || trigger;
+    btn.click();
+
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let option = null;
+    for (let i = 0; i < 12; i++) {
+      await wait(70);
+      const options = Array.from(document.querySelectorAll('[role="option"]'));
+      option = options.find((el) => {
+        const txt = (el.textContent || '').trim().toLowerCase();
+        return txt === String(value).trim().toLowerCase();
+      });
+      if (option) break;
+    }
+
+    if (!option) {
+      // Close the open dropdown so the page isn't left in a half-open state.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      btn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      throw new Error('SELECT_OPTION_NOT_FOUND');
+    }
+
+    option.click();
+    await wait(120);
+    return { success: true };
+  }
+
+  function setAdobeCategory(value) {
+    return pickAdobeDropdown(CATEGORY_SELECTORS, value);
+  }
+
+  function setAdobeFileType(value) {
+    return pickAdobeDropdown(FILETYPE_SELECTORS, value);
+  }
+
   window.StockMetaDom = {
     findTitleInput,
     findKeywordInput,
     setAdobeTitle,
     addAdobeKeywords,
     replaceAdobeKeywords,
+    setAdobeCategory,
+    setAdobeFileType,
     setNativeValue,
     fireInputEvents,
   };

@@ -72,6 +72,10 @@ const OPT_I18N = {
     optSupportPayPalBtn: 'Donate via PayPal',
     optSupportSwitchToPayPal: 'Overseas? Use PayPal instead',
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
+    optAutoSelectCategory: 'Auto-select Adobe Category',
+    optAutoSelectCategoryDesc: 'When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.',
+    optAutoSelectFileType: 'Auto-select File Type',
+    optAutoSelectFileTypeDesc: 'When generating, let the AI also suggest Photos or Illustrations. Apply it from the panel.',
   },
   zh: {
     optTitle: '设置',
@@ -116,6 +120,10 @@ const OPT_I18N = {
     optSupportPayPalBtn: '通过 PayPal 打赏',
     optSupportSwitchToPayPal: '海外用户？改用 PayPal',
     optSupportSwitchToWeChat: '国内用户？改用微信赞赏',
+    optAutoSelectCategory: '自动选择 Adobe 类别',
+    optAutoSelectCategoryDesc: '生成时让 AI 同时推荐最合适的 Adobe Stock 类别，从面板应用。',
+    optAutoSelectFileType: '自动选择文件类型',
+    optAutoSelectFileTypeDesc: '生成时让 AI 同时推荐照片或插画，从面板应用。',
   },
 };
 
@@ -223,7 +231,9 @@ function collectSettings() {
   keywordCount = Math.max(1, Math.min(50, keywordCount));
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
-  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply };
+  const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
+  const autoSelectFileType = document.getElementById('autoSelectFileType').checked;
+  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, autoSelectFileType };
 }
 
 async function onSave() {
@@ -247,6 +257,8 @@ async function onSave() {
     keywordCount: s.keywordCount,
     autoCheckAI: s.autoCheckAI,
     autoSaveAfterApply: s.autoSaveAfterApply,
+    autoSelectCategory: s.autoSelectCategory,
+    autoSelectFileType: s.autoSelectFileType,
   });
   setStatus(msg('optSaved'), 'ok');
 }
@@ -375,7 +387,7 @@ function initAutoSave() {
       });
     }
   });
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'autoSelectFileType'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -501,6 +513,8 @@ async function load() {
     'keywordCount',
     'autoCheckAI',
     'autoSaveAfterApply',
+    'autoSelectCategory',
+    'autoSelectFileType',
   ]);
   // Provider select + module pointer.
   const provider = stored.provider || DEFAULTS.provider;
@@ -516,6 +530,10 @@ async function load() {
   ac.checked = !!stored.autoCheckAI;
   const as = document.getElementById('autoSaveAfterApply');
   as.checked = !!stored.autoSaveAfterApply;
+  const asc = document.getElementById('autoSelectCategory');
+  asc.checked = stored.autoSelectCategory !== undefined ? !!stored.autoSelectCategory : true;
+  const asf = document.getElementById('autoSelectFileType');
+  asf.checked = stored.autoSelectFileType !== undefined ? !!stored.autoSelectFileType : true;
   // Provider-aware UI hints / defaults.
   updateProviderUI();
 }

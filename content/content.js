@@ -9,7 +9,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
+  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -59,6 +59,20 @@
             <button class="sm-btn" id="sm-copy-kw" data-i18n="copyKeywords"></button>
           </div>
         </div>
+        <div class="sm-field">
+          <label class="sm-label"><span data-i18n="categoryLabel"></span></label>
+          <div class="sm-pill" id="sm-category">—</div>
+          <div class="sm-row">
+            <button class="sm-btn" id="sm-apply-category" data-i18n="applyCategory"></button>
+          </div>
+        </div>
+        <div class="sm-field">
+          <label class="sm-label"><span data-i18n="fileTypeLabel"></span></label>
+          <div class="sm-pill" id="sm-filetype">—</div>
+          <div class="sm-row">
+            <button class="sm-btn" id="sm-apply-filetype" data-i18n="applyFileType"></button>
+          </div>
+        </div>
         <div class="sm-row sm-row-main">
           <button class="sm-btn sm-primary" id="sm-apply-all" data-i18n="applyAll"></button>
           <button class="sm-btn" id="sm-retry" data-i18n="retry"></button>
@@ -80,6 +94,8 @@
     panel.querySelector('#sm-generate').addEventListener('click', onGenerate);
     panel.querySelector('#sm-apply-title').addEventListener('click', () => onApply('title'));
     panel.querySelector('#sm-apply-kw').addEventListener('click', () => onApply('keywords'));
+    panel.querySelector('#sm-apply-category').addEventListener('click', () => onApply('category'));
+    panel.querySelector('#sm-apply-filetype').addEventListener('click', () => onApply('fileType'));
     panel.querySelector('#sm-apply-all').addEventListener('click', onApplyAll);
     panel.querySelector('#sm-copy-title').addEventListener('click', () => copyText(state.title, 'copied'));
     panel.querySelector('#sm-copy-kw').addEventListener('click', () =>
@@ -172,6 +188,8 @@
       KEYWORD_APPLY_NOT_VERIFIED: 'errKeywordVerify',
       KEYWORD_INPUT_NOT_FOUND: 'errKeywordVerify',
       TITLE_INPUT_NOT_FOUND: 'errTitleVerify',
+      SELECT_TRIGGER_NOT_FOUND: 'errSelect',
+      SELECT_OPTION_NOT_FOUND: 'errSelect',
       EXTENSION_CONTEXT_INVALIDATED: 'errContextInvalid',
     };
     let key;
@@ -219,9 +237,13 @@
   function resetResults() {
     state.title = '';
     state.keywords = [];
+    state.category = '';
+    state.fileType = '';
     panel.querySelector('#sm-title').value = '';
     panel.querySelector('#sm-keywords').value = '';
     panel.querySelector('#sm-kw-count').textContent = '';
+    panel.querySelector('#sm-category').textContent = '—';
+    panel.querySelector('#sm-filetype').textContent = '—';
     updateRegenButtons();
   }
 
@@ -239,12 +261,14 @@
         setError(resp.error);
         return;
       }
-      if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length)) {
+      if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category && !resp.fileType) {
         setError('EMPTY_RESPONSE');
         return;
       }
       state.title = resp.title || '';
       state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
+      state.category = resp.category || '';
+      state.fileType = resp.fileType || '';
       renderResults();
       setStatus('statusDone');
     } catch (err) {
@@ -353,6 +377,8 @@
     panel.querySelector('#sm-title').value = state.title;
     panel.querySelector('#sm-keywords').value = state.keywords.join('\n');
     panel.querySelector('#sm-kw-count').textContent = `${state.keywords.length} ${t('keywordCountNote')}`;
+    panel.querySelector('#sm-category').textContent = state.category || '—';
+    panel.querySelector('#sm-filetype').textContent = state.fileType || '—';
     updateRegenButtons();
   }
 
@@ -383,10 +409,25 @@
         }
         await Dom.replaceAdobeKeywords(state.keywords);
         toast('appliedKeywords');
+      } else if (which === 'category') {
+        if (!state.category) {
+          toast('noCategory');
+          return;
+        }
+        await Dom.setAdobeCategory(state.category);
+        toast('appliedCategory');
+      } else if (which === 'fileType') {
+        if (!state.fileType) {
+          toast('noFileType');
+          return;
+        }
+        await Dom.setAdobeFileType(state.fileType);
+        toast('appliedFileType');
       }
       // 单独应用时也触发 AI 勾选 + 自动保存（与 onApplyAll 行为一致）
-      if (await getAutoCheckAI()) checkAIDeclarationBoxes();
-      if (await getAutoSaveAfterApply()) clickSaveWorkButton();
+      const cfg = await getApplyConfig();
+      if (cfg.autoCheckAI) checkAIDeclarationBoxes();
+      if (cfg.autoSaveAfterApply) clickSaveWorkButton();
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       console.error('[StockMeta] apply failed:', which, code, err);
@@ -402,8 +443,15 @@
       }
       if (state.title) Dom.setAdobeTitle(state.title);
       if (state.keywords.length) await Dom.replaceAdobeKeywords(state.keywords);
-      if (await getAutoCheckAI()) checkAIDeclarationBoxes();
-      if (await getAutoSaveAfterApply()) clickSaveWorkButton();
+      const cfg = await getApplyConfig();
+      if (cfg.autoSelectCategory && state.category) {
+        await Dom.setAdobeCategory(state.category);
+      }
+      if (cfg.autoSelectFileType && state.fileType) {
+        await Dom.setAdobeFileType(state.fileType);
+      }
+      if (cfg.autoCheckAI) checkAIDeclarationBoxes();
+      if (cfg.autoSaveAfterApply) clickSaveWorkButton();
       toast('appliedAll');
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
@@ -412,28 +460,28 @@
     }
   }
 
-  // When enabled in settings, tick the two Adobe Stock AI declaration
-  // checkboxes after "Apply All". Silent no-op if elements are missing.
-  function getAutoCheckAI() {
+  // Read the four apply-related settings in one shot so Apply All can act on
+  // them consistently. Falls back to safe defaults if storage is unavailable.
+  function getApplyConfig() {
     return new Promise((resolve) => {
       try {
-        chrome.storage.local.get(['autoCheckAI'], (s) => resolve(!!s.autoCheckAI));
+        chrome.storage.local.get(
+          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'autoSelectFileType'],
+          (s) =>
+            resolve({
+              autoCheckAI: !!s.autoCheckAI,
+              autoSaveAfterApply: !!s.autoSaveAfterApply,
+              autoSelectCategory: s.autoSelectCategory !== undefined ? !!s.autoSelectCategory : true,
+              autoSelectFileType: s.autoSelectFileType !== undefined ? !!s.autoSelectFileType : true,
+            })
+        );
       } catch (_) {
-        resolve(false);
-      }
-    });
-  }
-
-  // When enabled in settings, click Adobe Stock's "Save work" button after
-  // "Apply All". Silent no-op if the button is missing. The button is matched
-  // by the act button class seen in devtools; if absent we fall back to a
-  // text match on visible buttons.
-  function getAutoSaveAfterApply() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get(['autoSaveAfterApply'], (s) => resolve(!!s.autoSaveAfterApply));
-      } catch (_) {
-        resolve(false);
+        resolve({
+          autoCheckAI: false,
+          autoSaveAfterApply: false,
+          autoSelectCategory: true,
+          autoSelectFileType: true,
+        });
       }
     });
   }

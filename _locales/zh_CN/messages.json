@@ -134,5 +134,21 @@
   "optSupportSwitchToWeChat": {
     "message": "国内用户？改用微信赞赏",
     "description": "Switch to WeChat link"
+  },
+  "optAutoSelectCategory": {
+    "message": "自动选择 Adobe 类别",
+    "description": "Auto-select category toggle"
+  },
+  "optAutoSelectCategoryDesc": {
+    "message": "生成时让 AI 同时推荐最合适的 Adobe Stock 类别，从面板应用。",
+    "description": "Auto-select category hint"
+  },
+  "optAutoSelectFileType": {
+    "message": "自动选择文件类型",
+    "description": "Auto-select file type toggle"
+  },
+  "optAutoSelectFileTypeDesc": {
+    "message": "生成时让 AI 同时推荐照片或插画，从面板应用。",
+    "description": "Auto-select file type hint"
   }
 }

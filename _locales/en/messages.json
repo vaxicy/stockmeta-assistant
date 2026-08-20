@@ -134,5 +134,21 @@
   "optSupportSwitchToWeChat": {
     "message": "Switch to WeChat reward",
     "description": "Switch to WeChat link"
+  },
+  "optAutoSelectCategory": {
+    "message": "Auto-select Adobe Category",
+    "description": "Auto-select category toggle"
+  },
+  "optAutoSelectCategoryDesc": {
+    "message": "When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.",
+    "description": "Auto-select category hint"
+  },
+  "optAutoSelectFileType": {
+    "message": "Auto-select File Type",
+    "description": "Auto-select file type toggle"
+  },
+  "optAutoSelectFileTypeDesc": {
+    "message": "When generating, let the AI also suggest Photos or Illustrations. Apply it from the panel.",
+    "description": "Auto-select file type hint"
   }
 }
