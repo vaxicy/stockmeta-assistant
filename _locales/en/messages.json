@@ -142,5 +142,17 @@
   "optAutoSelectCategoryDesc": {
     "message": "When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.",
     "description": "Auto-select category hint"
+  },
+  "optDefaultCategory": {
+    "message": "Default Category",
+    "description": "Default category label"
+  },
+  "optDefaultCategoryAuto": {
+    "message": "AI auto-detect",
+    "description": "AI auto-detect category option"
+  },
+  "optDefaultCategoryDesc": {
+    "message": "When a fixed category is chosen, it overrides the AI suggestion and is applied to the Adobe Stock form.",
+    "description": "Default category hint"
   }
 }

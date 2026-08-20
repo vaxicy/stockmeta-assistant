@@ -2,6 +2,8 @@
 // Settings page: AI provider, API key, model id, keyword count, language, test connection, save,
 // plus a provider-aware "how to connect" tutorial modal.
 
+import { ADOBE_CATEGORIES } from '../services/aiProvider.js';
+
 const DEFAULTS = {
   apiKey: '',
   provider: 'siliconflow',
@@ -74,6 +76,9 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
     optAutoSelectCategory: 'Auto-select Adobe Category',
     optAutoSelectCategoryDesc: 'When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.',
+    optDefaultCategory: 'Default Category',
+    optDefaultCategoryAuto: 'AI auto-detect',
+    optDefaultCategoryDesc: 'When a fixed category is chosen, it overrides the AI suggestion and is applied to the Adobe Stock form.',
   },
   zh: {
     optTitle: '设置',
@@ -120,6 +125,9 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: '国内用户？改用微信赞赏',
     optAutoSelectCategory: '自动选择 Adobe 类别',
     optAutoSelectCategoryDesc: '点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。',
+    optDefaultCategory: '默认类别',
+    optDefaultCategoryAuto: 'AI 自动识别',
+    optDefaultCategoryDesc: '选择固定类别后，将覆盖 AI 识别结果并应用到 Adobe Stock 表单。',
   },
 };
 
@@ -228,7 +236,8 @@ function collectSettings() {
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
   const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
-  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory };
+  const defaultCategory = document.getElementById('defaultCategory').value;
+  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, defaultCategory };
 }
 
 async function onSave() {
@@ -253,6 +262,7 @@ async function onSave() {
     autoCheckAI: s.autoCheckAI,
     autoSaveAfterApply: s.autoSaveAfterApply,
     autoSelectCategory: s.autoSelectCategory,
+    defaultCategory: s.defaultCategory,
   });
   setStatus(msg('optSaved'), 'ok');
 }
@@ -381,7 +391,7 @@ function initAutoSave() {
       });
     }
   });
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -525,6 +535,20 @@ async function load() {
   as.checked = !!stored.autoSaveAfterApply;
   const asc = document.getElementById('autoSelectCategory');
   asc.checked = stored.autoSelectCategory !== undefined ? !!stored.autoSelectCategory : true;
+  // Default category select: first option is "AI auto-detect", the rest are the
+  // fixed Adobe Stock categories imported from the shared constant.
+  const dcSel = document.getElementById('defaultCategory');
+  if (dcSel) {
+    if (dcSel.options.length <= 1) {
+      ADOBE_CATEGORIES.forEach((c) => {
+        const o = document.createElement('option');
+        o.value = c;
+        o.textContent = c;
+        dcSel.appendChild(o);
+      });
+    }
+    dcSel.value = stored.defaultCategory || 'auto';
+  }
   // Provider-aware UI hints / defaults.
   updateProviderUI();
 }

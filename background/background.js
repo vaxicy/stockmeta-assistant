@@ -39,7 +39,7 @@ setTimeout(() => {
   getConfigCached();
 }, 800);
 
-function buildPrompt(keywordCount, mode = 'all') {
+function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto') {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
   const parts = [
     'You are helping a contributor upload an asset to Adobe Stock.',
@@ -63,9 +63,18 @@ function buildPrompt(keywordCount, mode = 'all') {
     parts.push(
       `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
-    parts.push(
-      `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If the image does not clearly fit any specific category, or you are unsure, default to "Graphic Resources".`
-    );
+    // When the user fixed a default category in settings, skip the category
+    // instruction entirely — the client applies that fixed value instead,
+    // which also saves tokens on the model call.
+    if (defaultCategory && defaultCategory !== 'auto') {
+      parts.push(
+        `3. The category is fixed to "${defaultCategory}" by the user — do NOT output a "category" field.`
+      );
+    } else {
+      parts.push(
+        `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If the image does not clearly fit any specific category, or you are unsure, default to "Graphic Resources".`
+      );
+    }
   }
   parts.push('Rules:');
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');
@@ -104,13 +113,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? 'keywords'
             : 'all';
         console.log('[StockMeta] generateMetadata model:', cfg.model, 'mode:', mode);
+        const categoryOverride = (await chrome.storage.local.get('defaultCategory')).defaultCategory || 'auto';
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
           provider: cfg.provider,
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount, mode),
+          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride),
           timeoutMs: cfg.timeoutMs,
         });
         sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category });

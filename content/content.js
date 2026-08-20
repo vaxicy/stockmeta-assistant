@@ -390,11 +390,13 @@
         await Dom.replaceAdobeKeywords(state.keywords);
         toast('appliedKeywords');
       } else if (which === 'category') {
-        if (!state.category) {
+        const cfg = await getApplyConfig();
+        const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
+        if (!cat) {
           toast('noCategory');
           return;
         }
-        await Dom.setAdobeCategory(state.category);
+        await Dom.setAdobeCategory(cat);
         toast('appliedCategory');
       }
       // 单独应用时也触发 AI 勾选 + 自动保存（与 onApplyAll 行为一致）
@@ -417,8 +419,9 @@
       if (state.title) Dom.setAdobeTitle(state.title);
       if (state.keywords.length) await Dom.replaceAdobeKeywords(state.keywords);
       const cfg = await getApplyConfig();
-      if (cfg.autoSelectCategory && state.category) {
-        await Dom.setAdobeCategory(state.category);
+      if (cfg.autoSelectCategory) {
+        const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
+        if (cat) await Dom.setAdobeCategory(cat);
       }
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
@@ -436,12 +439,13 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory'],
+          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory'],
           (s) =>
             resolve({
               autoCheckAI: !!s.autoCheckAI,
               autoSaveAfterApply: !!s.autoSaveAfterApply,
               autoSelectCategory: s.autoSelectCategory !== undefined ? !!s.autoSelectCategory : true,
+              defaultCategory: s.defaultCategory || 'auto',
             })
         );
       } catch (_) {

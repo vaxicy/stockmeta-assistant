@@ -81,6 +81,14 @@
       <p class="opt-hint" data-i18n="optAutoSelectCategoryDesc">When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.</p>
     </section>
 
+    <section class="opt-field" id="defaultCategoryField">
+      <label for="defaultCategory" data-i18n="optDefaultCategory">Default Category</label>
+      <select id="defaultCategory">
+        <option value="auto" data-i18n="optDefaultCategoryAuto">AI auto-detect</option>
+      </select>
+      <p class="opt-hint" data-i18n="optDefaultCategoryDesc">When a fixed category is selected, it overrides the AI suggestion and is applied to the Adobe Stock form.</p>
+    </section>
+
     <div class="opt-actions">
       <button id="testBtn" class="opt-btn" data-i18n="optTest">Test Connection</button>
       <button id="saveBtn" class="opt-btn opt-primary" data-i18n="optSave">Save</button>

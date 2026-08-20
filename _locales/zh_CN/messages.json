@@ -142,5 +142,17 @@
   "optAutoSelectCategoryDesc": {
     "message": "点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。",
     "description": "Auto-select category hint"
+  },
+  "optDefaultCategory": {
+    "message": "默认类别",
+    "description": "Default category label"
+  },
+  "optDefaultCategoryAuto": {
+    "message": "AI 自动识别",
+    "description": "AI auto-detect category option"
+  },
+  "optDefaultCategoryDesc": {
+    "message": "选择固定类别后，将覆盖 AI 识别结果并应用到 Adobe Stock 表单。",
+    "description": "Default category hint"
   }
 }
