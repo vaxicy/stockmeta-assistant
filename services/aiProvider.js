@@ -42,7 +42,7 @@ export const ADOBE_CATEGORIES = [
 export const ADOBE_FILE_TYPES = ['Photos', 'Illustrations'];
 
 function normalizeToAdobeCategory(value) {
-  if (!value) return '';
+  if (!value) return 'Graphic Resources';
   const v = String(value).trim();
   const lower = v.toLowerCase();
   const exact = ADOBE_CATEGORIES.find((c) => c.toLowerCase() === lower);
@@ -52,7 +52,8 @@ function normalizeToAdobeCategory(value) {
     const cl = c.toLowerCase();
     if (cl.includes(lower) || lower.includes(cl)) return c;
   }
-  return '';
+  // Fallback: generic enough for any asset so the category field is never empty.
+  return 'Graphic Resources';
 }
 
 function normalizeToAdobeFileType(value) {

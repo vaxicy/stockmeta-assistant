@@ -64,7 +64,7 @@ function buildPrompt(keywordCount, mode = 'all') {
       `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
     parts.push(
-      `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}.`
+      `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If the image does not clearly fit any specific category, or you are unsure, default to "Graphic Resources".`
     );
     parts.push(`4. Pick the file type from this exact list: ${ADOBE_FILE_TYPES.join(', ')}.`);
   }

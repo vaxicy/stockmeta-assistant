@@ -140,7 +140,7 @@
     "description": "Auto-select category toggle"
   },
   "optAutoSelectCategoryDesc": {
-    "message": "生成时让 AI 同时推荐最合适的 Adobe Stock 类别，从面板应用。",
+    "message": "点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。",
     "description": "Auto-select category hint"
   },
   "optAutoSelectFileType": {
@@ -148,7 +148,7 @@
     "description": "Auto-select file type toggle"
   },
   "optAutoSelectFileTypeDesc": {
-    "message": "生成时让 AI 同时推荐照片或插画，从面板应用。",
+    "message": "点击面板上的“全部应用”时，自动应用 AI 推荐的文件类型（照片或插画）。",
     "description": "Auto-select file type hint"
   }
 }

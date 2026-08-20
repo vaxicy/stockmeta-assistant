@@ -140,7 +140,7 @@
     "description": "Auto-select category toggle"
   },
   "optAutoSelectCategoryDesc": {
-    "message": "When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.",
+    "message": "When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.",
     "description": "Auto-select category hint"
   },
   "optAutoSelectFileType": {
@@ -148,7 +148,7 @@
     "description": "Auto-select file type toggle"
   },
   "optAutoSelectFileTypeDesc": {
-    "message": "When generating, let the AI also suggest Photos or Illustrations. Apply it from the panel.",
+    "message": "When clicking Apply All on the panel, automatically apply the AI-suggested file type (Photos or Illustrations).",
     "description": "Auto-select file type hint"
   }
 }

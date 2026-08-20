@@ -73,9 +73,9 @@ const OPT_I18N = {
     optSupportSwitchToPayPal: 'Overseas? Use PayPal instead',
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
     optAutoSelectCategory: 'Auto-select Adobe Category',
-    optAutoSelectCategoryDesc: 'When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.',
+    optAutoSelectCategoryDesc: 'When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.',
     optAutoSelectFileType: 'Auto-select File Type',
-    optAutoSelectFileTypeDesc: 'When generating, let the AI also suggest Photos or Illustrations. Apply it from the panel.',
+    optAutoSelectFileTypeDesc: 'When clicking Apply All on the panel, automatically apply the AI-suggested file type (Photos or Illustrations).',
   },
   zh: {
     optTitle: '设置',
@@ -121,9 +121,9 @@ const OPT_I18N = {
     optSupportSwitchToPayPal: '海外用户？改用 PayPal',
     optSupportSwitchToWeChat: '国内用户？改用微信赞赏',
     optAutoSelectCategory: '自动选择 Adobe 类别',
-    optAutoSelectCategoryDesc: '生成时让 AI 同时推荐最合适的 Adobe Stock 类别，从面板应用。',
+    optAutoSelectCategoryDesc: '点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。',
     optAutoSelectFileType: '自动选择文件类型',
-    optAutoSelectFileTypeDesc: '生成时让 AI 同时推荐照片或插画，从面板应用。',
+    optAutoSelectFileTypeDesc: '点击面板上的“全部应用”时，自动应用 AI 推荐的文件类型（照片或插画）。',
   },
 };
 
