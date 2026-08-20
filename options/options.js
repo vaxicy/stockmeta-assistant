@@ -74,8 +74,6 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: 'Switch to WeChat reward',
     optAutoSelectCategory: 'Auto-select Adobe Category',
     optAutoSelectCategoryDesc: 'When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.',
-    optAutoSelectFileType: 'Auto-select File Type',
-    optAutoSelectFileTypeDesc: 'When clicking Apply All on the panel, automatically apply the AI-suggested file type (Photos or Illustrations).',
   },
   zh: {
     optTitle: '设置',
@@ -122,8 +120,6 @@ const OPT_I18N = {
     optSupportSwitchToWeChat: '国内用户？改用微信赞赏',
     optAutoSelectCategory: '自动选择 Adobe 类别',
     optAutoSelectCategoryDesc: '点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。',
-    optAutoSelectFileType: '自动选择文件类型',
-    optAutoSelectFileTypeDesc: '点击面板上的“全部应用”时，自动应用 AI 推荐的文件类型（照片或插画）。',
   },
 };
 
@@ -232,8 +228,7 @@ function collectSettings() {
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
   const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
-  const autoSelectFileType = document.getElementById('autoSelectFileType').checked;
-  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, autoSelectFileType };
+  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory };
 }
 
 async function onSave() {
@@ -258,7 +253,6 @@ async function onSave() {
     autoCheckAI: s.autoCheckAI,
     autoSaveAfterApply: s.autoSaveAfterApply,
     autoSelectCategory: s.autoSelectCategory,
-    autoSelectFileType: s.autoSelectFileType,
   });
   setStatus(msg('optSaved'), 'ok');
 }
@@ -387,7 +381,7 @@ function initAutoSave() {
       });
     }
   });
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'autoSelectFileType'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -514,7 +508,6 @@ async function load() {
     'autoCheckAI',
     'autoSaveAfterApply',
     'autoSelectCategory',
-    'autoSelectFileType',
   ]);
   // Provider select + module pointer.
   const provider = stored.provider || DEFAULTS.provider;
@@ -532,8 +525,6 @@ async function load() {
   as.checked = !!stored.autoSaveAfterApply;
   const asc = document.getElementById('autoSelectCategory');
   asc.checked = stored.autoSelectCategory !== undefined ? !!stored.autoSelectCategory : true;
-  const asf = document.getElementById('autoSelectFileType');
-  asf.checked = stored.autoSelectFileType !== undefined ? !!stored.autoSelectFileType : true;
   // Provider-aware UI hints / defaults.
   updateProviderUI();
 }

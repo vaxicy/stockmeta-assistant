@@ -142,13 +142,5 @@
   "optAutoSelectCategoryDesc": {
     "message": "When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.",
     "description": "Auto-select category hint"
-  },
-  "optAutoSelectFileType": {
-    "message": "Auto-select File Type",
-    "description": "Auto-select file type toggle"
-  },
-  "optAutoSelectFileTypeDesc": {
-    "message": "When clicking Apply All on the panel, automatically apply the AI-suggested file type (Photos or Illustrations).",
-    "description": "Auto-select file type hint"
   }
 }

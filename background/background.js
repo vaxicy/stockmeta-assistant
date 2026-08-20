@@ -66,20 +66,18 @@ function buildPrompt(keywordCount, mode = 'all') {
     parts.push(
       `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If the image does not clearly fit any specific category, or you are unsure, default to "Graphic Resources".`
     );
-    parts.push(`4. Pick the file type from this exact list: ${ADOBE_FILE_TYPES.join(', ')}.`);
   }
   parts.push('Rules:');
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');
   parts.push('- All output must be in English. Do not include Chinese or any non-English words.');
   parts.push('- The category must be one of the listed categories, verbatim.');
-  parts.push('- The file type must be either "Photos" or "Illustrations", verbatim.');
   parts.push('- Do NOT output Markdown. Return ONLY a JSON object.');
   if (mode === 'title') {
     parts.push('- JSON format: {"title":"..."}');
   } else if (mode === 'keywords') {
     parts.push('- JSON format: {"keywords":["...","..."]}');
   } else {
-    parts.push('- JSON format: {"title":"...","keywords":["...","..."],"category":"...","fileType":"..."}');
+    parts.push('- JSON format: {"title":"...","keywords":["...","..."],"category":"..."}');
   }
   return parts.join('\n');
 }
@@ -115,7 +113,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           prompt: buildPrompt(cfg.keywordCount, mode),
           timeoutMs: cfg.timeoutMs,
         });
-        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category, fileType: result.fileType });
+        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);
         sendResponse({ ok: false, error: err && err.message ? err.message : 'UNKNOWN' });

@@ -305,23 +305,15 @@
     });
   }
 
-  // --- Adobe category / file type pickers (React Spectrum selects) ---
-  // The Category and File type fields on the Adobe content-tagger are React Spectrum
-  // dropdowns. We open the trigger button, wait for the listbox, then click the
+  // --- Adobe category picker (React Spectrum select) ---
+  // The Category field on the Adobe content-tagger is a React Spectrum
+  // dropdown. We open the trigger button, wait for the listbox, then click the
   // option whose label matches the desired value.
   const CATEGORY_SELECTORS = [
     '[data-t*="content-tagger-category"]',
     '[data-testid*="category" i]',
     '[aria-haspopup="listbox"][aria-label*="ategor" i]',
     '[aria-haspopup="listbox"][id*="category" i]',
-  ];
-  const FILETYPE_SELECTORS = [
-    '[data-t*="content-tagger-file-type"]',
-    '[data-t*="file-type"]',
-    '[data-testid*="file-type" i]',
-    '[data-testid*="filetype" i]',
-    '[aria-haspopup="listbox"][aria-label*="file type" i]',
-    '[aria-haspopup="listbox"][id*="filetype" i]',
   ];
 
   function findFirst(selectors) {
@@ -376,10 +368,6 @@
     return pickAdobeDropdown(CATEGORY_SELECTORS, value);
   }
 
-  function setAdobeFileType(value) {
-    return pickAdobeDropdown(FILETYPE_SELECTORS, value);
-  }
-
   window.StockMetaDom = {
     findTitleInput,
     findKeywordInput,
@@ -387,7 +375,6 @@
     addAdobeKeywords,
     replaceAdobeKeywords,
     setAdobeCategory,
-    setAdobeFileType,
     setNativeValue,
     fireInputEvents,
   };

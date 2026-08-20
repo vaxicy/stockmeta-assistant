@@ -56,14 +56,6 @@ function normalizeToAdobeCategory(value) {
   return 'Graphic Resources';
 }
 
-function normalizeToAdobeFileType(value) {
-  if (!value) return '';
-  const lower = String(value).trim().toLowerCase();
-  if (lower === 'photos' || lower === 'photo') return 'Photos';
-  if (lower === 'illustrations' || lower === 'illustration') return 'Illustrations';
-  return '';
-}
-
 // Normalize a user-supplied base URL: drop trailing slash and any accidentally
 // pasted endpoint suffix (e.g. /chat/completions, /v1/chat/completions) so the
 // base always ends at the version prefix. Keeps the real request path clean.
@@ -97,7 +89,7 @@ export function getDefaultModel(provider) {
  * @param {string} opts.imageBase64  data URL, e.g. "data:image/jpeg;base64,...."
  * @param {string} opts.prompt
  * @param {number} opts.timeoutMs
- * @returns {Promise<{title:string, keywords:string[], category:string, fileType:string}>}
+ * @returns {Promise<{title:string, keywords:string[], category:string}>}
  */
 export async function generateMetadata({ apiKey, provider, baseUrl, model, imageBase64, prompt, timeoutMs = 60000 }) {
   if (!apiKey) {
@@ -184,7 +176,7 @@ export async function generateMetadata({ apiKey, provider, baseUrl, model, image
 
   console.log('[StockMeta] Raw model response length:', content.length);
   const result = parseModelJson(content);
-  if (!result.title && !result.keywords.length && !result.category && !result.fileType) {
+  if (!result.title && !result.keywords.length && !result.category) {
     throw new Error('EMPTY_RESPONSE');
   }
   return result;
@@ -226,6 +218,5 @@ export function parseModelJson(content) {
     keywords = [...new Set([...keywords, ...titleWords])];
   }
   const category = normalizeToAdobeCategory(parsed.category);
-  const fileType = normalizeToAdobeFileType(parsed.fileType);
-  return { title, keywords, category, fileType };
+  return { title, keywords, category };
 }

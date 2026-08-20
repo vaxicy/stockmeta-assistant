@@ -9,7 +9,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
+  let state = { title: '', keywords: [], category: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -224,7 +224,6 @@
     state.title = '';
     state.keywords = [];
     state.category = '';
-    state.fileType = '';
     panel.querySelector('#sm-title').value = '';
     panel.querySelector('#sm-keywords').value = '';
     panel.querySelector('#sm-kw-count').textContent = '';
@@ -245,14 +244,13 @@
         setError(resp.error);
         return;
       }
-      if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category && !resp.fileType) {
+      if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category) {
         setError('EMPTY_RESPONSE');
         return;
       }
       state.title = resp.title || '';
       state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
       state.category = resp.category || '';
-      state.fileType = resp.fileType || '';
       renderResults();
       setStatus('statusDone');
     } catch (err) {
@@ -398,13 +396,6 @@
         }
         await Dom.setAdobeCategory(state.category);
         toast('appliedCategory');
-      } else if (which === 'fileType') {
-        if (!state.fileType) {
-          toast('noFileType');
-          return;
-        }
-        await Dom.setAdobeFileType(state.fileType);
-        toast('appliedFileType');
       }
       // 单独应用时也触发 AI 勾选 + 自动保存（与 onApplyAll 行为一致）
       const cfg = await getApplyConfig();
@@ -429,9 +420,6 @@
       if (cfg.autoSelectCategory && state.category) {
         await Dom.setAdobeCategory(state.category);
       }
-      if (cfg.autoSelectFileType && state.fileType) {
-        await Dom.setAdobeFileType(state.fileType);
-      }
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
       toast('appliedAll');
@@ -448,13 +436,12 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'autoSelectFileType'],
+          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory'],
           (s) =>
             resolve({
               autoCheckAI: !!s.autoCheckAI,
               autoSaveAfterApply: !!s.autoSaveAfterApply,
               autoSelectCategory: s.autoSelectCategory !== undefined ? !!s.autoSelectCategory : true,
-              autoSelectFileType: s.autoSelectFileType !== undefined ? !!s.autoSelectFileType : true,
             })
         );
       } catch (_) {
@@ -462,7 +449,6 @@
           autoCheckAI: false,
           autoSaveAfterApply: false,
           autoSelectCategory: true,
-          autoSelectFileType: true,
         });
       }
     });
