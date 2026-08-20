@@ -37,7 +37,9 @@
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
-            <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle"><span class="sm-refresh-icon">↻</span></button>
+            <span class="sm-label-right">
+              <button class="sm-btn sm-refresh" id="sm-regen-title" data-i18n-title="regenerateTitle"><span class="sm-refresh-icon">↻</span></button>
+            </span>
           </label>
           <textarea id="sm-title" class="sm-textarea" rows="2" readonly></textarea>
           <div class="sm-row">
@@ -57,20 +59,6 @@
           <div class="sm-row">
             <button class="sm-btn" id="sm-apply-kw" data-i18n="applyKeywords"></button>
             <button class="sm-btn" id="sm-copy-kw" data-i18n="copyKeywords"></button>
-          </div>
-        </div>
-        <div class="sm-field">
-          <label class="sm-label"><span data-i18n="categoryLabel"></span></label>
-          <div class="sm-pill" id="sm-category">—</div>
-          <div class="sm-row">
-            <button class="sm-btn" id="sm-apply-category" data-i18n="applyCategory"></button>
-          </div>
-        </div>
-        <div class="sm-field">
-          <label class="sm-label"><span data-i18n="fileTypeLabel"></span></label>
-          <div class="sm-pill" id="sm-filetype">—</div>
-          <div class="sm-row">
-            <button class="sm-btn" id="sm-apply-filetype" data-i18n="applyFileType"></button>
           </div>
         </div>
         <div class="sm-row sm-row-main">
@@ -94,8 +82,6 @@
     panel.querySelector('#sm-generate').addEventListener('click', onGenerate);
     panel.querySelector('#sm-apply-title').addEventListener('click', () => onApply('title'));
     panel.querySelector('#sm-apply-kw').addEventListener('click', () => onApply('keywords'));
-    panel.querySelector('#sm-apply-category').addEventListener('click', () => onApply('category'));
-    panel.querySelector('#sm-apply-filetype').addEventListener('click', () => onApply('fileType'));
     panel.querySelector('#sm-apply-all').addEventListener('click', onApplyAll);
     panel.querySelector('#sm-copy-title').addEventListener('click', () => copyText(state.title, 'copied'));
     panel.querySelector('#sm-copy-kw').addEventListener('click', () =>
@@ -242,8 +228,6 @@
     panel.querySelector('#sm-title').value = '';
     panel.querySelector('#sm-keywords').value = '';
     panel.querySelector('#sm-kw-count').textContent = '';
-    panel.querySelector('#sm-category').textContent = '—';
-    panel.querySelector('#sm-filetype').textContent = '—';
     updateRegenButtons();
   }
 
@@ -377,8 +361,6 @@
     panel.querySelector('#sm-title').value = state.title;
     panel.querySelector('#sm-keywords').value = state.keywords.join('\n');
     panel.querySelector('#sm-kw-count').textContent = `${state.keywords.length} ${t('keywordCountNote')}`;
-    panel.querySelector('#sm-category').textContent = state.category || '—';
-    panel.querySelector('#sm-filetype').textContent = state.fileType || '—';
     updateRegenButtons();
   }
 

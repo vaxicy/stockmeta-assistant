@@ -1,6 +1,6 @@
 // background/background.js  (MV3 service worker, ES module)
 import { getConfig } from '../services/config.js';
-import { generateMetadata, getEndpoint } from '../services/aiProvider.js';
+import { generateMetadata, getEndpoint, ADOBE_CATEGORIES, ADOBE_FILE_TYPES } from '../services/aiProvider.js';
 
 // In-memory config cache. The SW re-reads storage only when the cache is
 // empty or invalidated, so a config change made in the options page is picked
@@ -64,9 +64,9 @@ function buildPrompt(keywordCount, mode = 'all') {
       `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
     parts.push(
-      '3. Pick the single best Adobe Stock category for this image from this exact list: Animals, Buildings and Architecture, Business, Drinks, The Environment, States of Mind, Food, Graphic Resources, Hobbies and Leisure, Industry, Landscapes, Lifestyle, People, Plants and Flowers, Culture and Religion, Science, Social Issues, Sports, Technology, Transport, Travel.'
+      `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}.`
     );
-    parts.push('4. Pick the file type from this exact list: Photos, Illustrations.');
+    parts.push(`4. Pick the file type from this exact list: ${ADOBE_FILE_TYPES.join(', ')}.`);
   }
   parts.push('Rules:');
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');

@@ -14,6 +14,55 @@ function isEnglishKeyword(k) {
   return k && typeof k === 'string' && !NON_ENGLISH_RE.test(k);
 }
 
+// Adobe Stock content-tagger category list (must match the live dropdown exactly).
+export const ADOBE_CATEGORIES = [
+  'Animals',
+  'Buildings and Architecture',
+  'Business',
+  'Drinks',
+  'The Environment',
+  'States of Mind',
+  'Food',
+  'Graphic Resources',
+  'Hobbies and Leisure',
+  'Industry',
+  'Landscapes',
+  'Lifestyle',
+  'People',
+  'Plants and Flowers',
+  'Culture and Religion',
+  'Science',
+  'Social Issues',
+  'Sports',
+  'Technology',
+  'Transport',
+  'Travel',
+];
+
+export const ADOBE_FILE_TYPES = ['Photos', 'Illustrations'];
+
+function normalizeToAdobeCategory(value) {
+  if (!value) return '';
+  const v = String(value).trim();
+  const lower = v.toLowerCase();
+  const exact = ADOBE_CATEGORIES.find((c) => c.toLowerCase() === lower);
+  if (exact) return exact;
+  // Tolerate small variations (e.g. "Graphics" -> "Graphic Resources").
+  for (const c of ADOBE_CATEGORIES) {
+    const cl = c.toLowerCase();
+    if (cl.includes(lower) || lower.includes(cl)) return c;
+  }
+  return '';
+}
+
+function normalizeToAdobeFileType(value) {
+  if (!value) return '';
+  const lower = String(value).trim().toLowerCase();
+  if (lower === 'photos' || lower === 'photo') return 'Photos';
+  if (lower === 'illustrations' || lower === 'illustration') return 'Illustrations';
+  return '';
+}
+
 // Normalize a user-supplied base URL: drop trailing slash and any accidentally
 // pasted endpoint suffix (e.g. /chat/completions, /v1/chat/completions) so the
 // base always ends at the version prefix. Keeps the real request path clean.
@@ -175,7 +224,7 @@ export function parseModelJson(content) {
       .filter((w) => w.length > 2 && !/\d/.test(w));
     keywords = [...new Set([...keywords, ...titleWords])];
   }
-  const category = typeof parsed.category === 'string' ? parsed.category.trim() : '';
-  const fileType = typeof parsed.fileType === 'string' ? parsed.fileType.trim() : '';
+  const category = normalizeToAdobeCategory(parsed.category);
+  const fileType = normalizeToAdobeFileType(parsed.fileType);
   return { title, keywords, category, fileType };
 }

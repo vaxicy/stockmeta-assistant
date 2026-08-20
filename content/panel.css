@@ -139,8 +139,6 @@
   word-break: break-word;
 }
 
-}
-
 /* Per-field regenerate (refresh) icon button */
 .sm-btn.sm-refresh {
   flex: 0 0 auto;
