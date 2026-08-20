@@ -2,7 +2,33 @@
 // Settings page: AI provider, API key, model id, keyword count, language, test connection, save,
 // plus a provider-aware "how to connect" tutorial modal.
 
-import { ADOBE_CATEGORIES } from '../services/aiProvider.js';
+// NOTE: options.html loads this file as a classic script, so we cannot use ES
+// module imports here. This list is duplicated from services/aiProvider.js to
+// avoid adding a module build step just for the settings page. Keep the two
+// copies in sync.
+const ADOBE_CATEGORIES = [
+  'Animals',
+  'Buildings and Architecture',
+  'Business',
+  'Drinks',
+  'The Environment',
+  'States of Mind',
+  'Food',
+  'Graphic Resources',
+  'Hobbies and Leisure',
+  'Industry',
+  'Landscapes',
+  'Lifestyle',
+  'People',
+  'Plants and Flowers',
+  'Culture and Religion',
+  'Science',
+  'Social Issues',
+  'Sports',
+  'Technology',
+  'Transport',
+  'Travel',
+];
 
 const DEFAULTS = {
   apiKey: '',
