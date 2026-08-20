@@ -360,7 +360,7 @@ h1 {
   align-items: center;
   gap: 12px;
 }
-.opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; }
+.opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; white-space: nowrap; flex-shrink: 0; }
 .opt-lang-field-label-spacer { display: none; }
 
 /* tutorial link */
