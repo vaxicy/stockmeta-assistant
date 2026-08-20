@@ -11,20 +11,40 @@
 
     <section class="opt-field opt-lang-field">
       <label for="langSelect" data-i18n="optLang">Language</label>
-      <select id="langSelect">
-        <option value="auto" data-i18n="optLangAuto">Follow browser</option>
-        <option value="en">English</option>
-        <option value="zh">简体中文</option>
-      </select>
+      <div class="opt-select" data-target="langSelect">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="langSelect" class="opt-native-select">
+          <option value="auto" data-i18n="optLangAuto">Follow browser</option>
+          <option value="en">English</option>
+          <option value="zh">简体中文</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
     </section>
 
     <section class="opt-field">
       <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
-      <select id="providerSelect">
-        <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
-        <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
-        <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
-      </select>
+      <div class="opt-select" data-target="providerSelect">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="providerSelect" class="opt-native-select">
+          <option value="siliconflow" data-i18n="optProviderSiliconFlow">SiliconFlow</option>
+          <option value="openai" data-i18n="optProviderOpenAI">OpenAI</option>
+          <option value="custom" data-i18n="optProviderCustom">Custom (OpenAI-compatible)</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
     </section>
 
     <section class="opt-field" id="baseUrlField">
@@ -83,9 +103,19 @@
 
     <section class="opt-field" id="defaultCategoryField">
       <label for="defaultCategory" data-i18n="optDefaultCategory">Default Category</label>
-      <select id="defaultCategory">
-        <option value="auto" data-i18n="optDefaultCategoryAuto">AI auto-detect</option>
-      </select>
+      <div class="opt-select" data-target="defaultCategory">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="defaultCategory" class="opt-native-select">
+          <option value="auto" data-i18n="optDefaultCategoryAuto">AI auto-detect</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
       <p class="opt-hint" data-i18n="optDefaultCategoryDesc">When a fixed category is selected, it overrides the AI suggestion and is applied to the Adobe Stock form.</p>
     </section>
 

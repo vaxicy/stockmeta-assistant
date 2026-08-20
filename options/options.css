@@ -1,17 +1,94 @@
 /* options/options.css */
 * { box-sizing: border-box; }
 
-/* 完全隐藏滚动条，但保留滚动能力（WebKit） */
+/* 自定义细滚动条（设置页主体 + 弹窗） */
 body::-webkit-scrollbar,
 .opt-modal::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
+  width: 8px;
+  height: 8px;
 }
-/* Firefox 兜底 */
+body::-webkit-scrollbar-button,
+.opt-modal::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+body::-webkit-scrollbar-track,
+.opt-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+body::-webkit-scrollbar-thumb,
+.opt-modal::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+body::-webkit-scrollbar-thumb:hover,
+.opt-modal::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  background-clip: content-box;
+}
+/* Firefox 兜底：细滚动条 */
 body,
 .opt-modal {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* 自定义下拉浮层：完全隐藏原生滚动条，改用 JS 自定义滚动条 */
+.opt-select-scroll {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  max-height: 260px;
+  display: none;
+}
+.opt-select.is-open .opt-select-scroll {
+  display: block;
+}
+.opt-select-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.opt-select-list::-webkit-scrollbar-button,
+.opt-select-list::-webkit-scrollbar-track,
+.opt-select-list::-webkit-scrollbar-thumb,
+.opt-select-list::-webkit-scrollbar-corner {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+/* JS 自定义滚动条：轨道 + 滑块 */
+.opt-scrollbar-track {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  bottom: 4px;
+  width: 6px;
+  border-radius: 999px;
+  background: transparent;
+  pointer-events: none;
+}
+.opt-scrollbar-thumb {
+  position: absolute;
+  left: 0;
+  width: 6px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.opt-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 body {
@@ -169,43 +246,122 @@ h1 {
   cursor: pointer;
 }
 
-/* provider selector */
-#providerSelect,
-.opt-lang-field select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding: 8px 32px 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 14px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
-  cursor: pointer;
-  color: #1f2430;
+/* custom dropdown */
+.opt-select {
+  position: relative;
+  display: inline-block;
+  width: 100%;
 }
 
-#providerSelect:hover,
-.opt-lang-field select:hover {
+/* 隐藏原生 select，但保留其 value 供 JS 读写 */
+.opt-native-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opt-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 36px 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #1f2430;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.2;
+  font-family: inherit;
+}
+
+.opt-select-trigger:hover {
   border-color: #94a3b8;
 }
 
-#providerSelect:focus,
-.opt-lang-field select:focus {
+.opt-select.is-open .opt-select-trigger,
+.opt-select-trigger:focus-visible {
   outline: none;
   border-color: #1a73e8;
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
-/* language selector */
+.opt-select-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-select-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 10px;
+  height: 6px;
+  margin-top: -3px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  transition: transform 0.18s ease;
+  pointer-events: none;
+}
+
+.opt-select.is-open .opt-select-arrow {
+  transform: rotate(180deg);
+}
+
+.opt-select-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 252px;
+  overflow-y: auto;
+  /* 彻底隐藏原生滚动条（含上下箭头按钮），兼容各 Chrome 版本 */
+  scrollbar-width: none;
+}
+
+.opt-select-list li {
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2430;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opt-select-list li:hover,
+.opt-select-list li.is-active {
+  background: #eef2f7;
+}
+
+.opt-select-list li.is-selected {
+  background: #1a73e8;
+  color: #fff;
+}
+
+.opt-select-list li.is-selected:hover {
+  background: #1666c9;
+}
+
+/* language selector：与 label 同行 */
 .opt-lang-field {
   flex-direction: row;
   align-items: center;
   gap: 12px;
 }
 .opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; }
-.opt-lang-field select {
-  flex: 0 0 auto;
-}
+.opt-lang-field-label-spacer { display: none; }
 
 /* tutorial link */
 .opt-tutorial-line {

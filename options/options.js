@@ -380,6 +380,216 @@ function updateProviderUI() {
   updateTutorialLink();
 }
 
+// ---- Custom CSS dropdown (replaces native <select> rendering) ----
+// Each .opt-select wraps a hidden native <select>. We build a custom listbox
+// from the native options, keep the native select as the source of truth
+// (so existing load/save/change logic stays intact), and sync value both ways.
+
+// Lightweight JS custom scrollbar for the dropdown list (no native scrollbar,
+// no third-party lib). Attaches to the .opt-select-scroll wrapper which holds
+// the real scrolling .opt-select-list and a .opt-scrollbar-track sibling.
+function initCustomScrollbar(wrap) {
+  const view = wrap.querySelector('.opt-select-list');
+  const track = wrap.querySelector('.opt-scrollbar-track');
+  const thumb = wrap.querySelector('.opt-scrollbar-thumb');
+  if (!view || !track || !thumb) return;
+
+  let dragOffset = 0;
+  let dragging = false;
+
+  function scrollable() {
+    return view.scrollHeight > view.clientHeight + 1;
+  }
+
+  function update() {
+    if (!scrollable()) {
+      track.style.display = 'none';
+      thumb.style.height = '0px';
+      thumb.style.transform = 'translateY(0px)';
+      return;
+    }
+    track.style.display = 'block';
+    const trackH = track.clientHeight;
+    const thumbH = Math.max(30, Math.round(view.clientHeight * (view.clientHeight / view.scrollHeight)));
+    const maxScroll = view.scrollHeight - view.clientHeight;
+    const maxThumb = trackH - thumbH;
+    const ratio = maxScroll > 0 ? view.scrollTop / maxScroll : 0;
+    thumb.style.height = thumbH + 'px';
+    thumb.style.transform = 'translateY(' + (ratio * maxThumb) + 'px)';
+  }
+
+  view.addEventListener('scroll', update);
+
+  thumb.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragging = true;
+    const rect = thumb.getBoundingClientRect();
+    dragOffset = e.clientY - rect.top;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const trackRect = track.getBoundingClientRect();
+    const thumbH = thumb.offsetHeight;
+    let y = e.clientY - trackRect.top - dragOffset;
+    y = Math.max(0, Math.min(y, trackRect.height - thumbH));
+    const ratio = y / (trackRect.height - thumbH);
+    const maxScroll = view.scrollHeight - view.clientHeight;
+    view.scrollTop = ratio * maxScroll;
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+  });
+
+  // Click on track (above/below thumb) jumps by a page.
+  track.addEventListener('mousedown', (e) => {
+    if (e.target === thumb) return;
+    const trackRect = track.getBoundingClientRect();
+    const thumbH = thumb.offsetHeight;
+    const clickY = e.clientY - trackRect.top;
+    const curTop = parseFloat(thumb.style.transform.replace(/[^0-9.\-]/g, '')) || 0;
+    const delta = clickY < curTop ? -thumbH : thumbH;
+    let y = Math.max(0, Math.min(curTop + delta, trackRect.height - thumbH));
+    const ratio = y / (trackRect.height - thumbH);
+    const maxScroll = view.scrollHeight - view.clientHeight;
+    view.scrollTop = ratio * maxScroll;
+  });
+
+  window.addEventListener('resize', update);
+
+  // Store updater so rebuildList can refresh it.
+  wrap._optScrollUpdate = update;
+  update();
+}
+
+function initCustomSelects() {
+  document.querySelectorAll('.opt-select').forEach((wrap) => {
+    const native = wrap.querySelector('.opt-native-select');
+    const trigger = wrap.querySelector('.opt-select-trigger');
+    const textEl = wrap.querySelector('.opt-select-text');
+    const scrollWrap = wrap.querySelector('.opt-select-scroll');
+    const list = wrap.querySelector('.opt-select-list');
+    if (!native || !trigger || !list) return;
+
+    function buildList() {
+      list.innerHTML = '';
+      Array.from(native.options).forEach((opt) => {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.dataset.value = opt.value;
+        li.textContent = opt.textContent;
+        li.id = 'opt-item-' + native.id + '-' + opt.value;
+        if (opt.value === native.value) {
+          li.classList.add('is-selected');
+        }
+        li.addEventListener('click', () => {
+          selectValue(opt.value);
+          closeList();
+        });
+        list.appendChild(li);
+      });
+      syncText();
+      if (wrap._optScrollUpdate) wrap._optScrollUpdate();
+    }
+
+    function syncText() {
+      const sel = native.options[native.selectedIndex];
+      textEl.textContent = sel ? sel.textContent : '';
+    }
+
+    function selectValue(value) {
+      native.value = value;
+      syncText();
+      Array.from(list.children).forEach((li) => {
+        li.classList.toggle('is-selected', li.dataset.value === value);
+      });
+      // Native change fires so existing handlers (lang redirect, provider slot) run.
+      native.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function openList() {
+      wrap.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      // Defer so layout is ready before measuring scroll metrics.
+      requestAnimationFrame(() => {
+        const sel = list.querySelector('.is-selected');
+        if (sel) sel.scrollIntoView({ block: 'nearest' });
+        initCustomScrollbar(wrap);
+      });
+    }
+
+    function closeList() {
+      wrap.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    // Rebuild when native options change (e.g. default category dynamic fill).
+    const observer = new MutationObserver(() => {
+      buildList();
+    });
+    observer.observe(native, { childList: true });
+
+    // Keep trigger text in sync whenever the native value changes externally
+    // (load restore, provider switch, language select redirect sets value).
+    native.addEventListener('change', syncText);
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (wrap.classList.contains('is-open')) {
+        closeList();
+      } else {
+        // Close any other open dropdown first.
+        document.querySelectorAll('.opt-select.is-open').forEach((w) => {
+          if (w !== wrap) {
+            w.classList.remove('is-open');
+            const t = w.querySelector('.opt-select-trigger');
+            if (t) t.setAttribute('aria-expanded', 'false');
+          }
+        });
+        buildList();
+        openList();
+      }
+    });
+
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!wrap.classList.contains('is-open')) {
+          buildList();
+          openList();
+        }
+      } else if (e.key === 'Escape') {
+        closeList();
+      }
+    });
+
+    // Close when clicking elsewhere.
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target)) closeList();
+    });
+  });
+}
+
+// Re-sync the custom trigger text + selected item from the native select
+// value. Call after load() or after the default category list is rebuilt.
+function refreshCustomSelects() {
+  document.querySelectorAll('.opt-select').forEach((wrap) => {
+    const native = wrap.querySelector('.opt-native-select');
+    const textEl = wrap.querySelector('.opt-select-text');
+    const list = wrap.querySelector('.opt-select-list');
+    if (!native || !textEl) return;
+    const sel = native.options[native.selectedIndex];
+    textEl.textContent = sel ? sel.textContent : '';
+    if (list) {
+      Array.from(list.children).forEach((li) => {
+        li.classList.toggle('is-selected', li.dataset.value === native.value);
+      });
+    }
+  });
+}
+
 async function initProviderSelect() {
   const sel = document.getElementById('providerSelect');
   if (!sel) return;
@@ -577,6 +787,8 @@ async function load() {
   }
   // Provider-aware UI hints / defaults.
   updateProviderUI();
+  // Sync custom dropdown displays with the restored native select values.
+  refreshCustomSelects();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -584,6 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
   load();
   initLangSelect();
   initProviderSelect();
+  initCustomSelects();
   initTutorial();
   initSupport();
   initApiKeyToggle();
