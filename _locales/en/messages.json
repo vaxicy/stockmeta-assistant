@@ -140,8 +140,12 @@
     "description": "Auto-select category toggle"
   },
   "optAutoSelectCategoryDesc": {
-    "message": "When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category.",
+    "message": "When clicking Apply All on the panel, automatically apply the AI-suggested Adobe Stock category. If Adobe has already recognized a category for the asset, it is kept and not overwritten.",
     "description": "Auto-select category hint"
+  },
+  "categoryKept": {
+    "message": "Adobe category already set, kept as is",
+    "description": "Status shown when Adobe's auto-recognized category is preserved"
   },
   "optDefaultCategory": {
     "message": "Default Category",

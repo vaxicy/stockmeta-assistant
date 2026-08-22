@@ -368,6 +368,24 @@
     return pickAdobeDropdown(CATEGORY_SELECTORS, value);
   }
 
+  // Reads the currently selected Adobe category label from the React Spectrum
+  // trigger button. Returns '' when the field is empty / unselected (meaning
+  // Adobe did not auto-recognize a category for this asset).
+  function getAdobeCategory() {
+    const trigger = findDropdownTrigger(CATEGORY_SELECTORS);
+    if (!trigger) return '';
+    // The trigger may itself be a button, or contain one.
+    const btn = trigger.tagName === 'BUTTON' ? trigger : trigger.querySelector('button') || trigger;
+    if (!btn) return '';
+    // React Spectrum renders the selected value as the trigger's text content.
+    // A placeholder (e.g. "Select a category") should be treated as empty.
+    const raw = (btn.textContent || '').trim();
+    // Common placeholder patterns that mean "not selected".
+    const looksLikePlaceholder = /select\s*a\s*categor|choose\s*a\s*categor|categories?$/i.test(raw);
+    if (!raw || looksLikePlaceholder) return '';
+    return raw;
+  }
+
   window.StockMetaDom = {
     findTitleInput,
     findKeywordInput,
@@ -375,6 +393,7 @@
     addAdobeKeywords,
     replaceAdobeKeywords,
     setAdobeCategory,
+    getAdobeCategory,
     setNativeValue,
     fireInputEvents,
   };

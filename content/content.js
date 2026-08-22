@@ -421,7 +421,18 @@
       const cfg = await getApplyConfig();
       if (cfg.autoSelectCategory) {
         const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
-        if (cat) await Dom.setAdobeCategory(cat);
+        if (cat) {
+          // Only fill the category when Adobe itself did not already recognize
+          // one (e.g. it auto-detected "Science"). This avoids overwriting a
+          // system-identified category while still filling blank ones.
+          const existing = Dom.getAdobeCategory();
+          if (existing) {
+            console.log('[StockMeta] Adobe already categorized as "' + existing + '", keeping it.');
+            toast('categoryKept');
+          } else {
+            await Dom.setAdobeCategory(cat);
+          }
+        }
       }
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();

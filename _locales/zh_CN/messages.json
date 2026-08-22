@@ -140,8 +140,12 @@
     "description": "Auto-select category toggle"
   },
   "optAutoSelectCategoryDesc": {
-    "message": "点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。",
+    "message": "点击面板上的“全部应用”时，自动应用 AI 推荐的 Adobe Stock 类别。若 Adobe 已为该素材识别出类别，则保留不再覆盖。",
     "description": "Auto-select category hint"
+  },
+  "categoryKept": {
+    "message": "Adobe 已识别类别，已保留不覆盖",
+    "description": "Status shown when Adobe's auto-recognized category is preserved"
   },
   "optDefaultCategory": {
     "message": "默认类别",
