@@ -234,9 +234,9 @@ async function applySlotToInputs(provider) {
   modelInput.value = model || getDefaultModelFor(provider);
 }
 
-// The single source of truth for writing: read the REAL stored providerConfigs,
-// patch only the current provider's slot, and write the whole object back.
-// Other providers' slots are preserved exactly as stored — never overwritten.
+// Patch only the current provider's slot inside the stored providerConfigs,
+// preserving every other provider's stored values. Returns the full configs map.
+// This is the slot-only half of a save, used by provider switches / test flush.
 async function persistSlot() {
   const provider = currentProvider;
   const slot = {
@@ -251,26 +251,14 @@ async function persistSlot() {
   return configs;
 }
 
-function collectSettings() {
-  const provider = currentProvider;
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
-  const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
-  let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
-  if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
-  keywordCount = Math.max(1, Math.min(50, keywordCount));
-  const autoCheckAI = document.getElementById('autoCheckAI').checked;
-  const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
-  const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
-  const defaultCategory = document.getElementById('defaultCategory').value;
-  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, defaultCategory };
-}
-
-async function onSave() {
+// The single source of truth for writing ALL settings: the active provider's
+// slot PLUS every scalar setting (keywordCount, autoCheckAI, autoSaveAfterApply,
+// autoSelectCategory, defaultCategory). Writing the whole object in one set keeps
+// it atomic. autoSave() and onSave() both funnel through here so the two paths
+// never diverge (previously autoSave() only persisted the slot, so changing the
+// default category appeared to save but never hit chrome.storage).
+async function saveAllSettings() {
   const s = collectSettings();
-  // Patch only the current provider's slot inside the stored providerConfigs,
-  // preserving every other provider's stored values. Then write the scalar
-  // settings alongside. Writing the whole object in a single set keeps it atomic.
   const stored = await chrome.storage.local.get(['providerConfigs']);
   const configs = (stored && stored.providerConfigs) || {};
   configs[s.provider] = {
@@ -290,6 +278,25 @@ async function onSave() {
     autoSelectCategory: s.autoSelectCategory,
     defaultCategory: s.defaultCategory,
   });
+}
+
+function collectSettings() {
+  const provider = currentProvider;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
+  const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
+  let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
+  if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
+  keywordCount = Math.max(1, Math.min(50, keywordCount));
+  const autoCheckAI = document.getElementById('autoCheckAI').checked;
+  const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
+  const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
+  const defaultCategory = document.getElementById('defaultCategory').value;
+  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, defaultCategory };
+}
+
+async function onSave() {
+  await saveAllSettings();
   setStatus(msg('optSaved'), 'ok');
 }
 
@@ -297,7 +304,7 @@ let autoSaveTimer = null;
 function autoSave() {
   if (autoSaveTimer) clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(async () => {
-    await persistSlot();
+    await saveAllSettings();
     setStatus(msg('optSaved'), 'ok');
   }, 300);
 }
