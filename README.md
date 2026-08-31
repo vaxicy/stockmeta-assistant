@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎯 StockMeta Assistant
+<img src="icons/icon128.png" width="80" alt="StockMeta Assistant logo">
+
+# StockMeta Assistant
 
 **为 Adobe Stock 供稿者打造的 Chrome 扩展** —— 用视觉大模型一键生成图片的**英文标题与关键词**，并填充进上传表单。
 
@@ -8,7 +10,7 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 
 <br>
 
-![Version](https://img.shields.io/badge/version-1.0.8-blue)
+![Version](https://img.shields.io/badge/version-1.1.1-blue)
 ![License](https://img.shields.io/badge/license-Non--Commercial-red)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/stockmeta-assistant-for-a/afiigmeicppdepjodjeemfhmeimmbeio?authuser=0&hl=zh-CN)
 
