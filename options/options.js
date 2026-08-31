@@ -289,20 +289,26 @@ function applyStaticI18n() {
 let toastTimer = null;
 function setStatus(text, kind) {
   const el = document.getElementById('status');
-  el.textContent = text;
+  if (!el) return;
+  el.textContent = text || '';
   el.className = 'opt-status' + (kind ? ' ' + kind : '');
-  // Only the transient "saved" feedback should auto-hide; persistent error
-  // / progress messages stay until the next action clears them.
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = null;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  if (!text) {
+    el.classList.remove('is-visible');
+    return;
+  }
+  // Show whenever there is a message. Only the transient "saved" feedback
+  // should auto-hide; persistent progress / error messages stay until the
+  // next action clears them (this is what was previously hiding test-connection
+  // results and making them invisible).
+  el.classList.add('is-visible');
   if (kind === 'ok' && text === msg('optSaved')) {
-    // Show briefly then fade out so the user can tell a save actually happened.
-    el.classList.add('is-visible');
     toastTimer = setTimeout(() => {
       el.classList.remove('is-visible');
     }, 2500);
-  } else {
-    el.classList.remove('is-visible');
   }
 }
 
