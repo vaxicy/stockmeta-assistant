@@ -115,6 +115,10 @@
     "message": "Support the author",
     "description": "Support author link text"
   },
+  "optFeedback": {
+    "message": "Feedback",
+    "description": "Feedback link text (mailto)"
+  },
   "optSupportTitle": {
     "message": "Support the author",
     "description": "Support modal title"

@@ -115,6 +115,10 @@
     "message": "支持作者",
     "description": "Support author link text"
   },
+  "optFeedback": {
+    "message": "反馈问题",
+    "description": "Feedback link text (mailto)"
+  },
   "optSupportTitle": {
     "message": "支持作者",
     "description": "Support modal title"
