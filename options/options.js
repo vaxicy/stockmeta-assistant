@@ -115,6 +115,8 @@ function restoreModelSelection(model) {
     customInput.classList.remove('is-hidden');
     customInput.placeholder = 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
     customInput.value = model || '';
+    // Keep the hidden dropdown in sync so it never holds a stale preset model.
+    if (sel) sel.value = CUSTOM_MODEL_VALUE;
     return;
   }
   if (selWrap) selWrap.classList.remove('is-hidden');
@@ -135,6 +137,12 @@ function restoreModelSelection(model) {
 function readModelValue() {
   const sel = document.getElementById('modelSelect');
   const customInput = document.getElementById('modelCustom');
+  // When the custom provider is active, the dropdown is hidden and may still
+  // hold the previously-selected preset model from another provider. Reading
+  // it would leak that model into the custom slot. Always read the manual box.
+  if (currentProvider === 'custom') {
+    return (customInput ? customInput.value.trim() : '');
+  }
   if (!sel) return '';
   if (sel.value === CUSTOM_MODEL_VALUE) {
     return (customInput ? customInput.value.trim() : '');
