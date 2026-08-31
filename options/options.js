@@ -44,6 +44,80 @@ const PROVIDER_DEFAULTS = {
   custom: { model: '', url: '' },
 };
 
+// Per-provider vision model presets shown in the model dropdown. The sentinel
+// '__custom__' is always appended as the last option so users on a custom
+// endpoint (or wanting an off-list model) can type any ID manually.
+const CUSTOM_MODEL_VALUE = '__custom__';
+const PROVIDER_MODEL_PRESETS = {
+  siliconflow: [
+    'Qwen/Qwen3-Omni-30B-A3B-Captioner',
+    'Qwen/Qwen3-VL-32B-Instruct',
+    'Qwen/Qwen3-VL-8B-Instruct',
+    'Qwen/Qwen2.5-VL-72B-Instruct',
+    'Qwen/Qwen3-VL-30B-A3B-Instruct',
+  ],
+  openai: [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.5',
+    'gpt-5',
+    'gpt-5-mini',
+  ],
+  custom: [],
+};
+
+// Rebuild the model <select> options for the given provider. Presets come
+// first, then a manual-input sentinel. Called on init and on provider switch.
+function rebuildModelOptions(provider) {
+  const sel = document.getElementById('modelSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const presets = PROVIDER_MODEL_PRESETS[provider] || [];
+  presets.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m;
+    o.textContent = m;
+    sel.appendChild(o);
+  });
+  const customOpt = document.createElement('option');
+  customOpt.value = CUSTOM_MODEL_VALUE;
+  customOpt.textContent = msg('optModelCustom');
+  sel.appendChild(customOpt);
+}
+
+// Decide which dropdown option to select for a stored model string, and show
+// the custom input if the model is not among the presets.
+function restoreModelSelection(model) {
+  const sel = document.getElementById('modelSelect');
+  const customInput = document.getElementById('modelCustom');
+  if (!sel || !customInput) return;
+  const presets = PROVIDER_MODEL_PRESETS[currentProvider] || [];
+  if (model && presets.indexOf(model) !== -1) {
+    sel.value = model;
+    customInput.classList.add('is-hidden');
+    customInput.value = '';
+  } else {
+    sel.value = CUSTOM_MODEL_VALUE;
+    customInput.classList.remove('is-hidden');
+    customInput.value = model || '';
+  }
+  refreshCustomSelects();
+}
+
+// Read the effective model string: dropdown value unless it's the sentinel,
+// in which case use the manual input.
+function readModelValue() {
+  const sel = document.getElementById('modelSelect');
+  const customInput = document.getElementById('modelCustom');
+  if (!sel) return '';
+  if (sel.value === CUSTOM_MODEL_VALUE) {
+    return (customInput ? customInput.value.trim() : '');
+  }
+  return sel.value.trim();
+}
+
 // Strip trailing slash, and common mis-pasted endpoint suffixes
 // (e.g. /chat/completions, /v1/chat/completions) so the base always ends
 // at the version prefix. Mirrors the ReplyPilot normalization.
@@ -73,6 +147,7 @@ const OPT_I18N = {
     optHide: 'Hide',
     optModel: 'Vision Model ID',
     optModelDesc: 'e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner',
+    optModelCustom: 'Custom (manual input)',
     optKeywordCount: 'Keyword Count',
     optKeywordCountDesc: 'Number of keywords to request (1–50).',
     optAutoCheckAI: 'Auto-check AI declaration boxes',
@@ -122,6 +197,7 @@ const OPT_I18N = {
     optHide: '隐藏',
     optModel: '视觉模型 ID',
     optModelDesc: '例如 Qwen/Qwen3-Omni-30B-A3B-Captioner',
+    optModelCustom: '自定义（手动输入）',
     optKeywordCount: '关键词数量',
     optKeywordCountDesc: '请求生成的关键词数量（1–50）。',
     optAutoCheckAI: '自动勾选 AI 声明复选框',
@@ -228,10 +304,10 @@ async function applySlotToInputs(provider) {
   const { baseUrl, apiKey, model, def } = await loadSlot(provider);
   const baseUrlInput = document.getElementById('baseUrl');
   const apiKeyInput = document.getElementById('apiKey');
-  const modelInput = document.getElementById('model');
   baseUrlInput.value = normalizeBaseUrl(baseUrl) || def.url || '';
   apiKeyInput.value = apiKey;
-  modelInput.value = model || getDefaultModelFor(provider);
+  rebuildModelOptions(provider);
+  restoreModelSelection(model || getDefaultModelFor(provider));
 }
 
 // Patch only the current provider's slot inside the stored providerConfigs,
@@ -242,7 +318,7 @@ async function persistSlot() {
   const slot = {
     baseUrl: normalizeBaseUrl(document.getElementById('baseUrl').value),
     apiKey: document.getElementById('apiKey').value.trim(),
-    model: document.getElementById('model').value.trim(),
+    model: readModelValue(),
   };
   const stored = await chrome.storage.local.get(['providerConfigs']);
   const configs = (stored && stored.providerConfigs) || {};
@@ -284,7 +360,7 @@ function collectSettings() {
   const provider = currentProvider;
   const apiKey = document.getElementById('apiKey').value.trim();
   const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
-  const model = document.getElementById('model').value.trim() || getDefaultModelFor(provider);
+  const model = readModelValue() || getDefaultModelFor(provider);
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
   if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
   keywordCount = Math.max(1, Math.min(50, keywordCount));
@@ -324,7 +400,7 @@ async function onTest() {
   // returns MISSING_API_KEY even though the input clearly has a key.
   await persistSlot();
   const baseUrl = normalizeBaseUrl(document.getElementById('baseUrl').value);
-  const model = document.getElementById('model').value.trim() || getDefaultModelFor(currentProvider);
+  const model = readModelValue() || getDefaultModelFor(currentProvider);
   // Also send a one-shot override in the message so background can use the live
   // DOM values even if its cache wasn't invalidated yet. Background falls back
   // to its cached/stored config if override fields are missing.
@@ -360,8 +436,6 @@ function updateProviderUI() {
   const provider = getProvider();
   const baseUrlField = document.getElementById('baseUrlField');
   const apiKeyLabel = document.querySelector('label[for="apiKey"]');
-  const modelInput = document.getElementById('model');
-  const modelHint = document.querySelector('p[data-i18n="optModelDesc"]');
   const baseUrlHint = document.querySelector('p[data-i18n="optBaseUrlDesc"]');
 
   // Base URL is always visible; it shows the built-in endpoint for known
@@ -371,12 +445,6 @@ function updateProviderUI() {
   }
   if (apiKeyLabel) {
     apiKeyLabel.textContent = msg('optApiKey');
-  }
-  if (modelInput && !modelInput.value) {
-    modelInput.value = getDefaultModelFor(provider);
-  }
-  if (modelHint) {
-    modelHint.textContent = provider === 'openai' ? 'e.g. gpt-4o-mini' : msg('optModelDesc');
   }
   if (baseUrlHint) {
     baseUrlHint.textContent = provider === 'custom'
@@ -607,10 +675,6 @@ async function initProviderSelect() {
     // 2) Switch the module pointer, then load the new slot's values.
     currentProvider = nextProvider;
     await applySlotToInputs(nextProvider);
-    const modelInput = document.getElementById('model');
-    if (modelInput && !modelInput.value) {
-      modelInput.value = getDefaultModelFor(nextProvider);
-    }
     updateProviderUI();
     // 3) Persist the provider switch itself.
     await chrome.storage.local.set({ provider: nextProvider });
@@ -618,15 +682,11 @@ async function initProviderSelect() {
 }
 
 function initAutoSave() {
-  const debounced = ['apiKey', 'baseUrl', 'model', 'keywordCount'];
+  const debounced = ['apiKey', 'baseUrl', 'keywordCount'];
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
-    // High-value fields (apiKey/baseUrl/model) also save immediately on blur so
-    // the background config cache can never be more than one tab-click behind.
-    // This avoids the "I typed a key, clicked Test, got MISSING_API_KEY" race
-    // when the 300ms debounce hasn't fired yet.
-    if (el && (id === 'apiKey' || id === 'baseUrl' || id === 'model')) {
+    if (el && (id === 'apiKey' || id === 'baseUrl')) {
       el.addEventListener('blur', () => {
         if (autoSaveTimer) clearTimeout(autoSaveTimer);
         autoSaveTimer = null;
@@ -634,6 +694,18 @@ function initAutoSave() {
       });
     }
   });
+  // Model: dropdown change + custom input typing/blur both flush the slot.
+  const modelSel = document.getElementById('modelSelect');
+  if (modelSel) modelSel.addEventListener('change', autoSave);
+  const modelCustom = document.getElementById('modelCustom');
+  if (modelCustom) {
+    modelCustom.addEventListener('input', autoSave);
+    modelCustom.addEventListener('blur', () => {
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
+      autoSaveTimer = null;
+      persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
+    });
+  }
   const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);

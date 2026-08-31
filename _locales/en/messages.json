@@ -35,6 +35,10 @@
     "message": "e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner",
     "description": "Model hint"
   },
+  "optModelCustom": {
+    "message": "Custom (manual input)",
+    "description": "Custom model option in dropdown"
+  },
   "optKeywordCount": {
     "message": "Keyword Count",
     "description": "Keyword count label"

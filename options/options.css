@@ -229,6 +229,14 @@ h1 {
 
 .is-hidden { display: none !important; }
 
+/* model custom input（下拉选「自定义」时显示） */
+.opt-model-custom {
+  margin-top: 8px;
+}
+.opt-model-custom.is-hidden {
+  display: none;
+}
+
 /* toggle switch field */
 .opt-toggle {
   display: flex;

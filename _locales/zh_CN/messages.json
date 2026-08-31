@@ -35,6 +35,10 @@
     "message": "例如 Qwen/Qwen3-Omni-30B-A3B-Captioner",
     "description": "Model hint"
   },
+  "optModelCustom": {
+    "message": "自定义（手动输入）",
+    "description": "下拉中的自定义模型选项"
+  },
   "optKeywordCount": {
     "message": "关键词数量",
     "description": "Keyword count label"
