@@ -377,6 +377,14 @@ h1 {
 }
 .opt-lang-field label { font-weight: 600; font-size: 14px; line-height: 36px; white-space: nowrap; flex-shrink: 0; }
 .opt-lang-field-label-spacer { display: none; }
+/* 语言选择框：保证 "English" 等文案完整显示，不被箭头截断 */
+.opt-lang-field .opt-select { min-width: 140px; }
+.opt-lang-field .opt-select-trigger { padding-right: 30px; }
+.opt-lang-field .opt-select-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
 
 /* tutorial link */
 .opt-tutorial-line {
