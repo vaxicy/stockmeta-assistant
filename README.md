@@ -8,9 +8,9 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 
 <br>
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![Version](https://img.shields.io/badge/version-1.0.8-blue)
 ![License](https://img.shields.io/badge/license-Non--Commercial-red)
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Developer_Console-4285F4?logo=googlechrome&logoColor=white)](https://chrome.google.com/webstore/devconsole/bd5c56c6-aa1a-43cc-98b7-e88a5441667e/afiigmeicppdepjodjeemfhmeimmbeio/edit)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/stockmeta-assistant-for-a/afiigmeicppdepjodjeemfhmeimmbeio?authuser=0&hl=zh-CN)
 
 </div>
 
@@ -52,9 +52,9 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 
 ## 🔗 Chrome 网上应用店 / Chrome Web Store
 
-[![Open Developer Console](https://img.shields.io/badge/Open_Developer_Console-4285F4?logo=googlechrome&logoColor=white&style=for-the-badge)](https://chrome.google.com/webstore/devconsole/bd5c56c6-aa1a-43cc-98b7-e88a5441667e/afiigmeicppdepjodjeemfhmeimmbeio/edit)
+[![Add to Chrome](https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-4285F4?logo=googlechrome&logoColor=white&style=for-the-badge)](https://chromewebstore.google.com/detail/stockmeta-assistant-for-a/afiigmeicppdepjodjeemfhmeimmbeio?authuser=0&hl=zh-CN)
 
-> 公开安装地址以 Chrome 网上应用店实际上线页面为准。
+> 点击上方按钮前往 Chrome 网上应用店安装本扩展。
 
 ---
 
