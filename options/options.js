@@ -50,11 +50,13 @@ const PROVIDER_DEFAULTS = {
 const CUSTOM_MODEL_VALUE = '__custom__';
 const PROVIDER_MODEL_PRESETS = {
   siliconflow: [
+    'Qwen/Qwen3-Omni-30B-A3B-Instruct',
     'Qwen/Qwen3-Omni-30B-A3B-Captioner',
-    'Qwen/Qwen3-VL-32B-Instruct',
-    'Qwen/Qwen3-VL-8B-Instruct',
+    'Qwen/Qwen2-VL-72B-Instruct',
     'Qwen/Qwen2.5-VL-72B-Instruct',
+    'Qwen/Qwen3-VL-32B-Instruct',
     'Qwen/Qwen3-VL-30B-A3B-Instruct',
+    'Qwen/Qwen3-VL-8B-Instruct',
   ],
   openai: [
     'gpt-4o',
