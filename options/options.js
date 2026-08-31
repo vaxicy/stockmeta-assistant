@@ -70,9 +70,19 @@ const PROVIDER_MODEL_PRESETS = {
 
 // Rebuild the model <select> options for the given provider. Presets come
 // first, then a manual-input sentinel. Called on init and on provider switch.
+// For the "custom" provider there is no preset list, so we hide the whole
+// dropdown and show only the manual input box.
 function rebuildModelOptions(provider) {
+  const selWrap = document.querySelector('.opt-select[data-target="modelSelect"]');
+  const customInput = document.getElementById('modelCustom');
   const sel = document.getElementById('modelSelect');
   if (!sel) return;
+  if (provider === 'custom') {
+    if (selWrap) selWrap.classList.add('is-hidden');
+    if (customInput) customInput.classList.remove('is-hidden');
+    return;
+  }
+  if (selWrap) selWrap.classList.remove('is-hidden');
   sel.innerHTML = '';
   const presets = PROVIDER_MODEL_PRESETS[provider] || [];
   presets.forEach((m) => {
@@ -88,12 +98,24 @@ function rebuildModelOptions(provider) {
 }
 
 // Decide which dropdown option to select for a stored model string, and show
-// the custom input if the model is not among the presets.
+// the custom input if the model is not among the presets (or if the provider
+// has no presets at all, i.e. custom). Also called when the user switches the
+// dropdown to the manual-input sentinel so the box appears immediately.
 function restoreModelSelection(model) {
+  const selWrap = document.querySelector('.opt-select[data-target="modelSelect"]');
   const sel = document.getElementById('modelSelect');
   const customInput = document.getElementById('modelCustom');
   if (!sel || !customInput) return;
   const presets = PROVIDER_MODEL_PRESETS[currentProvider] || [];
+  if (currentProvider === 'custom') {
+    // Custom provider: no dropdown, always show the manual box.
+    if (selWrap) selWrap.classList.add('is-hidden');
+    customInput.classList.remove('is-hidden');
+    customInput.placeholder = 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
+    customInput.value = model || '';
+    return;
+  }
+  if (selWrap) selWrap.classList.remove('is-hidden');
   if (model && presets.indexOf(model) !== -1) {
     sel.value = model;
     customInput.classList.add('is-hidden');
@@ -262,10 +284,24 @@ function applyStaticI18n() {
   document.documentElement.lang = currentLang() === 'zh' ? 'zh-CN' : 'en';
 }
 
+let toastTimer = null;
 function setStatus(text, kind) {
   const el = document.getElementById('status');
   el.textContent = text;
   el.className = 'opt-status' + (kind ? ' ' + kind : '');
+  // Only the transient "saved" feedback should auto-hide; persistent error
+  // / progress messages stay until the next action clears them.
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = null;
+  if (kind === 'ok' && text === msg('optSaved')) {
+    // Show briefly then fade out so the user can tell a save actually happened.
+    el.classList.add('is-visible');
+    toastTimer = setTimeout(() => {
+      el.classList.remove('is-visible');
+    }, 2500);
+  } else {
+    el.classList.remove('is-visible');
+  }
 }
 
 // Module-level pointer to the slot currently shown in the inputs.
@@ -696,7 +732,14 @@ function initAutoSave() {
   });
   // Model: dropdown change + custom input typing/blur both flush the slot.
   const modelSel = document.getElementById('modelSelect');
-  if (modelSel) modelSel.addEventListener('change', autoSave);
+  if (modelSel) {
+    // Re-show/hide the manual input box whenever the dropdown selection changes
+    // (e.g. switching to "Custom (manual input)"), then auto-save.
+    modelSel.addEventListener('change', () => {
+      restoreModelSelection(modelSel.value === CUSTOM_MODEL_VALUE ? '' : modelSel.value);
+      autoSave();
+    });
+  }
   const modelCustom = document.getElementById('modelCustom');
   if (modelCustom) {
     modelCustom.addEventListener('input', autoSave);

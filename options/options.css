@@ -222,6 +222,13 @@ h1 {
   margin-bottom: 0;
   min-height: 0px;
   font-size: 13px;
+  /* Saved toast is hidden by default; only shown briefly via .is-visible. */
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.opt-status.is-visible {
+  opacity: 1;
 }
 
 .opt-status.ok { color: #137333; }
