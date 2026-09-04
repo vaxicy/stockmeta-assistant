@@ -1,5 +1,6 @@
 # Build / preview artifacts
 preview_*.png
+*.zip
 
 # IDE / agent memory
 .codebuddy/
