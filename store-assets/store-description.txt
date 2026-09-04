@@ -9,8 +9,6 @@ StockMeta Assistant 是 Adobe Stock 供稿人的 AI 文案助手：读取你正�
 - 中英双语界面，可拖拽、可折叠面板，不遮挡编辑区
 - 隐私安全：API Key 仅存于浏览器本地，绝不上传
 
-插件只负责把生成的文案填入表单，不会自动提交或发布，最终审核由你掌控。
-
 === English Detailed Description ===
 
 StockMeta Assistant is an AI copywriting helper for Adobe Stock contributors: it reads the asset you are uploading, generates a title and keywords with a vision model, and fills the form in one click.
@@ -21,5 +19,3 @@ StockMeta Assistant is an AI copywriting helper for Adobe Stock contributors: it
 - Optional automation: auto-tick the "Created using generative AI" declaration and auto-save after applying
 - Bilingual UI with a draggable, collapsible panel that never blocks your editing area
 - Privacy first: your API Key stays in local browser storage and is never uploaded
-
-The extension only fills the form — it never auto-submits or publishes your work. You stay in control of review.
