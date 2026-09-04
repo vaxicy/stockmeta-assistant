@@ -25,7 +25,10 @@
         <span class="sm-title" data-i18n="panelTitle"></span>
         <div class="sm-header-actions">
           <button class="sm-btn sm-icon" id="sm-settings" data-i18n-title="openOptions">⚙</button>
-          <button class="sm-btn sm-icon" id="sm-collapse" data-i18n-title="collapse">–</button>
+          <button class="sm-btn sm-icon" id="sm-collapse" data-i18n-title="collapse" aria-label="Collapse">
+            <svg class="sm-icon-svg sm-icon-minus" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 7h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="sm-icon-svg sm-icon-plus" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M7 2v10M2 7h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </div>
       <div class="sm-body">
@@ -113,7 +116,7 @@
   function toggleCollapse() {
     state.collapsed = !state.collapsed;
     panel.classList.toggle('sm-collapsed', state.collapsed);
-    panel.querySelector('#sm-collapse').textContent = state.collapsed ? '+' : '–';
+    panel.querySelector('#sm-collapse').setAttribute('aria-label', state.collapsed ? t('expand') : t('collapse'));
   }
 
   // ---------------------------------------------------------------- draggable
@@ -542,7 +545,7 @@
   function refreshLang() {
     applyStaticI18n(panel);
     const collapseBtn = panel.querySelector('#sm-collapse');
-    if (collapseBtn) collapseBtn.textContent = state.collapsed ? '+' : '–';
+    if (collapseBtn) collapseBtn.setAttribute('aria-label', state.collapsed ? t('expand') : t('collapse'));
     if (state.title || state.keywords.length) renderResults();
     // Always re-render the status line in the new language, regardless of
     // whether results exist (renderResults does not touch the status text).
