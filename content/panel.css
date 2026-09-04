@@ -59,7 +59,7 @@
 
 .sm-header-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .sm-body {
@@ -248,10 +248,10 @@
 
 .sm-btn.sm-icon {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 0;
   display: inline-flex;
   align-items: center;
@@ -264,8 +264,8 @@
 /* Collapse/expand icon: inline SVG, geometry-centered, no baseline offset */
 .sm-btn.sm-icon .sm-icon-svg {
   display: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .sm-btn.sm-icon .sm-icon-minus {

@@ -7,10 +7,11 @@
 export const DEFAULT_PROVIDER_CONFIGS = {
   siliconflow: { baseUrl: '', apiKey: '', model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner' },
   openai: { baseUrl: '', apiKey: '', model: 'gpt-4o-mini' },
+  gemini: { baseUrl: '', apiKey: '', model: 'gemini-2.5-flash' },
   custom: { baseUrl: '', apiKey: '', model: '' },
 };
 
-const PROVIDER_KEYS = ['siliconflow', 'openai', 'custom'];
+const PROVIDER_KEYS = ['siliconflow', 'openai', 'gemini', 'custom'];
 
 export async function getProviderConfigs(stored) {
   const raw = (stored && stored.providerConfigs) || null;

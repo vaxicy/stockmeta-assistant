@@ -41,6 +41,7 @@ const DEFAULTS = {
 const PROVIDER_DEFAULTS = {
   siliconflow: { model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner', url: 'https://api.siliconflow.cn/v1' },
   openai: { model: 'gpt-4o-mini', url: 'https://api.openai.com/v1' },
+  gemini: { model: 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai' },
   custom: { model: '', url: '' },
 };
 
@@ -66,6 +67,16 @@ const PROVIDER_MODEL_PRESETS = {
     'gpt-4.5',
     'gpt-5',
     'gpt-5-mini',
+  ],
+  // Vision-capable models only. Image-generation (gemini-*-image), TTS and
+  // native-audio variants are intentionally excluded.
+  gemini: [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-3-flash-preview',
+    'gemini-3-pro-preview',
   ],
   custom: [],
 };
@@ -170,6 +181,7 @@ const OPT_I18N = {
     optProvider: 'AI Provider',
     optProviderSiliconFlow: 'SiliconFlow',
     optProviderOpenAI: 'OpenAI',
+    optProviderGemini: 'Gemini',
     optProviderCustom: 'Custom (OpenAI-compatible)',
     optBaseUrl: 'Base URL',
     optBaseUrlDesc: 'OpenAI-compatible endpoint, e.g. https://api.openai.com/v1',
@@ -221,6 +233,7 @@ const OPT_I18N = {
     optProvider: 'AI 提供商',
     optProviderSiliconFlow: 'SiliconFlow',
     optProviderOpenAI: 'OpenAI',
+    optProviderGemini: 'Gemini',
     optProviderCustom: '自定义（OpenAI 兼容）',
     optBaseUrl: 'Base URL',
     optBaseUrlDesc: 'OpenAI 兼容的 endpoint，例如 https://api.openai.com/v1',

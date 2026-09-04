@@ -1,10 +1,14 @@
 // services/aiProvider.js
 // Generic OpenAI-compatible chat-completions caller.
-// Supports SiliconFlow, OpenAI, or any custom OpenAI-compatible endpoint.
+// Supports SiliconFlow, OpenAI, Gemini (via its OpenAI-compatibility layer),
+// or any custom OpenAI-compatible endpoint.
 
 const DEFAULT_ENDPOINTS = {
   siliconflow: 'https://api.siliconflow.cn/v1',
   openai: 'https://api.openai.com/v1',
+  // Gemini's OpenAI-compatibility layer. Uses standard Bearer auth and the
+  // same /chat/completions path, so the generic caller works unmodified.
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
 };
 
 // Reject keywords containing CJK, Hiragana/Katakana, Hangul, Arabic, etc.
@@ -77,13 +81,14 @@ export function getEndpoint(provider, baseUrl) {
 export function getDefaultModel(provider) {
   const key = String(provider || 'siliconflow').toLowerCase();
   if (key === 'openai') return 'gpt-4o-mini';
+  if (key === 'gemini') return 'gemini-2.5-flash';
   return 'Qwen/Qwen3-Omni-30B-A3B-Captioner';
 }
 
 /**
  * @param {object} opts
  * @param {string} opts.apiKey
- * @param {string} opts.provider   siliconflow | openai | custom
+ * @param {string} opts.provider   siliconflow | openai | gemini | custom
  * @param {string} opts.baseUrl    required when provider === 'custom'
  * @param {string} opts.model
  * @param {string} opts.imageBase64  data URL, e.g. "data:image/jpeg;base64,...."

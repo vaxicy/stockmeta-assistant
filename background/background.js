@@ -197,8 +197,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .map((m) => (m && (m.id || m.name || m.model)) || '')
             .filter(Boolean);
         } catch (_) {}
+        // Gemini's OpenAI-compatible /models returns IDs prefixed with
+        // "models/" (e.g. "models/gemini-2.5-flash"), so strip that on both
+        // sides before comparing against the user-selected model. Otherwise
+        // the check silently reports "model not in list" for a valid model.
+        const stripModelPrefix = (s) => String(s).toLowerCase().replace(/^models\//, '');
         const hasModel =
-          !model || models.some((id) => id.toLowerCase() === model.toLowerCase());
+          !model || models.some((id) => stripModelPrefix(id) === stripModelPrefix(model));
         sendResponse({ ok: true, models, hasModel });
       } catch (err) {
         console.error('[StockMeta] testConnection error:', err && err.message);
