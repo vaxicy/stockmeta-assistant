@@ -18,6 +18,22 @@ function isEnglishKeyword(k) {
   return k && typeof k === 'string' && !NON_ENGLISH_RE.test(k);
 }
 
+// Drop duplicates case-insensitively so a repeated keyword never occupies a
+// slot that a distinct concept could have used (models sometimes pad lists).
+function dedupeKeywords(list) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of list) {
+    const k = String(raw).trim();
+    if (!k) continue;
+    const key = k.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(k);
+  }
+  return out;
+}
+
 // Adobe Stock content-tagger category list (must match the live dropdown exactly).
 export const ADOBE_CATEGORIES = [
   'Animals',
@@ -213,7 +229,7 @@ export function parseModelJson(content) {
     ? parsed.keywords.map((k) => String(k).trim()).filter(Boolean)
     : [];
   // Filter out non-English keywords (Chinese, etc.) so Adobe Stock can parse them.
-  keywords = keywords.filter(isEnglishKeyword);
+  keywords = dedupeKeywords(keywords.filter(isEnglishKeyword));
   // Fallback: derive extra English keywords from the title if the model returned too few.
   if (keywords.length < 5 && title) {
     const titleWords = title

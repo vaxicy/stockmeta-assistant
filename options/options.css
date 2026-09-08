@@ -236,6 +236,22 @@ h1 {
 
 .is-hidden { display: none !important; }
 
+/* Keyword count range row (minimum – maximum) */
+.opt-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.opt-range-inputs input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.opt-range-sep {
+  flex: 0 0 auto;
+  color: #6b7280;
+  font-weight: 600;
+}
+
 /* model custom input（下拉选「自定义」时显示） */
 .opt-model-custom {
   margin-top: 8px;

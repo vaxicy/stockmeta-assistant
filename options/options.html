@@ -83,9 +83,38 @@
     </section>
 
     <section class="opt-field">
+      <label for="keywordCountMode" data-i18n="optKeywordCountMode">Keyword Count Mode</label>
+      <div class="opt-select" data-target="keywordCountMode">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="keywordCountMode" class="opt-native-select">
+          <option value="fixed" data-i18n="optCountModeFixed">Fixed count</option>
+          <option value="range" data-i18n="optCountModeRange">Range</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
+      <p class="opt-hint" data-i18n="optKeywordCountModeDesc">Fixed asks for an exact number; Range lets the model land anywhere between the minimum and maximum.</p>
+    </section>
+
+    <section class="opt-field" id="keywordCountField">
       <label for="keywordCount" data-i18n="optKeywordCount">Keyword Count</label>
       <input type="number" id="keywordCount" min="1" max="50" step="1" />
-      <p class="opt-hint" data-i18n="optKeywordCountDesc">Number of keywords to request (1–50).</p>
+      <p class="opt-hint" data-i18n="optKeywordCountDesc">Exact number of keywords to request (1–50).</p>
+    </section>
+
+    <section class="opt-field is-hidden" id="keywordRangeField">
+      <label data-i18n="optKeywordRange">Keyword Range</label>
+      <div class="opt-range-inputs">
+        <input type="number" id="keywordMin" min="1" max="50" step="1" aria-label="Minimum keywords" />
+        <span class="opt-range-sep" aria-hidden="true">–</span>
+        <input type="number" id="keywordMax" min="1" max="50" step="1" aria-label="Maximum keywords" />
+      </div>
+      <p class="opt-hint" data-i18n="optKeywordRangeDesc">The model generates within this range — richer images land closer to the maximum.</p>
     </section>
 
     <section class="opt-field opt-toggle-field">

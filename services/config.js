@@ -32,6 +32,12 @@ export const DEFAULT_CONFIG = {
   provider: 'siliconflow',
   providerConfigs: DEFAULT_PROVIDER_CONFIGS,
   keywordCount: 30,
+  // 'fixed' asks the model for exactly keywordCount keywords.
+  // 'range' asks for anywhere between keywordCountMin and keywordCountMax,
+  // which avoids extra API calls when the model under-delivers.
+  keywordCountMode: 'fixed',
+  keywordCountMin: 20,
+  keywordCountMax: 30,
   timeoutMs: 60000,
   autoCheckAI: false,
   autoSaveAfterApply: false,
@@ -67,6 +73,9 @@ export async function getConfig() {
     'baseUrl',
     'model',
     'keywordCount',
+    'keywordCountMode',
+    'keywordCountMin',
+    'keywordCountMax',
     'timeoutMs',
     'autoCheckAI',
     'autoSaveAfterApply',
@@ -88,6 +97,9 @@ export async function getConfig() {
     baseUrl: slot.baseUrl,
     model: slot.model,
     keywordCount: stored.keywordCount ?? DEFAULT_CONFIG.keywordCount,
+    keywordCountMode: stored.keywordCountMode ?? DEFAULT_CONFIG.keywordCountMode,
+    keywordCountMin: stored.keywordCountMin ?? DEFAULT_CONFIG.keywordCountMin,
+    keywordCountMax: stored.keywordCountMax ?? DEFAULT_CONFIG.keywordCountMax,
     timeoutMs: stored.timeoutMs ?? DEFAULT_CONFIG.timeoutMs,
     autoCheckAI: stored.autoCheckAI ?? DEFAULT_CONFIG.autoCheckAI,
     autoSaveAfterApply: stored.autoSaveAfterApply ?? DEFAULT_CONFIG.autoSaveAfterApply,
@@ -100,7 +112,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,

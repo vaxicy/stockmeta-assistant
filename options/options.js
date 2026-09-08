@@ -36,6 +36,9 @@ const DEFAULTS = {
   baseUrl: '',
   model: 'Qwen/Qwen3-Omni-30B-A3B-Captioner',
   keywordCount: 30,
+  keywordCountMode: 'fixed',
+  keywordCountMin: 20,
+  keywordCountMax: 30,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -194,7 +197,13 @@ const OPT_I18N = {
     optModelDesc: 'e.g. Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optModelCustom: 'Custom (manual input)',
     optKeywordCount: 'Keyword Count',
-    optKeywordCountDesc: 'Number of keywords to request (1–50).',
+    optKeywordCountDesc: 'Exact number of keywords to request (1–50).',
+    optKeywordCountMode: 'Keyword Count Mode',
+    optKeywordCountModeDesc: 'Fixed asks for an exact number; Range lets the model land anywhere between the minimum and maximum.',
+    optCountModeFixed: 'Fixed count',
+    optCountModeRange: 'Range',
+    optKeywordRange: 'Keyword Range',
+    optKeywordRangeDesc: 'The model generates within this range — richer images land closer to the maximum.',
     optAutoCheckAI: 'Auto-check AI declaration boxes',
     optAutoCheckAIDesc: 'When applying the title, keywords, or all, also tick the two AI declaration checkboxes on the Adobe Stock form.',
     optAutoSaveAfterApply: 'Auto-save after Apply',
@@ -246,7 +255,13 @@ const OPT_I18N = {
     optModelDesc: '例如 Qwen/Qwen3-Omni-30B-A3B-Captioner',
     optModelCustom: '自定义（手动输入）',
     optKeywordCount: '关键词数量',
-    optKeywordCountDesc: '请求生成的关键词数量（1–50）。',
+    optKeywordCountDesc: '请求生成的固定关键词数量（1–50）。',
+    optKeywordCountMode: '数量模式',
+    optKeywordCountModeDesc: '固定数量＝每次请求固定条数；区间＝模型在最少与最多之间自行决定。',
+    optCountModeFixed: '固定数量',
+    optCountModeRange: '区间',
+    optKeywordRange: '数量区间',
+    optKeywordRangeDesc: '模型将在此区间内生成，画面内容越丰富越接近上限。',
     optAutoCheckAI: '自动勾选 AI 声明复选框',
     optAutoCheckAIDesc: '应用标题、关键词或全部应用时，均会自动勾选 Adobe Stock 表单上的「使用生成式 AI 工具创建」与「人物与财产均为虚构」两项。',
     optAutoSaveAfterApply: '应用后自动保存',
@@ -417,6 +432,9 @@ async function saveAllSettings() {
     baseUrl: s.baseUrl,
     model: s.model,
     keywordCount: s.keywordCount,
+    keywordCountMode: s.keywordCountMode,
+    keywordCountMin: s.keywordCountMin,
+    keywordCountMax: s.keywordCountMax,
     autoCheckAI: s.autoCheckAI,
     autoSaveAfterApply: s.autoSaveAfterApply,
     autoSelectCategory: s.autoSelectCategory,
@@ -431,12 +449,51 @@ function collectSettings() {
   const model = readModelValue() || getDefaultModelFor(provider);
   let keywordCount = parseInt(document.getElementById('keywordCount').value, 10);
   if (isNaN(keywordCount)) keywordCount = DEFAULTS.keywordCount;
-  keywordCount = Math.max(1, Math.min(50, keywordCount));
+  keywordCount = clampKeywordInt(keywordCount, DEFAULTS.keywordCount);
+  const modeSel = document.getElementById('keywordCountMode');
+  const keywordCountMode = modeSel && modeSel.value === 'range' ? 'range' : 'fixed';
+  let keywordCountMin = clampKeywordInt(document.getElementById('keywordMin').value, DEFAULTS.keywordCountMin);
+  let keywordCountMax = clampKeywordInt(document.getElementById('keywordMax').value, DEFAULTS.keywordCountMax);
+  // Guard against the user typing a minimum above the maximum.
+  if (keywordCountMin > keywordCountMax) {
+    const tmp = keywordCountMin;
+    keywordCountMin = keywordCountMax;
+    keywordCountMax = tmp;
+  }
   const autoCheckAI = document.getElementById('autoCheckAI').checked;
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
   const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
   const defaultCategory = document.getElementById('defaultCategory').value;
-  return { provider, apiKey, baseUrl, model, keywordCount, autoCheckAI, autoSaveAfterApply, autoSelectCategory, defaultCategory };
+  return {
+    provider,
+    apiKey,
+    baseUrl,
+    model,
+    keywordCount,
+    keywordCountMode,
+    keywordCountMin,
+    keywordCountMax,
+    autoCheckAI,
+    autoSaveAfterApply,
+    autoSelectCategory,
+    defaultCategory,
+  };
+}
+
+// Coerce any input value into a valid 1–50 keyword count.
+function clampKeywordInt(value, fallback) {
+  let n = parseInt(value, 10);
+  if (isNaN(n)) n = fallback;
+  return Math.max(1, Math.min(50, n));
+}
+
+// Fixed mode shows the single "count" box; Range mode shows min + max instead.
+function toggleKeywordCountModeUI(mode) {
+  const singleField = document.getElementById('keywordCountField');
+  const rangeField = document.getElementById('keywordRangeField');
+  const isRange = mode === 'range';
+  if (singleField) singleField.classList.toggle('is-hidden', isRange);
+  if (rangeField) rangeField.classList.toggle('is-hidden', !isRange);
 }
 
 async function onSave() {
@@ -750,7 +807,16 @@ async function initProviderSelect() {
 }
 
 function initAutoSave() {
-  const debounced = ['apiKey', 'baseUrl', 'keywordCount'];
+  // The mode dropdown drives which inputs are visible, so it needs its own
+  // change handler on top of the generic input auto-save.
+  const modeSel = document.getElementById('keywordCountMode');
+  if (modeSel) {
+    modeSel.addEventListener('change', () => {
+      toggleKeywordCountModeUI(modeSel.value);
+      autoSave();
+    });
+  }
+  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax'];
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
@@ -905,6 +971,9 @@ async function load() {
     'provider',
     'providerConfigs',
     'keywordCount',
+    'keywordCountMode',
+    'keywordCountMin',
+    'keywordCountMax',
     'autoCheckAI',
     'autoSaveAfterApply',
     'autoSelectCategory',
@@ -919,6 +988,15 @@ async function load() {
   // Scalar fields.
   const keywordInput = document.getElementById('keywordCount');
   keywordInput.value = stored.keywordCount ?? DEFAULTS.keywordCount;
+  // Keyword count mode (fixed vs range) + which inputs are visible.
+  const modeSel = document.getElementById('keywordCountMode');
+  const countMode = stored.keywordCountMode === 'range' ? 'range' : 'fixed';
+  if (modeSel) modeSel.value = countMode;
+  const minEl = document.getElementById('keywordMin');
+  const maxEl = document.getElementById('keywordMax');
+  if (minEl) minEl.value = stored.keywordCountMin ?? DEFAULTS.keywordCountMin;
+  if (maxEl) maxEl.value = stored.keywordCountMax ?? DEFAULTS.keywordCountMax;
+  toggleKeywordCountModeUI(countMode);
   const ac = document.getElementById('autoCheckAI');
   ac.checked = !!stored.autoCheckAI;
   const as = document.getElementById('autoSaveAfterApply');

@@ -39,8 +39,19 @@ setTimeout(() => {
   getConfigCached();
 }, 800);
 
-function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto') {
+function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0) {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
+  // Range mode accepts anything between min and max instead of forcing an exact
+  // count, which VLMs frequently under-deliver. That keeps a single API call
+  // rather than topping up with extra requests.
+  let keywordLine;
+  if (countMode === 'range') {
+    const lo = Math.max(1, Math.min(50, Number(countMin) || n));
+    const hi = Math.max(lo, Math.min(50, Number(countMax) || n));
+    keywordLine = `Between ${lo} and ${hi} English keywords — aim for ${hi} when the image shows many distinct visible concepts, and never fewer than ${lo}`;
+  } else {
+    keywordLine = `Exactly ${n} English keywords`;
+  }
   const parts = [
     'You are helping a contributor upload an asset to Adobe Stock.',
     'Look at the provided image and describe ONLY what is visibly present.',
@@ -53,7 +64,7 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto') {
   } else if (mode === 'keywords') {
     parts.push('Generate ONLY:');
     parts.push(
-      `1. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
+      `1. ${keywordLine} (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
   } else {
     parts.push('Generate:');
@@ -61,7 +72,7 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto') {
       '1. One concise English Adobe Stock title (max 70 characters, no brand names, no fictional places, no Chinese or non-English characters).'
     );
     parts.push(
-      `2. Exactly ${n} English keywords (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
+      `2. ${keywordLine} (comma-separated concepts, lowercase, no brands, no fictional locations, no Chinese or non-English characters).`
     );
     // When the user fixed a default category in settings, skip the category
     // instruction entirely — the client applies that fixed value instead,
@@ -120,9 +131,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride),
+          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax),
           timeoutMs: cfg.timeoutMs,
         });
+        // In range mode the model can overshoot the maximum; trim so Adobe
+        // never receives more keywords than the user allowed.
+        if (cfg.keywordCountMode === 'range' && Array.isArray(result.keywords)) {
+          const hi = Math.max(1, Math.min(50, Number(cfg.keywordCountMax) || 30));
+          if (result.keywords.length > hi) result.keywords = result.keywords.slice(0, hi);
+        }
         sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);
