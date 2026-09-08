@@ -50,13 +50,14 @@ const PROVIDER_DEFAULTS = {
 // endpoint (or wanting an off-list model) can type any ID manually.
 const CUSTOM_MODEL_VALUE = '__custom__';
 const PROVIDER_MODEL_PRESETS = {
+  // Verified against SiliconFlow model pages on 2026-09-08. Only models
+  // currently listed as Available (or still present in the marketplace) are
+  // kept; deprecated/offline ones were removed (see docs for the screenshot).
   siliconflow: [
-    'Qwen/Qwen3-Omni-30B-A3B-Instruct',
     'Qwen/Qwen3-Omni-30B-A3B-Captioner',
-    'Qwen/Qwen2-VL-72B-Instruct',
-    'Qwen/Qwen2.5-VL-72B-Instruct',
     'Qwen/Qwen3-VL-32B-Instruct',
     'Qwen/Qwen3-VL-30B-A3B-Instruct',
+    'Qwen/Qwen3-VL-30B-A3B-Thinking',
     'Qwen/Qwen3-VL-8B-Instruct',
   ],
   openai: [
