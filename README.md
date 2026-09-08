@@ -10,7 +10,7 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 
 <br>
 
-![Version](https://img.shields.io/badge/version-1.1.4-blue)
+![Version](https://img.shields.io/badge/version-1.1.5-blue)
 ![License](https://img.shields.io/badge/license-Non--Commercial-red)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/stockmeta-assistant-for-a/afiigmeicppdepjodjeemfhmeimmbeio?authuser=0&hl=zh-CN)
 
