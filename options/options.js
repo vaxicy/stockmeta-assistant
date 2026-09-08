@@ -61,7 +61,6 @@ const PROVIDER_MODEL_PRESETS = {
     'Qwen/Qwen3-Omni-30B-A3B-Instruct',
     'Qwen/Qwen3-VL-32B-Instruct',
     'Qwen/Qwen3-VL-30B-A3B-Instruct',
-    'Qwen/Qwen3-VL-30B-A3B-Thinking',
     'Qwen/Qwen3-VL-8B-Instruct',
   ],
   openai: [
