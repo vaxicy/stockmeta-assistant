@@ -58,6 +58,7 @@ const PROVIDER_MODEL_PRESETS = {
   // kept; deprecated/offline ones were removed (see docs for the screenshot).
   siliconflow: [
     'Qwen/Qwen3-Omni-30B-A3B-Captioner',
+    'Qwen/Qwen3-Omni-30B-A3B-Instruct',
     'Qwen/Qwen3-VL-32B-Instruct',
     'Qwen/Qwen3-VL-30B-A3B-Instruct',
     'Qwen/Qwen3-VL-30B-A3B-Thinking',
