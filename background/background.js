@@ -39,7 +39,7 @@ setTimeout(() => {
   getConfigCached();
 }, 800);
 
-function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0) {
+function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0, defaultFileType = 'auto') {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
   // Range mode accepts anything between min and max instead of forcing an exact
   // count, which VLMs frequently under-deliver. That keeps a single API call
@@ -86,6 +86,18 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
         `3. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If the image does not clearly fit any specific category, or you are unsure, default to "Graphic Resources".`
       );
     }
+    // File type is the second React Spectrum dropdown on the content-tagger.
+    // When the user fixed it in settings we skip the model entirely (saves tokens);
+    // otherwise ask the model to pick Photos/Illustrations, defaulting to Photos.
+    if (defaultFileType && defaultFileType !== 'auto') {
+      parts.push(
+        `4. The file type is fixed to "${defaultFileType}" by the user — do NOT output a "fileType" field.`
+      );
+    } else {
+      parts.push(
+        '4. Pick the file type for this asset: exactly "Photos" or "Illustrations". If unsure, default to "Photos".'
+      );
+    }
   }
   parts.push('Rules:');
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');
@@ -97,7 +109,7 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
   } else if (mode === 'keywords') {
     parts.push('- JSON format: {"keywords":["...","..."]}');
   } else {
-    parts.push('- JSON format: {"title":"...","keywords":["...","..."],"category":"..."}');
+    parts.push('- JSON format: {"title":"...","keywords":["...","..."],"category":"...","fileType":"..."}');
   }
   return parts.join('\n');
 }
@@ -124,14 +136,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? 'keywords'
             : 'all';
         console.log('[StockMeta] generateMetadata model:', cfg.model, 'mode:', mode);
-        const categoryOverride = (await chrome.storage.local.get('defaultCategory')).defaultCategory || 'auto';
+        const ov = await chrome.storage.local.get(['defaultCategory', 'defaultFileType']);
+        const categoryOverride = ov.defaultCategory || 'auto';
+        const fileTypeOverride = ov.defaultFileType || 'auto';
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
           provider: cfg.provider,
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax),
+          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride),
           timeoutMs: cfg.timeoutMs,
         });
         // In range mode the model can overshoot the maximum; trim so Adobe
@@ -140,7 +154,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const hi = Math.max(1, Math.min(50, Number(cfg.keywordCountMax) || 30));
           if (result.keywords.length > hi) result.keywords = result.keywords.slice(0, hi);
         }
-        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category });
+        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category, fileType: result.fileType });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);
         sendResponse({ ok: false, error: err && err.message ? err.message : 'UNKNOWN' });

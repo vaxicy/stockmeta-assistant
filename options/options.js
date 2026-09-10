@@ -39,6 +39,7 @@ const DEFAULTS = {
   keywordCountMode: 'fixed',
   keywordCountMin: 20,
   keywordCountMax: 30,
+  defaultFileType: 'auto',
 };
 
 const PROVIDER_DEFAULTS = {
@@ -235,6 +236,9 @@ const OPT_I18N = {
     optDefaultCategory: 'Default Category',
     optDefaultCategoryAuto: 'AI auto-detect',
     optDefaultCategoryDesc: 'When a fixed category is chosen, it overrides the AI suggestion and is applied to the Adobe Stock form.',
+    optDefaultFileType: 'Default File Type',
+    optDefaultFileTypeAuto: 'AI auto-detect',
+    optDefaultFileTypeDesc: 'When "AI auto-detect", applies the AI-suggested file type (or Photos if unsure). A fixed choice always overrides the AI and is applied on Apply All.',
   },
   zh: {
     optTitle: '设置',
@@ -293,6 +297,9 @@ const OPT_I18N = {
     optDefaultCategory: '默认类别',
     optDefaultCategoryAuto: 'AI 自动识别',
     optDefaultCategoryDesc: '选择固定类别后，将覆盖 AI 识别结果并应用到 Adobe Stock 表单。',
+    optDefaultFileType: '默认素材类型',
+    optDefaultFileTypeAuto: 'AI 自动识别',
+    optDefaultFileTypeDesc: '选「AI 自动识别」时，按 AI 建议填入（AI 不确定则默认 Photos）；选择 Photos 或 Illustrations 后将始终覆盖 AI 结果，并在「全部应用」时填入。',
   },
 };
 
@@ -439,6 +446,7 @@ async function saveAllSettings() {
     autoSaveAfterApply: s.autoSaveAfterApply,
     autoSelectCategory: s.autoSelectCategory,
     defaultCategory: s.defaultCategory,
+    defaultFileType: s.defaultFileType,
   });
 }
 
@@ -464,6 +472,7 @@ function collectSettings() {
   const autoSaveAfterApply = document.getElementById('autoSaveAfterApply').checked;
   const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
   const defaultCategory = document.getElementById('defaultCategory').value;
+  const defaultFileType = document.getElementById('defaultFileType').value;
   return {
     provider,
     apiKey,
@@ -477,6 +486,7 @@ function collectSettings() {
     autoSaveAfterApply,
     autoSelectCategory,
     defaultCategory,
+    defaultFileType,
   };
 }
 
@@ -847,7 +857,7 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -1017,6 +1027,10 @@ async function load() {
     }
     dcSel.value = stored.defaultCategory || 'auto';
   }
+  // Default file type select: first option is "AI auto-detect", then the two
+  // fixed Adobe Stock values.
+  const dftSel = document.getElementById('defaultFileType');
+  if (dftSel) dftSel.value = stored.defaultFileType || 'auto';
   // Provider-aware UI hints / defaults.
   updateProviderUI();
   // Sync custom dropdown displays with the restored native select values.

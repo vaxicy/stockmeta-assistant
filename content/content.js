@@ -9,7 +9,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], category: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
+  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -227,6 +227,7 @@
     state.title = '';
     state.keywords = [];
     state.category = '';
+    state.fileType = '';
     panel.querySelector('#sm-title').value = '';
     panel.querySelector('#sm-keywords').value = '';
     panel.querySelector('#sm-kw-count').textContent = '';
@@ -254,6 +255,7 @@
       state.title = resp.title || '';
       state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
       state.category = resp.category || '';
+      state.fileType = resp.fileType || '';
       renderResults();
       setStatus('statusDone');
     } catch (err) {
@@ -437,6 +439,20 @@
           }
         }
       }
+      // File type: a fixed user choice always wins; in "auto" mode fall back to
+      // the AI-suggested value, and to "Photos" when the AI is uncertain (Adobe
+      // does not auto-detect this field, Photos is the safe default).
+      const ft = cfg.defaultFileType && cfg.defaultFileType !== 'auto' ? cfg.defaultFileType : (state.fileType || 'Photos');
+      if (ft) {
+        try {
+          const cur = Dom.getAdobeFileType();
+          if (cur !== ft) await Dom.setAdobeFileType(ft);
+          else console.log('[StockMeta] File type already "' + ft + '", skipping.');
+        } catch (err) {
+          // Non-fatal: title/keywords/category are more important than file type.
+          console.warn('[StockMeta] File type not applied (continuing):', err && err.message);
+        }
+      }
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
       toast('appliedAll');
@@ -453,13 +469,14 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory'],
+          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'],
           (s) =>
             resolve({
               autoCheckAI: !!s.autoCheckAI,
               autoSaveAfterApply: !!s.autoSaveAfterApply,
               autoSelectCategory: s.autoSelectCategory !== undefined ? !!s.autoSelectCategory : true,
               defaultCategory: s.defaultCategory || 'auto',
+              defaultFileType: s.defaultFileType || 'auto',
             })
         );
       } catch (_) {

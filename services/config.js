@@ -43,6 +43,7 @@ export const DEFAULT_CONFIG = {
   autoSaveAfterApply: false,
   autoSelectCategory: true,
   defaultCategory: 'auto',
+  defaultFileType: 'auto',
 };
 
 // Migrate legacy flat apiKey/baseUrl/model into the current provider's slot.
@@ -81,6 +82,7 @@ export async function getConfig() {
     'autoSaveAfterApply',
     'autoSelectCategory',
     'defaultCategory',
+    'defaultFileType',
   ]);
   const provider = stored.provider ?? DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
@@ -105,6 +107,7 @@ export async function getConfig() {
     autoSaveAfterApply: stored.autoSaveAfterApply ?? DEFAULT_CONFIG.autoSaveAfterApply,
     autoSelectCategory: stored.autoSelectCategory ?? DEFAULT_CONFIG.autoSelectCategory,
     defaultCategory: stored.defaultCategory ?? DEFAULT_CONFIG.defaultCategory,
+    defaultFileType: stored.defaultFileType ?? DEFAULT_CONFIG.defaultFileType,
   };
 }
 
@@ -112,7 +115,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,

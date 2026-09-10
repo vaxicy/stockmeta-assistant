@@ -386,6 +386,35 @@
     return raw;
   }
 
+  // File type dropdown is the other React Spectrum select on the Adobe
+  // content-tagger. Same open-trigger / click-option approach as the category.
+  const FILE_TYPE_SELECTORS = [
+    '[data-t*="content-tagger-file-type"]',
+    '[data-testid*="file" i]',
+    '[aria-haspopup="listbox"][aria-label*="file" i]',
+    '[aria-haspopup="listbox"][id*="file" i]',
+  ];
+
+  function setAdobeFileType(value) {
+    return pickAdobeDropdown(FILE_TYPE_SELECTORS, value);
+  }
+
+  function getAdobeFileType() {
+    const trigger = findDropdownTrigger(FILE_TYPE_SELECTORS);
+    if (!trigger) return '';
+    const btn = trigger.tagName === 'BUTTON' ? trigger : trigger.querySelector('button') || trigger;
+    if (!btn) return '';
+    const raw = (btn.textContent || '').trim();
+    if (!raw) return '';
+    // Only accept the two valid Adobe values; anything else (placeholder) is empty.
+    const lower = raw.toLowerCase();
+    if (lower.includes('illustr')) return 'Illustrations';
+    if (lower === 'photos' || lower === 'photo' || lower === 'image' || lower === 'images' || lower.includes('photo')) {
+      return 'Photos';
+    }
+    return '';
+  }
+
   window.StockMetaDom = {
     findTitleInput,
     findKeywordInput,
@@ -394,6 +423,8 @@
     replaceAdobeKeywords,
     setAdobeCategory,
     getAdobeCategory,
+    setAdobeFileType,
+    getAdobeFileType,
     setNativeValue,
     fireInputEvents,
   };

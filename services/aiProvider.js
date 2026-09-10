@@ -76,6 +76,19 @@ function normalizeToAdobeCategory(value) {
   return 'Graphic Resources';
 }
 
+// Map a model-supplied file type string onto the only two values Adobe Stock
+// accepts. Anything ambiguous (empty, unrecognized, "image", etc.) collapses to
+// "Photos" since Adobe does not auto-detect this field and Photos is the safe default.
+function normalizeToAdobeFileType(value) {
+  if (!value) return 'Photos';
+  const lower = String(value).trim().toLowerCase();
+  if (lower.includes('illustr')) return 'Illustrations';
+  if (lower === 'photo' || lower === 'photos' || lower === 'image' || lower === 'images' || lower.includes('photo')) {
+    return 'Photos';
+  }
+  return 'Photos';
+}
+
 // Normalize a user-supplied base URL: drop trailing slash and any accidentally
 // pasted endpoint suffix (e.g. /chat/completions, /v1/chat/completions) so the
 // base always ends at the version prefix. Keeps the real request path clean.
@@ -239,5 +252,6 @@ export function parseModelJson(content) {
     keywords = [...new Set([...keywords, ...titleWords])];
   }
   const category = normalizeToAdobeCategory(parsed.category);
-  return { title, keywords, category };
+  const fileType = normalizeToAdobeFileType(parsed.fileType);
+  return { title, keywords, category, fileType };
 }
