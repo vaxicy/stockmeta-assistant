@@ -417,12 +417,15 @@
 
   async function onApplyAll() {
     try {
-      if (!state.title && !state.keywords.length) {
-        toast('noTitle');
-        return;
+      let applied = false;
+      if (state.title) {
+        Dom.setAdobeTitle(state.title);
+        applied = true;
       }
-      if (state.title) Dom.setAdobeTitle(state.title);
-      if (state.keywords.length) await Dom.replaceAdobeKeywords(state.keywords);
+      if (state.keywords.length) {
+        await Dom.replaceAdobeKeywords(state.keywords);
+        applied = true;
+      }
       const cfg = await getApplyConfig();
       if (cfg.autoSelectCategory) {
         const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
@@ -436,18 +439,25 @@
             toast('categoryKept');
           } else {
             await Dom.setAdobeCategory(cat);
+            applied = true;
           }
         }
       }
       // File type: a fixed user choice always wins; in "auto" mode fall back to
       // the AI-suggested value, and to "Photos" when the AI is uncertain (Adobe
-      // does not auto-detect this field, Photos is the safe default).
+      // does not auto-detect this field, Photos is the safe default). This is
+      // settings-driven, so it is applied even when no title/keywords were
+      // generated (Apply All must not bail out before reaching it).
       const ft = cfg.defaultFileType && cfg.defaultFileType !== 'auto' ? cfg.defaultFileType : (state.fileType || 'Photos');
       if (ft) {
         try {
           const cur = Dom.getAdobeFileType();
-          if (cur !== ft) await Dom.setAdobeFileType(ft);
-          else console.log('[StockMeta] File type already "' + ft + '", skipping.');
+          if (cur !== ft) {
+            await Dom.setAdobeFileType(ft);
+          } else {
+            console.log('[StockMeta] File type already "' + ft + '", skipping.');
+          }
+          applied = true;
         } catch (err) {
           // Non-fatal: title/keywords/category are more important than file type.
           console.warn('[StockMeta] File type not applied (continuing):', err && err.message);
@@ -455,6 +465,10 @@
       }
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
+      if (!applied) {
+        toast('noTitle');
+        return;
+      }
       toast('appliedAll');
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';

@@ -334,8 +334,9 @@
     return findFirst(selectors);
   }
 
-  async function pickAdobeDropdown(selectors, value) {
-    const trigger = findDropdownTrigger(selectors);
+  // Open a React Spectrum dropdown trigger, then click the option whose label
+  // matches `value` exactly. Shared by the category and file-type pickers.
+  async function clickDropdownOption(trigger, value) {
     if (!trigger) throw new Error('SELECT_TRIGGER_NOT_FOUND');
     const btn = trigger.tagName === 'BUTTON' ? trigger : trigger.querySelector('button') || trigger;
     btn.click();
@@ -364,6 +365,43 @@
     return { success: true };
   }
 
+  async function pickAdobeDropdown(selectors, value) {
+    return clickDropdownOption(findDropdownTrigger(selectors), value);
+  }
+
+  // Locate a React Spectrum dropdown by the visible text of its field label.
+  // Needed for the file-type field: it exposes no stable data-*/id hook (React
+  // Aria generates random ids like "react-aria-R_xxx"), so we match the label
+  // text and walk to the associated trigger.
+  function findDropdownByLabel(labelText) {
+    const norm = (s) =>
+      String(s || '')
+        .replace(/[^a-z\s]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    const target = norm(labelText);
+    const labels = Array.from(
+      document.querySelectorAll('label, .spectrum-FieldLabel, [class*="FieldLabel"]')
+    );
+    const label = labels.find((el) => norm(el.textContent) === target);
+    if (!label) return null;
+    // 1) Prefer the trigger that references this label via aria-labelledby.
+    if (label.id) {
+      const byLabelledBy = document.querySelector(
+        '[aria-haspopup="listbox"][aria-labelledby~="' + label.id + '"]'
+      );
+      if (byLabelledBy) return byLabelledBy;
+    }
+    // 2) Otherwise search the enclosing field group for the dropdown trigger.
+    const field = label.closest('[class*="spectrum-Field"]') || label.parentElement;
+    if (field) {
+      const btn = field.querySelector('[aria-haspopup="listbox"], .spectrum-Dropdown-trigger, button');
+      if (btn) return btn;
+    }
+    return null;
+  }
+
   function setAdobeCategory(value) {
     return pickAdobeDropdown(CATEGORY_SELECTORS, value);
   }
@@ -387,20 +425,25 @@
   }
 
   // File type dropdown is the other React Spectrum select on the Adobe
-  // content-tagger. Same open-trigger / click-option approach as the category.
+  // content-tagger. The label-based fallback is the primary hook here because
+  // the trigger has no stable data-*/id attribute (see findDropdownByLabel).
   const FILE_TYPE_SELECTORS = [
     '[data-t*="content-tagger-file-type"]',
-    '[data-testid*="file" i]',
-    '[aria-haspopup="listbox"][aria-label*="file" i]',
-    '[aria-haspopup="listbox"][id*="file" i]',
+    '[data-testid="content-tagger-file-type"]',
+    '[aria-haspopup="listbox"][aria-label*="file type" i]',
+    '[aria-haspopup="listbox"][id*="file-type" i]',
   ];
 
+  function findFileTypeTrigger() {
+    return findDropdownTrigger(FILE_TYPE_SELECTORS) || findDropdownByLabel('File type');
+  }
+
   function setAdobeFileType(value) {
-    return pickAdobeDropdown(FILE_TYPE_SELECTORS, value);
+    return clickDropdownOption(findFileTypeTrigger(), value);
   }
 
   function getAdobeFileType() {
-    const trigger = findDropdownTrigger(FILE_TYPE_SELECTORS);
+    const trigger = findFileTypeTrigger();
     if (!trigger) return '';
     const btn = trigger.tagName === 'BUTTON' ? trigger : trigger.querySelector('button') || trigger;
     if (!btn) return '';
