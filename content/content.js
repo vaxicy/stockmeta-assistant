@@ -378,36 +378,96 @@
   }
 
   // ---------------------------------------------------------------- apply
+
+  // Apply the two settings-driven fields: the default category (only when
+  // autoSelectCategory is on) and the default file type. Returns true when at
+  // least one field was resolvable, so callers can pick the status message.
+  // Shared by "Apply All" AND the individual apply buttons so these settings
+  // take effect on ANY apply action.
+  async function applyCategoryAndFileType(cfg) {
+    let applied = false;
+    if (cfg.autoSelectCategory) {
+      const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
+      if (cat) {
+        // Only fill the category when Adobe itself did not already recognize
+        // one (e.g. it auto-detected "Science"). This avoids overwriting a
+        // system-identified category while still filling blank ones.
+        const existing = Dom.getAdobeCategory();
+        if (existing) {
+          console.log('[StockMeta] Adobe already categorized as "' + existing + '", keeping it.');
+          toast('categoryKept');
+        } else {
+          await Dom.setAdobeCategory(cat);
+          applied = true;
+        }
+      }
+    }
+    // File type: a fixed user choice always wins; in "auto" mode fall back to
+    // the AI-suggested value, and to "Photos" when the AI is uncertain (Adobe
+    // does not auto-detect this field, Photos is the safe default).
+    const ft = cfg.defaultFileType && cfg.defaultFileType !== 'auto' ? cfg.defaultFileType : (state.fileType || 'Photos');
+    if (ft) {
+      try {
+        const cur = Dom.getAdobeFileType();
+        if (cur !== ft) {
+          await Dom.setAdobeFileType(ft);
+        } else {
+          console.log('[StockMeta] File type already "' + ft + '", skipping.');
+        }
+        applied = true;
+      } catch (err) {
+        // Non-fatal: title/keywords/category are more important than file type.
+        console.warn('[StockMeta] File type not applied (continuing):', err && err.message);
+      }
+    }
+    return applied;
+  }
+
   async function onApply(which) {
     try {
+      let primaryApplied = false;
       if (which === 'title') {
-        if (!state.title) {
-          toast('noTitle');
-          return;
+        if (state.title) {
+          Dom.setAdobeTitle(state.title);
+          primaryApplied = true;
         }
-        Dom.setAdobeTitle(state.title);
-        toast('appliedTitle');
       } else if (which === 'keywords') {
-        if (!state.keywords.length) {
-          toast('noKeywords');
-          return;
+        if (state.keywords.length) {
+          await Dom.replaceAdobeKeywords(state.keywords);
+          primaryApplied = true;
         }
-        await Dom.replaceAdobeKeywords(state.keywords);
-        toast('appliedKeywords');
       } else if (which === 'category') {
-        const cfg = await getApplyConfig();
-        const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
-        if (!cat) {
-          toast('noCategory');
-          return;
+        const catCfg = await getApplyConfig();
+        const cat = catCfg.defaultCategory && catCfg.defaultCategory !== 'auto' ? catCfg.defaultCategory : state.category;
+        if (cat) {
+          await Dom.setAdobeCategory(cat);
+          primaryApplied = true;
         }
-        await Dom.setAdobeCategory(cat);
-        toast('appliedCategory');
+      }
+
+      // The default category + default file type are settings-driven, so they
+      // apply on ANY apply action — not only "Apply All". (The explicit
+      // "Apply Category" action already handled the category above.)
+      const cfg = await getApplyConfig();
+      let settingsApplied = false;
+      if (which !== 'category') {
+        settingsApplied = await applyCategoryAndFileType(cfg);
       }
       // 单独应用时也触发 AI 勾选 + 自动保存（与 onApplyAll 行为一致）
-      const cfg = await getApplyConfig();
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
+
+      if (primaryApplied) {
+        toast(which === 'title' ? 'appliedTitle' : which === 'keywords' ? 'appliedKeywords' : 'appliedCategory');
+      } else if (settingsApplied) {
+        toast('appliedSettings');
+      } else if (which === 'title') {
+        toast('noTitle');
+      } else if (which === 'keywords') {
+        toast('noKeywords');
+      } else {
+        toast('noCategory');
+      }
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       console.error('[StockMeta] apply failed:', which, code, err);
@@ -427,42 +487,9 @@
         applied = true;
       }
       const cfg = await getApplyConfig();
-      if (cfg.autoSelectCategory) {
-        const cat = cfg.defaultCategory && cfg.defaultCategory !== 'auto' ? cfg.defaultCategory : state.category;
-        if (cat) {
-          // Only fill the category when Adobe itself did not already recognize
-          // one (e.g. it auto-detected "Science"). This avoids overwriting a
-          // system-identified category while still filling blank ones.
-          const existing = Dom.getAdobeCategory();
-          if (existing) {
-            console.log('[StockMeta] Adobe already categorized as "' + existing + '", keeping it.');
-            toast('categoryKept');
-          } else {
-            await Dom.setAdobeCategory(cat);
-            applied = true;
-          }
-        }
-      }
-      // File type: a fixed user choice always wins; in "auto" mode fall back to
-      // the AI-suggested value, and to "Photos" when the AI is uncertain (Adobe
-      // does not auto-detect this field, Photos is the safe default). This is
-      // settings-driven, so it is applied even when no title/keywords were
-      // generated (Apply All must not bail out before reaching it).
-      const ft = cfg.defaultFileType && cfg.defaultFileType !== 'auto' ? cfg.defaultFileType : (state.fileType || 'Photos');
-      if (ft) {
-        try {
-          const cur = Dom.getAdobeFileType();
-          if (cur !== ft) {
-            await Dom.setAdobeFileType(ft);
-          } else {
-            console.log('[StockMeta] File type already "' + ft + '", skipping.');
-          }
-          applied = true;
-        } catch (err) {
-          // Non-fatal: title/keywords/category are more important than file type.
-          console.warn('[StockMeta] File type not applied (continuing):', err && err.message);
-        }
-      }
+      // Settings-driven fields (default category + default file type) apply here
+      // too, and even when no title/keywords were generated.
+      if (await applyCategoryAndFileType(cfg)) applied = true;
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
       if (!applied) {
