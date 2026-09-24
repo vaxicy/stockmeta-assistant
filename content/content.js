@@ -256,10 +256,23 @@
     }
     state.lastImageSrc = src;
     state.lastAssetId = id;
+    // A batch run OWNS the panel. Adobe repaints images constantly and
+    // findCurrentImage() can flip between the main image and a zoom/related
+    // thumbnail, so this identity check fires over and over mid-run. Wiping the
+    // panel there destroyed the result the run had just generated — the panel then
+    // read "0 keywords", the batch thought nothing was recognized and re-generated
+    // the asset, burning a whole extra model call ("不消耗二次token"). The batch
+    // clears the panel itself when it moves on to the next asset
+    // (core.resetResults), so skip the wipe here and only refresh the progress.
+    if (Batch && Batch.isRunning()) {
+      if (state.keywords.length || state.title) {
+        console.log('[StockMeta] repaint during a batch — keeping the generated result');
+      }
+      renderBatchProgress();
+      return;
+    }
     resetResults();
-    // While a batch runs, the status line belongs to the progress report.
-    if (Batch && Batch.isRunning()) renderBatchProgress();
-    else setStatus('statusIdle');
+    setStatus('statusIdle');
   }
 
   function resetResults() {
@@ -1052,6 +1065,9 @@
       currentImageSrc: () => (Img.currentImageSrc ? Img.currentImageSrc() : ''),
       assetId: (src) => assetIdentity(src),
       currentAssetId: () => assetIdentity(Img.currentImageSrc ? Img.currentImageSrc() : ''),
+      // The batch clears the panel when it moves to the next asset, instead of
+      // letting the mutation observer wipe it mid-flight (see updatePreview).
+      resetResults,
       notify: onBatchStateChange,
     };
   }

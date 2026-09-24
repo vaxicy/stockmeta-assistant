@@ -702,6 +702,13 @@
     const selected = await ensureSelected(tile, key, index, total, mode);
     if (!selected) return stopRequested ? 'skip' : 'abort';
 
+    // Clear the panel for THIS asset, on purpose, at a well-defined moment. Doing
+    // it here (rather than letting the mutation observer wipe it whenever Adobe
+    // repaints) is what keeps the result the next pass generates alive all the way
+    // to the apply/verify step — a wiped panel reads "0 keywords" and made the
+    // batch regenerate an asset it had already generated (an extra model call).
+    if (core.resetResults) core.resetResults();
+
     // Already complete (green dot / keywords on the tile): leave it alone. This
     // also covers tiles that turned green while the queue was being worked off.
     if (tileLooksDone(tile)) {
@@ -718,52 +725,67 @@
       if (title && kw >= MIN_KEYWORDS) return 'skip';
     }
 
-    // A few passes at most: generate -> apply -> save -> verify. Another pass
-    // only happens when the previous one did not produce usable keywords or did
-    // not land on the asset.
+    // A few passes at most: generate -> apply -> save -> verify. A retry only
+    // happens when the previous pass did not produce usable keywords or did not
+    // land on the asset.
     let retryLabel = 'batchRetrying';
-    // When the first pass produced keywords but the card never showed them, the
-    // second pass asks for the keywords ALONE (what the ↻ button does) instead of
-    // redoing the whole metadata — that is the user's own rule: the card reads 0,
-    // so regenerate the keywords once more.
+    // A retry asks for the keywords ALONE (what the ↻ button does) instead of
+    // redoing the whole metadata — and only when the panel really reads 0. When it
+    // still holds keywords, the retry re-applies them rather than paying for a new
+    // generation (see the reusePanel branch below).
     let keywordsOnly = false;
     for (let pass = 1; pass <= GEN_ATTEMPTS; pass++) {
       if (stopRequested) return 'skip';
       if (pass > 1) reportPhase(index, total, retryLabel);
 
-      reportPhase(index, total, keywordsOnly ? 'batchRegenKeywords' : 'batchGenerating');
-      const gen = await withTimeout(
-        Promise.resolve().then(() => core.generate({ keywordsOnly })),
-        GENERATE_TIMEOUT_MS,
-        'generate',
-        { ok: false, error: 'TIMEOUT' }
-      );
-      if (!gen || !gen.ok) {
-        const code = (gen && gen.error) || 'UNKNOWN';
-        console.warn('[StockMeta][batch] generate failed (' + pass + '/' + GEN_ATTEMPTS + '):', key, code);
-        // Re-recognize instead of giving up on the asset straight away — except
-        // for NO_KEYWORDS, which already exhausted the model retries (3 calls)
-        // plus the panel's keywords-only regeneration. The end-of-run round still
-        // gives such an asset a second, later chance.
-        if (code !== 'NO_KEYWORDS' && pass < GEN_ATTEMPTS) {
+      // Retry pass only: if the panel STILL holds usable keywords, the recognition
+      // itself succeeded and only the write/store did not. Re-apply what we have
+      // instead of asking the model again — regenerating here spends a whole extra
+      // call for keywords we already got ("不消耗二次token"). A panel that really
+      // reads 0 goes back to the model.
+      const panelKeywords = core.resultKeywordCount ? core.resultKeywordCount() : 0;
+      const reusePanel = pass > 1 && panelKeywords >= MIN_KEYWORDS;
+      if (reusePanel) {
+        console.log(
+          '[StockMeta][batch] ' +
+            panelKeywords +
+            ' keywords already recognized — re-applying instead of regenerating (no extra API call)'
+        );
+      } else {
+        reportPhase(index, total, keywordsOnly ? 'batchRegenKeywords' : 'batchGenerating');
+        const gen = await withTimeout(
+          Promise.resolve().then(() => core.generate({ keywordsOnly })),
+          GENERATE_TIMEOUT_MS,
+          'generate',
+          { ok: false, error: 'TIMEOUT' }
+        );
+        if (!gen || !gen.ok) {
+          const code = (gen && gen.error) || 'UNKNOWN';
+          console.warn('[StockMeta][batch] generate failed (' + pass + '/' + GEN_ATTEMPTS + '):', key, code);
+          // Re-recognize instead of giving up on the asset straight away — except
+          // for NO_KEYWORDS, which already exhausted the model retries (3 calls)
+          // plus the panel's keywords-only regeneration. The end-of-run round still
+          // gives such an asset a second, later chance.
+          if (code !== 'NO_KEYWORDS' && pass < GEN_ATTEMPTS) {
+            retryLabel = 'batchRecognizing';
+            await sleep(RETRY_BACKOFF_MS * pass);
+            continue;
+          }
+          core.showError(code);
+          return 'fail';
+        }
+
+        // A result without keywords can never turn the tile green — ask again
+        // instead of writing a thin asset (this is the "keywords showed 0" case).
+        const produced = core.resultKeywordCount ? core.resultKeywordCount() : 0;
+        if (produced < MIN_KEYWORDS && pass < GEN_ATTEMPTS) {
+          console.warn(
+            '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — re-recognizing'
+          );
           retryLabel = 'batchRecognizing';
           await sleep(RETRY_BACKOFF_MS * pass);
           continue;
         }
-        core.showError(code);
-        return 'fail';
-      }
-
-      // A result without keywords can never turn the tile green — ask again
-      // instead of writing a thin asset (this is the "keywords showed 0" case).
-      const produced = core.resultKeywordCount ? core.resultKeywordCount() : 0;
-      if (produced < MIN_KEYWORDS && pass < GEN_ATTEMPTS) {
-        console.warn(
-          '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — re-recognizing'
-        );
-        retryLabel = 'batchRecognizing';
-        await sleep(RETRY_BACKOFF_MS * pass);
-        continue;
       }
 
       reportPhase(index, total, 'batchApplying');

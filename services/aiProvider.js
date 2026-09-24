@@ -257,6 +257,32 @@ function extractJsonBlock(content) {
   return text;
 }
 
+// A response cut off mid-array ('..."wash","bottle","con') has no balanced
+// braces, so firstBalancedObject returns nothing and the whole answer — keywords
+// included — used to be thrown away, which is exactly the "0 keywords" the panel
+// displayed. Pull the quoted strings out of the keywords array instead of losing
+// them, and take the title if it made it out before the cut.
+function salvageFromRaw(content) {
+  const text = String(content == null ? '' : content);
+  let body = '';
+  const kwMatch = /"?(?:keywords?|tags|terms)"?\s*:\s*\[([\s\S]*)/i.exec(text);
+  if (kwMatch) {
+    body = kwMatch[1];
+    // Never read past the end of this array: stop at its closing bracket, or at
+    // the next field when the bracket never arrived (truncated answer).
+    const stop = body.search(/\]|\}\s*,?\s*"?(?:title|category|fileType)"?\s*:/i);
+    if (stop >= 0) body = body.slice(0, stop);
+  }
+  const words = [];
+  const re = /"((?:[^"\\]|\\.)*)"/g;
+  let hit;
+  while ((hit = re.exec(body))) {
+    words.push(hit[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
+  }
+  const titleMatch = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/i.exec(text);
+  return { title: titleMatch ? titleMatch[1].trim() : '', words };
+}
+
 /** @param {object} opts */
 async function requestMetadata({
   apiKey,
@@ -366,6 +392,26 @@ export function parseModelJson(content) {
   try {
     parsed = JSON.parse(text);
   } catch (_) {
+    // Malformed / truncated answer: keep whatever keywords (and title) can be
+    // recovered instead of reporting "0 keywords" and re-asking the model.
+    const salvaged = salvageFromRaw(content);
+    const keywords = dedupeKeywords(toStringList(salvaged.words).filter(isEnglishKeyword));
+    if (keywords.length || salvaged.title) {
+      console.warn(
+        '[StockMeta] malformed JSON — salvaged ' +
+          keywords.length +
+          ' keyword(s)' +
+          (salvaged.title ? ' and a title' : '') +
+          ' from the raw answer'
+      );
+      return {
+        title: salvaged.title,
+        keywords,
+        category: normalizeToAdobeCategory(undefined),
+        fileType: normalizeToAdobeFileType(undefined),
+        rawKeywordCount: salvaged.words.length,
+      };
+    }
     throw new Error('JSON_PARSE_FAILED');
   }
   // Keywords-only answers sometimes come back as a bare array.

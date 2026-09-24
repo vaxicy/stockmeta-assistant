@@ -103,7 +103,15 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
   parts.push('- Describe only visible content. Do not invent brands, places, or events.');
   parts.push('- All output must be in English. Do not include Chinese or any non-English words.');
   parts.push('- The category must be one of the listed categories, verbatim.');
-  parts.push('- Do NOT output Markdown. Return ONLY a JSON object.');
+  parts.push('- Do NOT output Markdown. Return ONLY a JSON object on a single line, with no code fence and no text before or after it.');
+  if (mode !== 'title') {
+    // These used to live only in the retry prompt, so the FIRST call was the one
+    // most likely to come back unusable (a keyword string instead of an array, a
+    // short list, or bullets/numbering) and every asset paid for a second call.
+    // Spelling the contract out up front is what makes the first call succeed.
+    parts.push('- "keywords" MUST be a JSON array of at least 15 entries — never a single string, never empty, never prose.');
+    parts.push('- Each keyword: lowercase plain English (a-z, digits, hyphens), 1-4 words, no numbering, no bullets, no trailing punctuation.');
+  }
   if (mode === 'title') {
     parts.push('- JSON format: {"title":"..."}');
   } else if (mode === 'keywords') {
