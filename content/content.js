@@ -12,7 +12,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
+  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, lastAssetId: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -40,9 +40,6 @@
           <img id="sm-preview" class="sm-preview" alt="" />
         </div>
         <button class="sm-btn sm-primary" id="sm-generate" data-i18n="generate"></button>
-        <div class="sm-row sm-row-batch">
-          <button class="sm-btn sm-batch" id="sm-batch" hidden></button>
-        </div>
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
@@ -89,8 +86,6 @@
   // ---------------------------------------------------------------- events
   function bindEvents() {
     panel.querySelector('#sm-generate').addEventListener('click', onGenerate);
-    const batchBtn = panel.querySelector('#sm-batch');
-    if (batchBtn) batchBtn.addEventListener('click', onBatchClick);
     panel.querySelector('#sm-apply-title').addEventListener('click', () => onApply('title'));
     panel.querySelector('#sm-apply-kw').addEventListener('click', () => onApply('keywords'));
     panel.querySelector('#sm-apply-all').addEventListener('click', onApplyAll);
@@ -221,6 +216,23 @@
   }
 
   // ---------------------------------------------------------------- preview
+
+  // Adobe repaints image URLs constantly (lazy loading, low-res -> high-res,
+  // cache busting), so the raw src is NOT an asset identity. Deriving the stock
+  // id keeps the panel from wiping freshly generated results on every repaint —
+  // which used to make a running batch look frozen.
+  function assetIdentity(src) {
+    if (!src) return '';
+    try {
+      const m = /(?:^|[^a-z0-9])F_(\d+)/i.exec(src);
+      if (m) return 'f:' + m[1];
+      const u = new URL(src, location.href);
+      return 'u:' + u.pathname;
+    } catch (_) {
+      return 's:' + src;
+    }
+  }
+
   function updatePreview() {
     const img = Img.findCurrentImage();
     const preview = panel.querySelector('#sm-preview');
@@ -228,16 +240,24 @@
       preview.removeAttribute('src');
       preview.alt = t('statusNoImage');
       state.lastImageSrc = null;
+      state.lastAssetId = null;
       return;
     }
     const src = img.currentSrc || img.src || img.getAttribute('data-src');
     preview.src = src;
     preview.alt = t('previewAlt');
-    if (src !== state.lastImageSrc) {
+    const id = assetIdentity(src);
+    if (id === state.lastAssetId) {
+      // Same asset, new URL: keep the results (and the batch progress line).
       state.lastImageSrc = src;
-      resetResults();
-      setStatus('statusIdle');
+      return;
     }
+    state.lastImageSrc = src;
+    state.lastAssetId = id;
+    resetResults();
+    // While a batch runs, the status line belongs to the progress report.
+    if (Batch && Batch.isRunning()) renderBatchProgress();
+    else setStatus('statusIdle');
   }
 
   function resetResults() {
@@ -275,6 +295,12 @@
   }
 
   async function onGenerate() {
+    // Batch mode: with the setting on, this single button drives the whole run
+    // (and stops it while a run is in flight).
+    if (shouldRunBatch()) {
+      await onBatchClick();
+      return;
+    }
     const genBtn = panel.querySelector('#sm-generate');
     genBtn.disabled = true;
     try {
@@ -300,61 +326,55 @@
     }
   }
 
-  function sendGenerate(imageBase64) {
-    return new Promise((resolve) => {
-      try {
-        chrome.runtime.sendMessage(
-          { type: 'GENERATE_METADATA', imageBase64 },
-          (resp) => {
-            if (chrome.runtime.lastError) {
-              const msg = String(chrome.runtime.lastError.message || '');
-              if (msg.includes('Extension context invalidated')) {
-                resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
-              } else {
-                resolve({ ok: false, error: 'NETWORK_ERROR' });
-              }
-            } else {
-              resolve(resp || { ok: false, error: 'UNKNOWN' });
-            }
-          }
-        );
-      } catch (err) {
-        const msg = err && err.message ? err.message : '';
-        if (String(msg).includes('Extension context invalidated')) {
-          resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
-        } else {
-          resolve({ ok: false, error: 'NETWORK_ERROR' });
-        }
-      }
-    });
-  }
+  // If the MV3 service worker dies mid-request the sendMessage callback never
+  // fires; without this guard the panel (and the batch) would wait forever.
+  const CLIENT_RESPONSE_TIMEOUT_MS = 100000;
 
-  // Regenerate a single field (title or keywords) without touching the other.
-  function sendGenerateField(imageBase64, mode) {
-    const type = mode === 'title' ? 'GENERATE_TITLE' : 'GENERATE_KEYWORDS';
+  function sendMessageWithTimeout(message) {
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (r) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(r);
+      };
+      const timer = setTimeout(() => {
+        console.warn('[StockMeta] no response from the background worker after', CLIENT_RESPONSE_TIMEOUT_MS, 'ms:', message.type);
+        finish({ ok: false, error: 'TIMEOUT' });
+      }, CLIENT_RESPONSE_TIMEOUT_MS);
       try {
-        chrome.runtime.sendMessage({ type, imageBase64 }, (resp) => {
+        chrome.runtime.sendMessage(message, (resp) => {
           if (chrome.runtime.lastError) {
             const msg = String(chrome.runtime.lastError.message || '');
             if (msg.includes('Extension context invalidated')) {
-              resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+              finish({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
             } else {
-              resolve({ ok: false, error: 'NETWORK_ERROR' });
+              finish({ ok: false, error: 'NETWORK_ERROR' });
             }
           } else {
-            resolve(resp || { ok: false, error: 'UNKNOWN' });
+            finish(resp || { ok: false, error: 'UNKNOWN' });
           }
         });
       } catch (err) {
         const msg = err && err.message ? err.message : '';
         if (String(msg).includes('Extension context invalidated')) {
-          resolve({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
+          finish({ ok: false, error: 'EXTENSION_CONTEXT_INVALIDATED' });
         } else {
-          resolve({ ok: false, error: 'NETWORK_ERROR' });
+          finish({ ok: false, error: 'NETWORK_ERROR' });
         }
       }
     });
+  }
+
+  function sendGenerate(imageBase64) {
+    return sendMessageWithTimeout({ type: 'GENERATE_METADATA', imageBase64 });
+  }
+
+  // Regenerate a single field (title or keywords) without touching the other.
+  function sendGenerateField(imageBase64, mode) {
+    const type = mode === 'title' ? 'GENERATE_TITLE' : 'GENERATE_KEYWORDS';
+    return sendMessageWithTimeout({ type, imageBase64 });
   }
 
   async function onGenerateField(mode) {
@@ -688,32 +708,49 @@
     } catch (_) {}
   }
 
+  // Progress is rendered by the panel (not the engine): it owns the status line
+  // and a 1 s ticker, so a slow API call visibly counts up instead of looking
+  // frozen while Adobe repaints the grid underneath.
+  let batchPhase = null; // { i, total, phaseKey, at }
+
+  function renderBatchProgress() {
+    if (!batchPhase) return;
+    const secs = Math.round((Date.now() - batchPhase.at) / 1000);
+    const phase = t(batchPhase.phaseKey) + (secs >= 5 ? ' ' + secs + 's' : '');
+    setStatusText(tf('batchProgress', { i: batchPhase.i, total: batchPhase.total, phase }), false);
+  }
+
+  function onBatchPhase(i, total, phaseKey) {
+    batchPhase = { i, total, phaseKey, at: Date.now() };
+    renderBatchProgress();
+  }
+
   function renderBatchUi(info) {
     if (!panel) return;
-    const btn = panel.querySelector('#sm-batch');
+    const btn = panel.querySelector('#sm-generate');
     if (!btn) return;
-    if (!Batch) {
-      btn.hidden = true;
-      return;
-    }
-    const isRunning = info && typeof info.running === 'boolean' ? info.running : Batch.isRunning();
+    const isRunning =
+      info && typeof info.running === 'boolean' ? info.running : !!(Batch && Batch.isRunning());
     panel.classList.toggle('sm-busy', isRunning);
-    if (!batchCfg.batchProcess) {
-      btn.hidden = true;
-      return;
-    }
-    btn.hidden = false;
     if (isRunning) {
       btn.disabled = false;
-      btn.classList.add('sm-danger');
+      btn.classList.add('sm-batch', 'sm-danger');
       btn.textContent = t('batchStop');
       return;
     }
     btn.classList.remove('sm-danger');
+    // Batch mode off (or no grid on this page): plain single-asset generator.
+    if (!Batch || !batchCfg.batchProcess) {
+      btn.disabled = false;
+      btn.classList.remove('sm-batch');
+      btn.textContent = t('generate');
+      return;
+    }
     const n = Batch.countPending();
     if (n > 0) {
       btn.disabled = false;
-      btn.textContent = tf('batchButton', { n });
+      btn.classList.add('sm-batch');
+      btn.textContent = tf('generateBatch', { n });
       return;
     }
     // Nothing matched the red dot. Instead of claiming "nothing pending" while
@@ -722,11 +759,21 @@
     const all = Batch.countTiles();
     if (all > 0) {
       btn.disabled = false;
-      btn.textContent = tf('batchButtonAll', { n: all });
+      btn.classList.add('sm-batch');
+      btn.textContent = tf('generateBatchAll', { n: all });
       return;
     }
-    btn.disabled = true;
-    btn.textContent = t('batchNoGrid');
+    btn.disabled = false;
+    btn.classList.remove('sm-batch');
+    btn.textContent = t('generate');
+  }
+
+  // With batch mode on, "Generate Title & Keywords" drives the whole run — the
+  // panel no longer has a second button for it.
+  function shouldRunBatch() {
+    if (!Batch || !batchCfg.batchProcess) return false;
+    if (Batch.isRunning()) return true;
+    return Batch.countTiles() > 0;
   }
 
   async function onBatchClick() {
@@ -753,10 +800,12 @@
 
   // Called by the batch engine whenever it starts or finishes a run.
   function onBatchStateChange(summary, isRunning) {
+    if (!isRunning) batchPhase = null;
     renderBatchUi({ running: isRunning });
     if (!summary) return;
     // The summary deserves a longer dwell time than a regular toast.
-    setStatus(summary.stopped ? 'batchStopped' : 'batchDone', summary.fail > 0, summary);
+    const key = summary.aborted ? 'batchAborted' : summary.stopped ? 'batchStopped' : 'batchDone';
+    setStatus(key, summary.fail > 0, summary);
     clearTimeout(toast._t);
     toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
   }
@@ -784,6 +833,7 @@
       tf,
       toast,
       status: setStatusText,
+      phase: onBatchPhase,
       showError: (code) => setError(code),
       generate: generateForCurrentAsset,
       applyAll: () => applyAllCurrent({ skipAutoSave: true }),
@@ -839,13 +889,18 @@
           if (area === 'local' && (changes.batchProcess || changes.batchIntervalMs)) loadBatchConfig();
         });
       } catch (_) {}
-      // Keep the pending counter honest while the grid itself changes
+      // 1 s tick: keeps the progress counter ticking during a run (proof of
+      // life) and the pending counter honest while the grid itself changes
       // (uploads finishing, filters, pagination).
       setInterval(() => {
-        if (!Batch.isRunning()) renderBatchUi();
-      }, 3000);
-      // Pick the queue back up if Adobe reloaded the page mid-run.
-      Batch.maybeResume();
+        if (Batch.isRunning()) {
+          if (!state.lastStatus.isError) renderBatchProgress();
+          return;
+        }
+        renderBatchUi();
+      }, 1000);
+      // Drop any leftover run flag from a previous page session.
+      Batch.clearStaleRun();
     }
   }
 

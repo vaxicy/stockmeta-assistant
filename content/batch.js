@@ -52,10 +52,16 @@
   const SETTLE_MS = 400;
   const SAVE_SETTLE_MS = 500;
   const SAFETY_MAX_ASSETS = 500;
-  const RESUME_MAX_AGE_MS = 10 * 60 * 1000;
   const SCAN_CACHE_MS = 2500;
   const COLOR_SCAN_MAX = 12;
   const DIAG_INTERVAL_MS = 15000;
+  // A run must never be able to sit still forever.
+  const GENERATE_TIMEOUT_MS = 120000;
+  const APPLY_TIMEOUT_MS = 60000;
+  const SAVE_TIMEOUT_MS = 45000;
+  // Repeated failures mean something systemic (key, quota, layout) — stop
+  // instead of walking the whole grid doing nothing.
+  const MAX_CONSECUTIVE_FAIL = 3;
 
   let core = null;
   let running = false;
@@ -316,9 +322,25 @@
   }
 
   // ---------------------------------------------------------------- progress
+  // The panel formats and ticks the progress line (it can show elapsed seconds),
+  // so the engine only reports the phase.
   function reportPhase(index, total, phaseKey) {
-    if (!core || !core.status) return;
-    core.status(core.tf('batchProgress', { i: index, total, phase: core.t(phaseKey) }));
+    if (!core || !core.phase) return;
+    core.phase(index, total, phaseKey);
+  }
+
+  // Last-resort guard so a stalled API call / dead service worker can never hang
+  // a run forever.
+  function withTimeout(promise, ms, label, fallback) {
+    return Promise.race([
+      promise,
+      new Promise((resolve) =>
+        setTimeout(() => {
+          console.warn('[StockMeta][batch] step timed out after', ms + 'ms:', label);
+          resolve(fallback);
+        }, ms)
+      ),
+    ]);
   }
 
   function persist(patch) {
@@ -373,7 +395,12 @@
     }
 
     reportPhase(index, total, 'batchGenerating');
-    const gen = await core.generate();
+    const gen = await withTimeout(
+      Promise.resolve().then(() => core.generate()),
+      GENERATE_TIMEOUT_MS,
+      'generate',
+      { ok: false, error: 'TIMEOUT' }
+    );
     if (!gen || !gen.ok) {
       console.warn('[StockMeta][batch] generate failed:', key, gen && gen.error);
       core.showError((gen && gen.error) || 'UNKNOWN');
@@ -382,7 +409,12 @@
 
     reportPhase(index, total, 'batchApplying');
     try {
-      await core.applyAll();
+      await withTimeout(
+        Promise.resolve().then(() => core.applyAll()),
+        APPLY_TIMEOUT_MS,
+        'apply',
+        undefined
+      );
     } catch (err) {
       // A failing dropdown (category / file type) must not throw away an asset
       // whose title and keywords are already written.
@@ -390,7 +422,7 @@
     }
 
     reportPhase(index, total, 'batchSaving');
-    await core.save();
+    await withTimeout(Promise.resolve().then(() => core.save()), SAVE_TIMEOUT_MS, 'save', undefined);
     await sleep(SAVE_SETTLE_MS);
     return 'ok';
   }
@@ -436,8 +468,11 @@
     let ok = 0;
     let fail = 0;
     let skip = 0;
+    let consecutiveFail = 0;
+    let aborted = false;
     const total = Math.min(queue.length, SAFETY_MAX_ASSETS);
     const startedAt = options.startedAt || Date.now();
+    console.log('[StockMeta][batch] start', mode, '| tiles:', all, '| queue:', total, '| interval:', intervalMs + 'ms');
     persist({ running: true, startedAt, processedKeys, total, mode });
 
     try {
@@ -457,11 +492,25 @@
           res = 'fail';
         }
         if (processedKeys.indexOf(key) === -1) processedKeys.push(key);
-        if (res === 'ok') ok++;
-        else if (res === 'fail') fail++;
-        else skip++; // 'skip' / 'abort'
+        if (res === 'ok') {
+          ok++;
+          consecutiveFail = 0;
+        } else if (res === 'fail') {
+          fail++;
+          consecutiveFail++;
+          console.warn('[StockMeta][batch] asset failed (' + consecutiveFail + ' in a row):', i + 1, '/', total, key);
+        } else {
+          skip++; // 'skip' / 'abort'
+          consecutiveFail = 0;
+        }
+        console.log('[StockMeta][batch] progress', i + 1 + '/' + total, '->', res, '| ok', ok, 'fail', fail, 'skip', skip);
         persist({ running: true, startedAt, processedKeys, total, mode });
         if (res === 'abort') break;
+        if (consecutiveFail >= MAX_CONSECUTIVE_FAIL) {
+          console.warn('[StockMeta][batch] aborting: ' + MAX_CONSECUTIVE_FAIL + ' consecutive failures (check API key / quota / page layout)');
+          aborted = true;
+          break;
+        }
         if (i < total - 1) await sleep(intervalMs);
       }
     } finally {
@@ -469,7 +518,8 @@
       stopRequested = false;
       running = false;
       clearState();
-      lastSummary = { ok, fail, skip, stopped };
+      lastSummary = { ok, fail, skip, stopped, aborted };
+      console.log('[StockMeta][batch] finished:', lastSummary);
       if (core && core.notify) core.notify(lastSummary, false);
     }
     return lastSummary;
@@ -480,38 +530,19 @@
     stopRequested = true;
   }
 
-  // ---------------------------------------------------------------- resume
-  // Adobe's uploads page usually swaps the detail form in place, but if the page
-  // does reload mid-run we pick the queue back up instead of silently dying.
-  function maybeResume() {
+  // ---------------------------------------------------------------- leftovers
+  // A run never restarts by itself: a leftover "running" flag (page reloaded, or
+  // the tab was closed mid-run) is cleared so the next click starts from scratch
+  // instead of spending API calls the user never asked for again.
+  function clearStaleRun() {
     try {
-      chrome.storage.local.get([STATE_KEY, 'batchProcess', 'batchIntervalMs'], (s) => {
+      chrome.storage.local.get([STATE_KEY], (s) => {
         const st = s && s[STATE_KEY];
-        if (!st || !st.running) return;
-        const age = Date.now() - (st.startedAt || 0);
-        if (age > RESUME_MAX_AGE_MS || !s.batchProcess) {
-          clearState();
-          return;
-        }
-        processedKeys = Array.isArray(st.processedKeys) ? st.processedKeys.slice() : [];
-        const left =
-          st.mode === 'verify'
-            ? queryTiles().length
-            : unprocessedPending().length;
-        if (!left) {
-          clearState();
-          return;
-        }
-        setTimeout(() => {
-          if (running || !core) return;
-          core.toast('batchResumed');
-          start({
-            intervalMs: s.batchIntervalMs,
-            mode: st.mode === 'verify' ? 'verify' : 'dots',
-            resume: true,
-            startedAt: st.startedAt,
-          });
-        }, 2500);
+        if (!st) return;
+        console.warn('[StockMeta][batch] clearing stale batch state from a previous session:', st);
+        clearState();
+        scanCache = { at: 0, pending: null, tiles: 0 };
+        if (core && core.notify) core.notify(null, false);
       });
     } catch (_) {}
   }
@@ -522,7 +553,7 @@
     },
     start,
     stop,
-    maybeResume,
+    clearStaleRun,
     countPending,
     countTiles,
     isRunning: () => running,

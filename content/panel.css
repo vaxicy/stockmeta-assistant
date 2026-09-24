@@ -246,11 +246,7 @@
   background: #1666c9;
 }
 
-/* Batch mode: extra action row under Generate, only shown when enabled. */
-.sm-row-batch {
-  margin-top: 8px;
-}
-
+/* Batch mode: the Generate button doubles as the batch trigger/stop control. */
 .sm-btn.sm-batch {
   background: #fff7ed;
   border-color: #fdba74;
@@ -271,9 +267,8 @@
   background: #b91c1c;
 }
 
-/* While a batch run is in flight, manual actions would interleave with it. */
-#stockmeta-panel.sm-busy #sm-generate,
-#stockmeta-panel.sm-busy #sm-retry,
+/* While a batch run is in flight, manual actions would interleave with it.
+   #sm-generate is deliberately absent: it is the stop control during a run. */
 #stockmeta-panel.sm-busy #sm-apply-title,
 #stockmeta-panel.sm-busy #sm-apply-kw,
 #stockmeta-panel.sm-busy #sm-apply-all,
