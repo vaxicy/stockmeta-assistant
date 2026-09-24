@@ -258,6 +258,12 @@
       state.fileType = resp.fileType || '';
       renderResults();
       setStatus('statusDone');
+      // Optional: apply everything as soon as the result lands, so the user does
+      // not have to press "Apply All" afterwards. Driven by the settings toggle.
+      const cfg = await getApplyConfig();
+      if (cfg.autoApplyAfterGenerate) {
+        await onApplyAll();
+      }
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       setError(code, err);
@@ -510,7 +516,7 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'],
+          ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate'],
           (s) =>
             resolve({
               autoCheckAI: !!s.autoCheckAI,
@@ -518,6 +524,7 @@
               autoSelectCategory: s.autoSelectCategory !== undefined ? !!s.autoSelectCategory : true,
               defaultCategory: s.defaultCategory || 'auto',
               defaultFileType: s.defaultFileType || 'auto',
+              autoApplyAfterGenerate: !!s.autoApplyAfterGenerate,
             })
         );
       } catch (_) {
@@ -525,6 +532,7 @@
           autoCheckAI: false,
           autoSaveAfterApply: false,
           autoSelectCategory: true,
+          autoApplyAfterGenerate: false,
         });
       }
     });

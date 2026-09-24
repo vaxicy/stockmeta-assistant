@@ -40,6 +40,7 @@ const DEFAULTS = {
   keywordCountMin: 20,
   keywordCountMax: 30,
   defaultFileType: 'auto',
+  autoApplyAfterGenerate: false,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -209,6 +210,8 @@ const OPT_I18N = {
     optAutoCheckAIDesc: 'When applying the title, keywords, or all, also tick the two AI declaration checkboxes on the Adobe Stock form.',
     optAutoSaveAfterApply: 'Auto-save after Apply',
     optAutoSaveAfterApplyDesc: 'After applying the title, keywords, or all metadata, automatically click the "Save work" button on Adobe Stock.',
+    optAutoApplyAfterGenerate: 'Auto-apply All after Generate',
+    optAutoApplyAfterGenerateDesc: 'As soon as "Generate Title & Keywords" returns a result, automatically click "Apply All" for you. Useful when you always apply right after generating.',
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
@@ -270,6 +273,8 @@ const OPT_I18N = {
     optAutoCheckAIDesc: '应用标题、关键词或全部应用时，均会自动勾选 Adobe Stock 表单上的「使用生成式 AI 工具创建」与「人物与财产均为虚构」两项。',
     optAutoSaveAfterApply: '应用后自动保存',
     optAutoSaveAfterApplyDesc: '应用标题、关键词或全部应用后，自动点击 Adobe Stock 页面上的「保存」按钮。',
+    optAutoApplyAfterGenerate: '生成后自动全部应用',
+    optAutoApplyAfterGenerateDesc: '点击「生成标题和关键词」并返回结果后，自动替你点击「全部应用」（标题、关键词、类别、素材类型一并填入）。适合每次生成后都要应用的用户。',
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
@@ -447,6 +452,7 @@ async function saveAllSettings() {
     autoSelectCategory: s.autoSelectCategory,
     defaultCategory: s.defaultCategory,
     defaultFileType: s.defaultFileType,
+    autoApplyAfterGenerate: s.autoApplyAfterGenerate,
   });
 }
 
@@ -473,6 +479,7 @@ function collectSettings() {
   const autoSelectCategory = document.getElementById('autoSelectCategory').checked;
   const defaultCategory = document.getElementById('defaultCategory').value;
   const defaultFileType = document.getElementById('defaultFileType').value;
+  const autoApplyAfterGenerate = document.getElementById('autoApplyAfterGenerate').checked;
   return {
     provider,
     apiKey,
@@ -487,6 +494,7 @@ function collectSettings() {
     autoSelectCategory,
     defaultCategory,
     defaultFileType,
+    autoApplyAfterGenerate,
   };
 }
 
@@ -857,7 +865,7 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -986,6 +994,7 @@ async function load() {
     'keywordCountMax',
     'autoCheckAI',
     'autoSaveAfterApply',
+    'autoApplyAfterGenerate',
     'autoSelectCategory',
   ]);
   // Provider select + module pointer.
@@ -1013,6 +1022,8 @@ async function load() {
   as.checked = !!stored.autoSaveAfterApply;
   const asc = document.getElementById('autoSelectCategory');
   asc.checked = stored.autoSelectCategory !== undefined ? !!stored.autoSelectCategory : true;
+  const aag = document.getElementById('autoApplyAfterGenerate');
+  if (aag) aag.checked = !!stored.autoApplyAfterGenerate;
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');

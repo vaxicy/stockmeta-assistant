@@ -44,6 +44,10 @@ export const DEFAULT_CONFIG = {
   autoSelectCategory: true,
   defaultCategory: 'auto',
   defaultFileType: 'auto',
+  // When true, a successful "Generate Title & Keywords" run immediately applies
+  // everything (title + keywords + settings-driven category/file type) for the
+  // user, skipping the extra "Apply All" click.
+  autoApplyAfterGenerate: false,
 };
 
 // Migrate legacy flat apiKey/baseUrl/model into the current provider's slot.
@@ -83,6 +87,7 @@ export async function getConfig() {
     'autoSelectCategory',
     'defaultCategory',
     'defaultFileType',
+    'autoApplyAfterGenerate',
   ]);
   const provider = stored.provider ?? DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
@@ -108,6 +113,8 @@ export async function getConfig() {
     autoSelectCategory: stored.autoSelectCategory ?? DEFAULT_CONFIG.autoSelectCategory,
     defaultCategory: stored.defaultCategory ?? DEFAULT_CONFIG.defaultCategory,
     defaultFileType: stored.defaultFileType ?? DEFAULT_CONFIG.defaultFileType,
+    autoApplyAfterGenerate:
+      stored.autoApplyAfterGenerate ?? DEFAULT_CONFIG.autoApplyAfterGenerate,
   };
 }
 
@@ -115,7 +122,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,
