@@ -630,9 +630,10 @@
     } catch (_) {}
   }
 
-  // Click "Save work" and say so when the button cannot be found, instead of
-  // silently pretending the asset was stored: an unsaved asset keeps its "0"
-  // badge forever, which is the state this whole check exists for.
+  // Click "Save work" and say so when the button could not be clicked, instead of
+  // silently pretending it happened. The click itself returns immediately now, so
+  // this costs almost nothing per asset (user's rule: "直接识别卡片关键词数量达标就
+  // 保存然后下一张" — no waiting step).
   async function saveAsset() {
     const done = await withTimeout(
       Promise.resolve().then(() => core.save()),
@@ -642,7 +643,7 @@
     );
     if (done === false) {
       console.warn(
-        '[StockMeta][batch] the Save work button was not found — this asset could not be stored'
+        '[StockMeta][batch] the Save work button was not clickable — this asset may not be stored'
       );
     }
     return done !== false;
@@ -811,11 +812,11 @@
         return 'fail';
       }
 
-      // The card proves the keywords are in, so persist — ONCE — and then move on
-      // (user's rule: "如果卡片上显示关键词达标就保存就下一个"). There is no second
-      // save and no post-save wait any more: saveAndWait() already blocks until
-      // Adobe's button goes idle again, which IS the confirmation that the write
-      // finished, and the card was verified before we got here.
+      // The card proves the keywords are in, so click save — ONCE — and move on
+      // (user's rule: "直接识别卡片关键词数量达标就保存然后下一张"). No second save
+      // and no post-save wait: the extension clicks Save work and returns straight
+      // away instead of waiting for Adobe's button, which used to cost seconds per
+      // asset for nothing ("这个不必要的保存步骤…能不能直接去掉").
       if (!savedThisPass) {
         reportPhase(index, total, 'batchSaving');
         await saveAsset();

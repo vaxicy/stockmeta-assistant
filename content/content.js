@@ -672,7 +672,7 @@
     if (cfg.autoCheckAI) checkAIDeclarationBoxes();
     // `save` = save and wait (batch); `skipAutoSave` = batch saves itself right
     // after, so the setting-driven click must not fire a second save request.
-    if (opts && opts.save) await saveAndWait();
+    if (opts && opts.save) await saveNow();
     else if (cfg.autoSaveAfterApply && !(opts && opts.skipAutoSave)) clickSaveWorkButton();
     return applied;
   }
@@ -748,66 +748,33 @@
     }
   }
 
-  // Save and wait for Adobe to finish writing, so a batch run never leaves the
-  // previous asset unsaved (nor clicks the next tile mid-request).
+  // Click "Save work" and move on.
   //
-  // Two things made saving feel "random" (user report: "这个保存有点随机的"): the
-  // button node is replaced whenever Adobe re-renders, so a reference captured
-  // earlier silently no-ops on click(); and a single click was fired without ever
-  // checking that Adobe received it. So: re-resolve the button on every attempt
-  // and keep clicking until the click actually registers — Adobe disables the
-  // button while it writes.
-  const SAVE_CLICK_TIMEOUT_MS = 2500; // find the button and get a click to register
-  const SAVE_SETTLE_TIMEOUT_MS = 8000; // wait for Adobe to finish writing
-  const SAVE_MAX_CLICKS = 3;
+  // This deliberately does NOT wait for Adobe any more. That wait was the
+  // "保存中… 12s" step the user asked to delete ("还是有这个不必要的保存步骤…能不能直接
+  // 去掉，直接识别卡片关键词数量达标就保存然后下一张"): Adobe keeps its own button
+  // disabled for its own reasons (its autosave, its queue), so waiting for it to go
+  // idle could burn seconds per asset for nothing. The click IS still verified —
+  // the node is re-resolved on every attempt, because Adobe replaces it on each
+  // render and a stale reference silently no-ops — but only for a moment.
+  const SAVE_CLICK_TIMEOUT_MS = 800;
   function saveButtonBusy(btn) {
     return !!btn.disabled || btn.getAttribute('aria-disabled') === 'true';
   }
-  // Wait until Adobe's button stops showing the "writing" state.
-  async function waitSaveIdle() {
+  async function saveNow() {
     const t0 = Date.now();
-    while (Date.now() - t0 < SAVE_SETTLE_TIMEOUT_MS) {
-      const b = findSaveWorkButton();
-      if (!b || !saveButtonBusy(b)) return true;
-      await sleep(150);
-    }
-    return false;
-  }
-  async function saveAndWait() {
-    const t0 = Date.now();
-    let clicks = 0;
     while (Date.now() - t0 < SAVE_CLICK_TIMEOUT_MS) {
       const btn = findSaveWorkButton();
-      if (!btn) {
-        console.warn('[StockMeta] Save work button not found');
-        await sleep(200);
-        continue;
-      }
-      // A previous click is still being written — wait it out instead of stacking
-      // another request on top.
-      if (saveButtonBusy(btn)) {
-        await waitSaveIdle();
+      if (btn && !saveButtonBusy(btn)) {
+        btn.click();
         return true;
       }
-      btn.click();
-      clicks++;
-      await sleep(250);
-      const after = findSaveWorkButton();
-      if (after && !saveButtonBusy(after) && clicks < SAVE_MAX_CLICKS) {
-        // Adobe never went busy: either the click missed the (re-rendered) node or
-        // the write was instant. Try again rather than trusting a single click.
-        await sleep(200);
-        continue;
-      }
-      // The click registered — wait for Adobe to finish writing.
-      await waitSaveIdle();
-      if (clicks > 1) {
-        console.log('[StockMeta] Save work registered after ' + clicks + ' clicks');
-      }
-      return true;
+      await sleep(120);
     }
-    console.warn('[StockMeta] Save work did not register within ' + SAVE_CLICK_TIMEOUT_MS + 'ms');
-    return clicks > 0;
+    console.warn(
+      '[StockMeta] Save work was not clickable within ' + SAVE_CLICK_TIMEOUT_MS + 'ms — moving on'
+    );
+    return false;
   }
 
   // ---- the card (grid tile badge) is the authority -----------------------
@@ -855,7 +822,7 @@
     // No grid on this page (single asset detail view, options, …): nothing to prove.
     if (!selectedTileEl()) return true;
     if (cardKeywordCount() >= MIN_KEYWORDS) return true;
-    await saveAndWait();
+    await saveNow();
     const t0 = Date.now();
     while (Date.now() - t0 < CARD_SETTLE_MS) {
       if (cardKeywordCount() >= MIN_KEYWORDS) return true;
@@ -1093,7 +1060,7 @@
       // generate({ keywordsOnly: true }) re-asks for the keywords alone.
       generate: (opts) => generateForCurrentAsset(undefined, opts),
       applyAll: () => applyAllCurrent({ skipAutoSave: true }),
-      save: saveAndWait,
+      save: saveNow,
       titleValue: () => {
         const el = Dom.findTitleInput();
         return el && typeof el.value === 'string' ? el.value : '';
