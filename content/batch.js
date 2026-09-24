@@ -4,7 +4,7 @@
 // Flow, for every tile flagged with a RED dot (= missing title / keywords):
 //   select the tile -> wait until Adobe really switched the detail form to that
 //   asset -> read the thumbnail -> generate title & keywords -> apply everything
-//   -> save -> VERIFY that title and keywords really landed -> next asset.
+//   -> VERIFY the CARD shows the keywords -> save once -> next asset.
 //
 // A tile with a GREEN dot is complete and is never touched — in dot mode and in
 // the verify-all fallback alike, UNLESS its keyword badge proves the opposite.
@@ -65,22 +65,6 @@
   // Adobe's own minimum for a submittable asset — used as the "keywords landed"
   // threshold everywhere in this file.
   const MIN_KEYWORDS = 5;
-  // How long to wait for the tile to show a stored asset: the keyword badge
-  // (>= Adobe's minimum) together with the green dot. Waiting for the badge is
-  // not optional — switching tiles before Adobe commits is what left previously
-  // processed assets stuck at 0. A tile Adobe is still rejecting bails out early
-  // (waitLanded), so this is only a ceiling for genuinely slow stores.
-  const LANDING_TIMEOUT_MS = 8000;
-  // Grace before acting on a "not stored yet" tile: after this long with the
-  // keywords on the form we re-click Save (cheaper than regenerating), and after
-  // this long with Adobe still flagging the field we give up and regenerate.
-  const DOT_GRACE_MS = 2000;
-  // The tile badge is the ONLY proof that a save took — a click Adobe never
-  // received changes nothing, which is exactly what made saving feel random
-  // ("这个保存有点随机的"). So keep re-issuing Save while the keywords are on the
-  // form and the tile still shows nothing, until the tile proves it was stored.
-  const SAVE_RETRIES = 3;
-  const SAVE_RETRY_EVERY_MS = 1200;
   // How long the CARD badge may take to show the keywords the apply just wrote.
   // This is the gate in front of the save (user's rule: "验证完图片卡片上关键词
   // 数量不为0之后保存，然后切换"), so it only has to cover a repaint.
@@ -590,12 +574,10 @@
   }
 
   // ---------------------------------------------------------------- landing
-  // Proof that the title and — above all — the keywords really stuck to the
-  // asset before the run walks on. Adobe's OWN tile state is the source of truth
-  // here: the keyword badge is the number the user reads on the tile, and the
-  // green dot is Adobe's "stored" signal. The form count is read too, but only
-  // for the log and as a fallback (a badge-0 tile can still have the raw text
-  // sitting in the box while Adobe has not committed it — see landingProven).
+  // Reading Adobe's OWN tile state. The keyword badge is the number the user reads
+  // on the card, so it is the gate in front of every save; the status dot and the
+  // form count are read alongside it for the log (a badge-0 tile can still have the
+  // raw text sitting in the box while Adobe has not committed it).
   async function readLanding(tile, key) {
     // React may re-render the tile while we poll, so re-resolve it by key.
     const cur = findTileByKey(key) || tile;
@@ -630,88 +612,22 @@
     return last;
   }
 
-  // Is this asset finished? THE TILE KEYWORD COUNT AND THE GREEN DOT DECIDE
-  // (user's rule, 2026-09-24: "这个上面的关键词显示不为 0 才到下一个"). An asset
-  // counts as done only when ALL hold:
-  //   * Adobe is no longer flagging the keyword field ("Add minimum 5 keywords"),
-  //   * the tile shows the green status dot (Adobe stored it), and
-  //   * the TILE badge holds keywords (>= Adobe's minimum) — the number the user
-  //     actually reads. Waiting for it is not optional: switching tiles before
-  //     Adobe commits leaves the previous asset stuck at 0.
-  // A tile whose badge reads 0 is never accepted — that asset gets its keywords
-  // regenerated and re-applied (processAsset). Only when the badge cannot be read
-  // at all (-1) do we fall back to the form count, so a build that hides the
-  // badge does not stall the whole run.
-  function landingProven(state) {
-    if (!state || !state.title) return false;
-    if (state.error) return false;
-    if (state.dot !== 'green') return false;
-    if (state.badge >= MIN_KEYWORDS) return true;
-    return state.badge < 0 && state.formKeywords >= MIN_KEYWORDS;
-  }
-
-  async function waitLanded(tile, key, timeout) {
-    const started = Date.now();
-    let seen = null;
-    let saves = 0;
-    let nextSaveAt = DOT_GRACE_MS;
-    while (Date.now() - started < timeout) {
-      if (stopRequested) return false;
+  // One instant look at the card right after the save, for the log only. There is
+  // NO waiting and NO second save here any more: the card was already verified
+  // BEFORE the write, so the run moves straight on (user's rule: "如果卡片上显示
+  // 关键词达标就保存就下一个"). It only speaks up when the card reads 0 keywords
+  // after a save, i.e. Adobe did not store it — worth knowing, not worth holding
+  // the whole batch up for.
+  async function logCardAfterSave(tile, key) {
+    try {
       const state = await readLanding(tile, key);
-      seen = state;
-      if (landingProven(state)) return true;
-      const waited = Date.now() - started;
-      // Adobe is flagging the keyword field ("Add minimum 5 keywords") even after
-      // this pass wrote some: the write did not take. Do not burn the whole
-      // timeout on it — bail out early so processAsset can regenerate the keywords
-      // (user's rule: "这里为 0 的话就重新生成关键词然后应用然后才批量下一个").
-      if (state.error && state.badge < MIN_KEYWORDS && waited >= DOT_GRACE_MS) {
+      if (state.badge >= 0 && state.badge < MIN_KEYWORDS) {
         console.warn(
-          '[StockMeta][batch] Adobe still flags the keyword field — regenerating instead of waiting:',
+          '[StockMeta][batch] saved but the card still reads ' + state.badge + ' keyword(s) — moving on:',
           key
         );
-        return false;
       }
-      // Keywords are on the form but the tile still shows nothing, so the SAVE
-      // has not been received yet — keep re-issuing it (bounded) instead of
-      // walking away and leaving the asset unsaved. Re-saving is far cheaper than
-      // regenerating, and the tile badge then proves whether it took.
-      if (
-        state.formKeywords >= MIN_KEYWORDS &&
-        !state.error &&
-        saves < SAVE_RETRIES &&
-        waited >= nextSaveAt
-      ) {
-        saves++;
-        nextSaveAt = waited + SAVE_RETRY_EVERY_MS;
-        console.warn(
-          '[StockMeta][batch] tile not stored yet — saving again (' + saves + '/' + SAVE_RETRIES + '):',
-          key
-        );
-        await saveAsset();
-      }
-      await sleep(150);
-    }
-    console.warn(
-      '[StockMeta][batch] asset not confirmed (needs tile keywords + green dot):',
-      key,
-      '| title:',
-      seen && seen.title ? 'yes' : 'NO',
-      '| keywords (badge/form/dot/error):',
-      seen ? seen.badge + '/' + seen.formKeywords + '/' + seen.dot + '/' + (seen.error ? 'yes' : 'no') : 'n/a'
-    );
-    if (seen && seen.error) {
-      console.warn(
-        '[StockMeta][batch] Adobe flagged the keyword field — this asset needs its keywords regenerated'
-      );
-    } else if (seen && seen.badge >= 0 && seen.badge < MIN_KEYWORDS) {
-      console.warn(
-        '[StockMeta][batch] the tile badge reads ' +
-          seen.badge +
-          ' keyword(s) — Adobe has not stored the keywords yet'
-      );
-    }
-    return false;
+    } catch (_) {}
   }
 
   // Click "Save work" and say so when the button cannot be found, instead of
@@ -774,6 +690,9 @@
     for (let pass = 1; pass <= GEN_ATTEMPTS; pass++) {
       if (stopRequested) return 'skip';
       if (pass > 1) reportPhase(index, total, retryLabel);
+      // Persist exactly ONCE per pass (see the save further down): when the card
+      // had to be saved for it to repaint, that save already stored the asset.
+      let savedThisPass = false;
 
       // The bar is the count the USER configured (range minimum / fixed count),
       // never below Adobe's own minimum: a result under it is "recognized but too
@@ -870,6 +789,7 @@
           key
         );
         await saveAsset();
+        savedThisPass = true;
         card = await waitCardKeywords(tile, key, CARD_VERIFY_MS);
       }
       if (card.badge < MIN_KEYWORDS) {
@@ -891,23 +811,18 @@
         return 'fail';
       }
 
-      // The card proves the keywords are in, so persist — the last action before
-      // switching to the next asset.
-      reportPhase(index, total, 'batchSaving');
-      await saveAsset();
-      await sleep(SAVE_SETTLE_MS);
-
-      // Only now may the next asset be selected: the TILE must show the green dot
-      // AND a non-zero keyword badge (the user's rule: "这个上面的关键词显示不为 0
-      // 才到下一个"). Switching earlier is what left assets stuck at badge 0.
-      reportPhase(index, total, 'batchChecking');
-      if (await waitLanded(tile, key, LANDING_TIMEOUT_MS)) return 'ok';
-      // The tile still shows 0 keywords, Adobe still flags the field, or it never
-      // went green — so the next pass asks for the keywords alone and re-applies
-      // (the user's rule: "这里为 0 的话就重新生成关键词然后应用"). The end-of-run
-      // re-recognition round is the last safety net.
-      keywordsOnly = true;
-      console.warn('[StockMeta][batch] pass ' + pass + ' did not land (tile keywords / green dot missing):', key);
+      // The card proves the keywords are in, so persist — ONCE — and then move on
+      // (user's rule: "如果卡片上显示关键词达标就保存就下一个"). There is no second
+      // save and no post-save wait any more: saveAndWait() already blocks until
+      // Adobe's button goes idle again, which IS the confirmation that the write
+      // finished, and the card was verified before we got here.
+      if (!savedThisPass) {
+        reportPhase(index, total, 'batchSaving');
+        await saveAsset();
+        await sleep(SAVE_SETTLE_MS);
+      }
+      await logCardAfterSave(tile, key);
+      return 'ok';
     }
 
     core.showError('BATCH_NOT_LANDED');
@@ -1092,7 +1007,6 @@
     tileKeywordCount,
     tileLooksDone,
     isPending,
-    landingProven,
     diagnose,
   };
 })();
