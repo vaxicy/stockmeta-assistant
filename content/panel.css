@@ -246,24 +246,17 @@
   background: #1666c9;
 }
 
-/* Batch mode: the Generate button doubles as the batch trigger/stop control. */
-.sm-btn.sm-batch {
-  background: #fff7ed;
-  border-color: #fdba74;
-  color: #9a3412;
-}
-
-.sm-btn.sm-batch:hover:not(:disabled) {
-  background: #ffedd5;
-}
-
-.sm-btn.sm-batch.sm-danger {
+/* Batch mode: the Generate button keeps its primary blue look (it doubles as the
+   batch trigger); only the running state recolours it to red. */
+.sm-btn.sm-primary.sm-danger,
+.sm-btn.sm-danger {
   background: #dc2626;
   border-color: #dc2626;
   color: #fff;
 }
 
-.sm-btn.sm-batch.sm-danger:hover {
+.sm-btn.sm-primary.sm-danger:hover,
+.sm-btn.sm-danger:hover {
   background: #b91c1c;
 }
 

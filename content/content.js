@@ -734,22 +734,20 @@
     panel.classList.toggle('sm-busy', isRunning);
     if (isRunning) {
       btn.disabled = false;
-      btn.classList.add('sm-batch', 'sm-danger');
+      btn.classList.add('sm-danger');
       btn.textContent = t('batchStop');
       return;
     }
+    // Idle: the button keeps its primary blue look in every batch state.
     btn.classList.remove('sm-danger');
-    // Batch mode off (or no grid on this page): plain single-asset generator.
     if (!Batch || !batchCfg.batchProcess) {
       btn.disabled = false;
-      btn.classList.remove('sm-batch');
       btn.textContent = t('generate');
       return;
     }
     const n = Batch.countPending();
     if (n > 0) {
       btn.disabled = false;
-      btn.classList.add('sm-batch');
       btn.textContent = tf('generateBatch', { n });
       return;
     }
@@ -759,12 +757,10 @@
     const all = Batch.countTiles();
     if (all > 0) {
       btn.disabled = false;
-      btn.classList.add('sm-batch');
       btn.textContent = tf('generateBatchAll', { n: all });
       return;
     }
     btn.disabled = false;
-    btn.classList.remove('sm-batch');
     btn.textContent = t('generate');
   }
 
