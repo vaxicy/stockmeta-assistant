@@ -35,6 +35,7 @@
         "utils/i18n.js",
         "utils/image.js",
         "utils/dom.js",
+        "content/batch.js",
         "content/content.js"
       ],
       "css": [

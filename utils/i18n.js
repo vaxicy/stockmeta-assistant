@@ -56,6 +56,21 @@
       appliedSettings: 'Default category / file type applied.',
       noCategory: 'No category suggested yet.',
       errSelect: 'Could not apply: Adobe dropdown not found or option missing.',
+      batchButton: 'Batch process ({n})',
+      batchStop: 'Stop batch',
+      batchNoPending: 'Batch: nothing pending',
+      batchBusy: 'Batch running…',
+      batchNeedSetting: 'Batch mode is off. Turn it on in Settings first.',
+      batchProgress: 'Batch {i}/{total} · {phase}',
+      batchSelecting: 'selecting asset…',
+      batchGenerating: 'generating…',
+      batchApplying: 'applying…',
+      batchSaving: 'saving…',
+      batchDone: 'Batch finished — {ok} done, {fail} failed, {skip} skipped.',
+      batchStopped: 'Batch stopped — {ok} done, {fail} failed, {skip} skipped.',
+      batchResumed: 'Resuming the interrupted batch…',
+      batchSelectTimeout: 'Could not confirm the asset switch. Batch stopped so nothing lands on the wrong asset.',
+      batchGenFailed: 'Batch: generation failed for one asset (see console).',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -110,6 +125,21 @@
       appliedSettings: '默认类别 / 素材类型已应用。',
       noCategory: '尚未推荐类别。',
       errSelect: '无法应用：未找到 Adobe 下拉框或对应选项。',
+      batchButton: '批量处理（{n}）',
+      batchStop: '停止批量',
+      batchNoPending: '批量：无待处理',
+      batchBusy: '批量处理中…',
+      batchNeedSetting: '批量功能未开启，请先到设置里打开。',
+      batchProgress: '批量 {i}/{total} · {phase}',
+      batchSelecting: '切换素材…',
+      batchGenerating: '生成中…',
+      batchApplying: '应用中…',
+      batchSaving: '保存中…',
+      batchDone: '批量完成 —— 成功 {ok}，失败 {fail}，跳过 {skip}。',
+      batchStopped: '批量已停止 —— 成功 {ok}，失败 {fail}，跳过 {skip}。',
+      batchResumed: '正在继续上次未完成的批量…',
+      batchSelectTimeout: '无法确认素材已切换，已停止批量，避免内容写进错误的素材。',
+      batchGenFailed: '批量：某张素材生成失败（详情见控制台）。',
     },
   };
 
@@ -158,6 +188,17 @@
     return dict[key] !== undefined ? dict[key] : (I18N.en[key] !== undefined ? I18N.en[key] : key);
   }
 
+  // t() with {placeholder} interpolation, e.g. tf('batchProgress', { i: 3, total: 9 }).
+  function tf(key, vars) {
+    let s = t(key);
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        s = s.split('{' + k + '}').join(String(vars[k]));
+      });
+    }
+    return s;
+  }
+
   // Apply static translations to elements with data-i18n attribute.
   function applyStaticI18n(root) {
     const scope = root || document;
@@ -176,5 +217,5 @@
     });
   }
 
-  window.StockMetaI18n = { t, LANG, setLang, applyStaticI18n };
+  window.StockMetaI18n = { t, tf, LANG, setLang, applyStaticI18n };
 })();

@@ -143,6 +143,20 @@
 
     <section class="opt-field opt-toggle-field">
       <label class="opt-toggle">
+        <input type="checkbox" id="batchProcess" />
+        <span data-i18n="optBatchProcess">Batch process pending assets</span>
+      </label>
+      <p class="opt-hint" data-i18n="optBatchProcessDesc">Adds a "Batch process" button to the panel. One click scans the Uploaded files grid for tiles marked with a red dot (missing title / keywords) and handles them one by one: select, generate, apply, save. Keep the Uploaded files page open while it runs — every asset is saved before moving on.</p>
+    </section>
+
+    <section class="opt-field">
+      <label for="batchIntervalMs" data-i18n="optBatchInterval">Batch interval (ms)</label>
+      <input type="number" id="batchIntervalMs" min="300" max="10000" step="100" />
+      <p class="opt-hint" data-i18n="optBatchIntervalDesc">Pause between two assets so the AI provider is not rate-limited. 1500 ms suits most providers.</p>
+    </section>
+
+    <section class="opt-field opt-toggle-field">
+      <label class="opt-toggle">
         <input type="checkbox" id="autoSelectCategory" />
         <span data-i18n="optAutoSelectCategory">Auto-select Adobe Category</span>
       </label>

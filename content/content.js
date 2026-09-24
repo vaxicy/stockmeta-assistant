@@ -3,9 +3,12 @@
 // detects the selected asset, and orchestrates metadata generation + filling.
 
 (function () {
-  const { t, applyStaticI18n } = window.StockMetaI18n;
+  const { t, tf, applyStaticI18n } = window.StockMetaI18n;
   const Img = window.StockMetaImage;
   const Dom = window.StockMetaDom;
+  const Batch = window.StockMetaBatch;
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
@@ -37,6 +40,9 @@
           <img id="sm-preview" class="sm-preview" alt="" />
         </div>
         <button class="sm-btn sm-primary" id="sm-generate" data-i18n="generate"></button>
+        <div class="sm-row sm-row-batch">
+          <button class="sm-btn sm-batch" id="sm-batch" hidden></button>
+        </div>
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
@@ -83,6 +89,8 @@
   // ---------------------------------------------------------------- events
   function bindEvents() {
     panel.querySelector('#sm-generate').addEventListener('click', onGenerate);
+    const batchBtn = panel.querySelector('#sm-batch');
+    if (batchBtn) batchBtn.addEventListener('click', onBatchClick);
     panel.querySelector('#sm-apply-title').addEventListener('click', () => onApply('title'));
     panel.querySelector('#sm-apply-kw').addEventListener('click', () => onApply('keywords'));
     panel.querySelector('#sm-apply-all').addEventListener('click', onApplyAll);
@@ -151,11 +159,19 @@
   }
 
   // ---------------------------------------------------------------- status
-  function setStatus(key, isError) {
+  function setStatus(key, isError, vars) {
     const el = panel.querySelector('#sm-status');
-    el.textContent = t(key);
+    el.textContent = vars ? tf(key, vars) : t(key);
     el.classList.toggle('sm-error', !!isError);
-    state.lastStatus = { key, isError: !!isError };
+    state.lastStatus = { key, isError: !!isError, vars: vars || null };
+  }
+
+  // Raw status text: batch progress carries numbers, so it cannot go through t().
+  function setStatusText(text, isError) {
+    const el = panel.querySelector('#sm-status');
+    el.textContent = text;
+    el.classList.toggle('sm-error', !!isError);
+    state.lastStatus = { key: null, isError: !!isError, text };
   }
 
   function setError(errCode, detail) {
@@ -180,6 +196,7 @@
       SELECT_TRIGGER_NOT_FOUND: 'errSelect',
       SELECT_OPTION_NOT_FOUND: 'errSelect',
       EXTENSION_CONTEXT_INVALIDATED: 'errContextInvalid',
+      BATCH_SELECT_TIMEOUT: 'batchSelectTimeout',
     };
     let key;
     if (map[errCode]) {
@@ -196,9 +213,9 @@
   // Feedback previously shown in a floating toast is now surfaced in the panel
   // status line (#sm-status): transient confirmations auto-revert to idle,
   // validation/error keys render in red.
-  function toast(msgKey) {
+  function toast(msgKey, vars) {
     const isError = /^(err|no)/.test(msgKey);
-    setStatus(msgKey, isError);
+    setStatus(msgKey, isError, vars);
     clearTimeout(toast._t);
     toast._t = setTimeout(() => setStatus('statusIdle'), 1800);
   }
@@ -235,28 +252,39 @@
   }
 
   // ---------------------------------------------------------------- generate
+
+  // Shared generation core: read the asset currently on screen, ask the model,
+  // store the result in `state`. Status/error surfacing stays in the caller so
+  // the panel button and the batch engine reuse exactly the same logic.
+  async function generateForCurrentAsset(onPhase) {
+    if (onPhase) onPhase('reading');
+    const imageBase64 = await Img.getCurrentImageBase64();
+    if (onPhase) onPhase('generating');
+    const resp = await sendGenerate(imageBase64);
+    console.log('[StockMeta] generate response:', resp);
+    if (!resp.ok) return { ok: false, error: resp.error };
+    if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category) {
+      return { ok: false, error: 'EMPTY_RESPONSE' };
+    }
+    state.title = resp.title || '';
+    state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
+    state.category = resp.category || '';
+    state.fileType = resp.fileType || '';
+    renderResults();
+    return { ok: true };
+  }
+
   async function onGenerate() {
     const genBtn = panel.querySelector('#sm-generate');
     genBtn.disabled = true;
     try {
-      setStatus('statusReading');
-      const imageBase64 = await Img.getCurrentImageBase64();
-      setStatus('statusGenerating');
-      const resp = await sendGenerate(imageBase64);
-      console.log('[StockMeta] generate response:', resp);
-      if (!resp.ok) {
-        setError(resp.error);
+      const res = await generateForCurrentAsset((phase) =>
+        setStatus(phase === 'reading' ? 'statusReading' : 'statusGenerating')
+      );
+      if (!res.ok) {
+        setError(res.error);
         return;
       }
-      if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category) {
-        setError('EMPTY_RESPONSE');
-        return;
-      }
-      state.title = resp.title || '';
-      state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
-      state.category = resp.category || '';
-      state.fileType = resp.fileType || '';
-      renderResults();
       setStatus('statusDone');
       // Optional: apply everything as soon as the result lands, so the user does
       // not have to press "Apply All" afterwards. Driven by the settings toggle.
@@ -487,23 +515,34 @@
     }
   }
 
+  // Shared "apply everything" core. Returns whether anything was written; the
+  // caller decides how to report it. `save: true` forces save + wait — batch mode
+  // must never switch assets while metadata is still unsaved.
+  async function applyAllCurrent(opts) {
+    let applied = false;
+    if (state.title) {
+      Dom.setAdobeTitle(state.title);
+      applied = true;
+    }
+    if (state.keywords.length) {
+      await Dom.replaceAdobeKeywords(state.keywords);
+      applied = true;
+    }
+    const cfg = await getApplyConfig();
+    // Settings-driven fields (default category + default file type) apply here
+    // too, and even when no title/keywords were generated.
+    if (await applyCategoryAndFileType(cfg)) applied = true;
+    if (cfg.autoCheckAI) checkAIDeclarationBoxes();
+    // `save` = save and wait (batch); `skipAutoSave` = batch saves itself right
+    // after, so the setting-driven click must not fire a second save request.
+    if (opts && opts.save) await saveAndWait();
+    else if (cfg.autoSaveAfterApply && !(opts && opts.skipAutoSave)) clickSaveWorkButton();
+    return applied;
+  }
+
   async function onApplyAll() {
     try {
-      let applied = false;
-      if (state.title) {
-        Dom.setAdobeTitle(state.title);
-        applied = true;
-      }
-      if (state.keywords.length) {
-        await Dom.replaceAdobeKeywords(state.keywords);
-        applied = true;
-      }
-      const cfg = await getApplyConfig();
-      // Settings-driven fields (default category + default file type) apply here
-      // too, and even when no title/keywords were generated.
-      if (await applyCategoryAndFileType(cfg)) applied = true;
-      if (cfg.autoCheckAI) checkAIDeclarationBoxes();
-      if (cfg.autoSaveAfterApply) clickSaveWorkButton();
+      const applied = await applyAllCurrent();
       if (!applied) {
         toast('noTitle');
         return;
@@ -544,7 +583,7 @@
     });
   }
 
-  function clickSaveWorkButton() {
+  function findSaveWorkButton() {
     // Priority 1: exact match by data-t attribute (from F12 inspection)
     let btn = document.querySelector('button[data-t="save-work"]');
     // Priority 2: match by combined class chain
@@ -554,11 +593,35 @@
       btn = Array.from(document.querySelectorAll('button[role="button"], button'))
         .find((b) => /save\s*work/i.test((b.textContent || '').trim()));
     }
+    return btn || null;
+  }
+
+  function clickSaveWorkButton() {
+    const btn = findSaveWorkButton();
     if (btn) {
       setTimeout(() => btn.click(), 200);
     } else {
       console.warn('[StockMeta] Save work button not found');
     }
+  }
+
+  // Save and wait for Adobe to finish writing, so a batch run never leaves the
+  // previous asset unsaved (nor clicks the next tile mid-request).
+  async function saveAndWait() {
+    const btn = findSaveWorkButton();
+    if (!btn) {
+      console.warn('[StockMeta] Save work button not found');
+      return false;
+    }
+    const busy = () => !!btn.disabled || btn.getAttribute('aria-disabled') === 'true';
+    btn.click();
+    await sleep(300);
+    if (busy()) {
+      const t0 = Date.now();
+      while (busy() && Date.now() - t0 < 8000) await sleep(200);
+    }
+    await sleep(300);
+    return true;
   }
 
   function checkAIDeclarationBoxes() {
@@ -606,11 +669,104 @@
     });
   }
 
+  // ---------------------------------------------------------------- batch
+  // One click walks every grid tile flagged with a red dot (missing title /
+  // keywords): select -> generate -> apply -> save. The engine itself lives in
+  // content/batch.js; the panel only owns the button, the counter and the
+  // progress line, and hands the engine the same write path the buttons use.
+  let batchCfg = { batchProcess: false, batchIntervalMs: 1500 };
+
+  function loadBatchConfig() {
+    try {
+      chrome.storage.local.get(['batchProcess', 'batchIntervalMs'], (s) => {
+        batchCfg = {
+          batchProcess: !!(s && s.batchProcess),
+          batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 1500,
+        };
+        renderBatchUi();
+      });
+    } catch (_) {}
+  }
+
+  function renderBatchUi(info) {
+    if (!panel) return;
+    const btn = panel.querySelector('#sm-batch');
+    if (!btn) return;
+    if (!Batch) {
+      btn.hidden = true;
+      return;
+    }
+    const isRunning = info && typeof info.running === 'boolean' ? info.running : Batch.isRunning();
+    panel.classList.toggle('sm-busy', isRunning);
+    if (!batchCfg.batchProcess) {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    if (isRunning) {
+      btn.disabled = false;
+      btn.classList.add('sm-danger');
+      btn.textContent = t('batchStop');
+      return;
+    }
+    btn.classList.remove('sm-danger');
+    const n = Batch.countPending();
+    btn.disabled = n === 0;
+    btn.textContent = n ? tf('batchButton', { n }) : t('batchNoPending');
+  }
+
+  async function onBatchClick() {
+    if (!Batch) return;
+    // The button doubles as the stop control while a run is in flight.
+    if (Batch.isRunning()) {
+      Batch.stop();
+      return;
+    }
+    if (!batchCfg.batchProcess) {
+      toast('batchNeedSetting');
+      return;
+    }
+    await Batch.start({ intervalMs: batchCfg.batchIntervalMs });
+  }
+
+  // Called by the batch engine whenever it starts or finishes a run.
+  function onBatchStateChange(summary, isRunning) {
+    renderBatchUi({ running: isRunning });
+    if (!summary) return;
+    // The summary deserves a longer dwell time than a regular toast.
+    setStatus(summary.stopped ? 'batchStopped' : 'batchDone', summary.fail > 0, summary);
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
+  }
+
+  // Everything the batch engine is allowed to do. Keeping the write path in one
+  // place guarantees batch and single-asset behaviour can never diverge.
+  function createCoreApi() {
+    return {
+      t,
+      tf,
+      toast,
+      status: setStatusText,
+      showError: (code) => setError(code),
+      generate: generateForCurrentAsset,
+      applyAll: () => applyAllCurrent({ skipAutoSave: true }),
+      save: saveAndWait,
+      titleValue: () => {
+        const el = Dom.findTitleInput();
+        return el && typeof el.value === 'string' ? el.value : '';
+      },
+      hasTitleInput: () => !!Dom.findTitleInput(),
+      notify: onBatchStateChange,
+    };
+  }
+
   // ---------------------------------------------------------------- debug
   window.StockMetaDebug = {
     findCurrentImage: Img.findCurrentImage,
     findTitleInput: Dom.findTitleInput,
     findKeywordInput: Dom.findKeywordInput,
+    // e.g. StockMetaDebug.batch.pendingTiles() to sanity-check the red-dot scan.
+    batch: Batch,
   };
 
   // Re-apply translations when the language is changed from the settings page.
@@ -621,7 +777,13 @@
     if (state.title || state.keywords.length) renderResults();
     // Always re-render the status line in the new language, regardless of
     // whether results exist (renderResults does not touch the status text).
-    setStatus(state.lastStatus.key, state.lastStatus.isError);
+    // Batch progress is raw text, so it must be re-rendered verbatim.
+    if (state.lastStatus.key) {
+      setStatus(state.lastStatus.key, state.lastStatus.isError, state.lastStatus.vars);
+    } else if (state.lastStatus.text) {
+      setStatusText(state.lastStatus.text, state.lastStatus.isError);
+    }
+    renderBatchUi();
   }
 
   // ---------------------------------------------------------------- boot
@@ -631,6 +793,22 @@
     window.addEventListener('stockmeta-lang', refreshLang);
     // Re-check preview after lazy images load.
     window.addEventListener('load', updatePreview);
+    if (Batch) {
+      Batch.init(createCoreApi());
+      loadBatchConfig();
+      try {
+        chrome.storage.onChanged.addListener((changes, area) => {
+          if (area === 'local' && (changes.batchProcess || changes.batchIntervalMs)) loadBatchConfig();
+        });
+      } catch (_) {}
+      // Keep the pending counter honest while the grid itself changes
+      // (uploads finishing, filters, pagination).
+      setInterval(() => {
+        if (!Batch.isRunning()) renderBatchUi();
+      }, 3000);
+      // Pick the queue back up if Adobe reloaded the page mid-run.
+      Batch.maybeResume();
+    }
   }
 
   if (document.readyState === 'loading') {

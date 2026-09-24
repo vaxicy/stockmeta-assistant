@@ -246,6 +246,43 @@
   background: #1666c9;
 }
 
+/* Batch mode: extra action row under Generate, only shown when enabled. */
+.sm-row-batch {
+  margin-top: 8px;
+}
+
+.sm-btn.sm-batch {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.sm-btn.sm-batch:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.sm-btn.sm-batch.sm-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.sm-btn.sm-batch.sm-danger:hover {
+  background: #b91c1c;
+}
+
+/* While a batch run is in flight, manual actions would interleave with it. */
+#stockmeta-panel.sm-busy #sm-generate,
+#stockmeta-panel.sm-busy #sm-retry,
+#stockmeta-panel.sm-busy #sm-apply-title,
+#stockmeta-panel.sm-busy #sm-apply-kw,
+#stockmeta-panel.sm-busy #sm-apply-all,
+#stockmeta-panel.sm-busy #sm-regen-title,
+#stockmeta-panel.sm-busy #sm-regen-kw {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .sm-btn.sm-icon {
   flex: 0 0 auto;
   width: 24px;

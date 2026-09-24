@@ -48,6 +48,13 @@ export const DEFAULT_CONFIG = {
   // everything (title + keywords + settings-driven category/file type) for the
   // user, skipping the extra "Apply All" click.
   autoApplyAfterGenerate: false,
+  // Batch mode: shows a "Batch process" button in the panel that walks every
+  // grid tile flagged with a red dot (missing title / keywords) and does
+  // select -> generate -> apply -> save for each one, from a single click.
+  batchProcess: false,
+  // Pause between two assets during a batch run, to stay well inside provider
+  // rate limits.
+  batchIntervalMs: 1500,
 };
 
 // Migrate legacy flat apiKey/baseUrl/model into the current provider's slot.
@@ -88,6 +95,8 @@ export async function getConfig() {
     'defaultCategory',
     'defaultFileType',
     'autoApplyAfterGenerate',
+    'batchProcess',
+    'batchIntervalMs',
   ]);
   const provider = stored.provider ?? DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
@@ -115,6 +124,8 @@ export async function getConfig() {
     defaultFileType: stored.defaultFileType ?? DEFAULT_CONFIG.defaultFileType,
     autoApplyAfterGenerate:
       stored.autoApplyAfterGenerate ?? DEFAULT_CONFIG.autoApplyAfterGenerate,
+    batchProcess: stored.batchProcess ?? DEFAULT_CONFIG.batchProcess,
+    batchIntervalMs: stored.batchIntervalMs ?? DEFAULT_CONFIG.batchIntervalMs,
   };
 }
 
@@ -122,7 +133,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate', 'batchProcess', 'batchIntervalMs']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,

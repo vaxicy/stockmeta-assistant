@@ -41,6 +41,8 @@ const DEFAULTS = {
   keywordCountMax: 30,
   defaultFileType: 'auto',
   autoApplyAfterGenerate: false,
+  batchProcess: false,
+  batchIntervalMs: 1500,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -212,6 +214,10 @@ const OPT_I18N = {
     optAutoSaveAfterApplyDesc: 'After applying the title, keywords, or all metadata, automatically click the "Save work" button on Adobe Stock.',
     optAutoApplyAfterGenerate: 'Auto-apply',
     optAutoApplyAfterGenerateDesc: 'Apply automatically after generating: once "Generate Title & Keywords" returns a result, "Apply All" is clicked for you; the ↻ buttons also apply the field they just regenerated (title or keywords). Category / file type settings still apply as usual.',
+    optBatchProcess: 'Batch process pending assets',
+    optBatchProcessDesc: 'Adds a "Batch process" button to the panel. One click scans the Uploaded files grid for tiles marked with a red dot (missing title / keywords) and handles them one by one: select, generate, apply, save. Keep the Uploaded files page open while it runs — every asset is saved before moving on.',
+    optBatchInterval: 'Batch interval (ms)',
+    optBatchIntervalDesc: 'Pause between two assets so the AI provider is not rate-limited. 1500 ms suits most providers.',
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
@@ -275,6 +281,10 @@ const OPT_I18N = {
     optAutoSaveAfterApplyDesc: '应用标题、关键词或全部应用后，自动点击 Adobe Stock 页面上的「保存」按钮。',
     optAutoApplyAfterGenerate: '自动应用',
     optAutoApplyAfterGenerateDesc: '生成后自动应用：点击「生成标题和关键词」返回结果后，自动替你点击「全部应用」；点击标题或关键词旁的 ↻ 重新生成后，自动应用对应的那个字段。默认类别、素材类型等设置项照常一并生效。',
+    optBatchProcess: '批量处理待处理素材',
+    optBatchProcessDesc: '在面板上增加「批量处理」按钮：点一次就扫描「Uploaded files」网格里带红点（缺标题/关键词）的素材，逐个执行「切换素材 → 生成 → 应用 → 保存」。运行期间请保持停留在上传页，每张都会先保存再切下一张。',
+    optBatchInterval: '批量间隔（毫秒）',
+    optBatchIntervalDesc: '两张素材之间的停顿，避免 AI 接口被限流；1500 毫秒适合大多数服务商。',
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
@@ -453,6 +463,8 @@ async function saveAllSettings() {
     defaultCategory: s.defaultCategory,
     defaultFileType: s.defaultFileType,
     autoApplyAfterGenerate: s.autoApplyAfterGenerate,
+    batchProcess: s.batchProcess,
+    batchIntervalMs: s.batchIntervalMs,
   });
 }
 
@@ -480,6 +492,10 @@ function collectSettings() {
   const defaultCategory = document.getElementById('defaultCategory').value;
   const defaultFileType = document.getElementById('defaultFileType').value;
   const autoApplyAfterGenerate = document.getElementById('autoApplyAfterGenerate').checked;
+  const batchProcess = document.getElementById('batchProcess').checked;
+  let batchIntervalMs = parseInt(document.getElementById('batchIntervalMs').value, 10);
+  if (isNaN(batchIntervalMs)) batchIntervalMs = DEFAULTS.batchIntervalMs;
+  batchIntervalMs = Math.max(300, Math.min(10000, batchIntervalMs));
   return {
     provider,
     apiKey,
@@ -495,6 +511,8 @@ function collectSettings() {
     defaultCategory,
     defaultFileType,
     autoApplyAfterGenerate,
+    batchProcess,
+    batchIntervalMs,
   };
 }
 
@@ -834,7 +852,7 @@ function initAutoSave() {
       autoSave();
     });
   }
-  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax'];
+  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax', 'batchIntervalMs'];
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
@@ -865,7 +883,7 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -995,6 +1013,8 @@ async function load() {
     'autoCheckAI',
     'autoSaveAfterApply',
     'autoApplyAfterGenerate',
+    'batchProcess',
+    'batchIntervalMs',
     'autoSelectCategory',
   ]);
   // Provider select + module pointer.
@@ -1024,6 +1044,10 @@ async function load() {
   asc.checked = stored.autoSelectCategory !== undefined ? !!stored.autoSelectCategory : true;
   const aag = document.getElementById('autoApplyAfterGenerate');
   if (aag) aag.checked = !!stored.autoApplyAfterGenerate;
+  const bp = document.getElementById('batchProcess');
+  if (bp) bp.checked = !!stored.batchProcess;
+  const bi = document.getElementById('batchIntervalMs');
+  if (bi) bi.value = stored.batchIntervalMs ?? DEFAULTS.batchIntervalMs;
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');
