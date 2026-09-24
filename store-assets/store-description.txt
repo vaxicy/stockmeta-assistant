@@ -1,7 +1,7 @@
 === 中文说明 ===
 
-StockMeta Assistant 是 Adobe Stock 供稿人的 AI 文案助手：在素材上传页用你配置的视觉模型读取当前素材，生成描述性标题与关键词，一键填入表单；也可以一次点击，为整批待处理素材依次生成并填入。界面中英双语，支持多家 AI 服务商与自定义 OpenAI 兼容端点，API Key 仅保存在本地，不代你提交。
+StockMeta Assistant 是面向 Adobe Stock 供稿人的 AI 工具，能一键生成标题和关键词。在素材上传页调用用户配置的视觉模型识别当前素材，自动生成标题与关键词并填入表单；整批待处理素材也能逐张生成、逐张填写。面板支持中英双语，可接入多家 AI 服务商或自定义 OpenAI 兼容端点，API Key 只保存在本地。
 
 === English Description ===
 
-StockMeta Assistant is an AI copywriting helper for Adobe Stock contributors: on the upload page it reads the asset you are working on, has the vision model you configure write a descriptive title and keywords, and fills them into the form in one click — or handles a whole batch of pending assets from a single click. It works with several AI providers or your own OpenAI-compatible endpoint, the panel is bilingual (Chinese / English), your API key stays on your device, and it never submits for you.
+StockMeta Assistant is an AI tool for Adobe Stock contributors that generates titles and keywords in one click. On the upload page, it invokes the configured vision model to recognize the current asset, writes a fitting title and keywords, and fills them into the form; a whole batch of pending assets can also be processed one by one. The panel offers a bilingual (Chinese / English) interface and is compatible with multiple AI providers or a custom OpenAI-compatible endpoint. The API key is stored locally only.
