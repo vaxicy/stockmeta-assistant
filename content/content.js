@@ -840,6 +840,11 @@
       },
       hasTitleInput: () => !!Dom.findTitleInput(),
       keywordCount: currentKeywordCount,
+      // The image that would be captioned right now — the batch uses its asset
+      // id as the only trustworthy "did the detail view switch?" proof.
+      currentImageSrc: () => (Img.currentImageSrc ? Img.currentImageSrc() : ''),
+      assetId: (src) => assetIdentity(src),
+      currentAssetId: () => assetIdentity(Img.currentImageSrc ? Img.currentImageSrc() : ''),
       notify: onBatchStateChange,
     };
   }

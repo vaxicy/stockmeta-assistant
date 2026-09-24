@@ -264,6 +264,94 @@
     return queryTiles().find((t) => tileKey(t) === key) || null;
   }
 
+  // The stock id ("f:123456") of the asset a tile points at. Thumbnails and
+  // detail images of the same asset share it, so it is the one stable identity
+  // we can compare across the grid and the detail view.
+  function tileAssetId(tile) {
+    const src = tileKey(tile);
+    if (!src || !core || !core.assetId) return '';
+    try {
+      return core.assetId(src) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function isStockId(id) {
+    return !!id && id.indexOf('f:') === 0;
+  }
+
+  // A plain tile.click() is not always enough for React handlers; mousedown /
+  // mouseup / click mirrors what a real click sends without opening anything.
+  function clickTile(el) {
+    if (!el) return;
+    const opts = { bubbles: true, cancelable: true, view: window };
+    try {
+      el.dispatchEvent(new MouseEvent('mousedown', opts));
+      el.dispatchEvent(new MouseEvent('mouseup', opts));
+    } catch (_) {}
+    try {
+      el.click();
+    } catch (_) {}
+  }
+
+  // Prove that the detail view really shows THIS tile before anything is
+  // generated for it. The old proof compared the title field, which never
+  // changes when both assets are empty — i.e. in every real batch run.
+  // The new proof compares the asset id of the image that would be captioned,
+  // so it is both reliable and exactly the thing that must be correct.
+  async function ensureSelected(tile, key, index, total, mode) {
+    const wantId = tileAssetId(tile);
+    const beforeId = core.currentAssetId ? core.currentAssetId() : '';
+    const beforeSrc = core.currentImageSrc ? core.currentImageSrc() : '';
+
+    // Already showing it: nothing to click, no waiting.
+    if (isStockId(wantId) && beforeId === wantId) return true;
+
+    reportPhase(index, total, mode === 'verify' ? 'batchVerifying' : 'batchSelecting');
+    try {
+      tile.scrollIntoView({ block: 'center' });
+    } catch (_) {}
+    await sleep(150);
+
+    const proof = () => {
+      if (!core.hasTitleInput || !core.hasTitleInput()) return false; // form not ready
+      const nowId = core.currentAssetId ? core.currentAssetId() : '';
+      const nowSrc = core.currentImageSrc ? core.currentImageSrc() : '';
+      if (isStockId(wantId) && isStockId(nowId)) return nowId === wantId;
+      // No stock id available on either side: require the captioned image to
+      // really change, which a no-op click can never fake.
+      return !!nowSrc && nowSrc !== beforeSrc;
+    };
+
+    // Try the option first, then the thumbnail / wrapper: whichever the page
+    // actually listens on wins, and the loop stops as soon as it is proven.
+    const candidates = [tile, tileImage(tile), tile.closest('.content-grid-element')].filter(
+      (el, i, arr) => el && arr.indexOf(el) === i
+    );
+    for (const el of candidates) {
+      if (stopRequested) return false;
+      clickTile(el);
+      if (await waitFor(proof, Math.round(SELECT_TIMEOUT_MS / candidates.length))) {
+        await sleep(SETTLE_MS);
+        return true;
+      }
+    }
+
+    console.warn(
+      '[StockMeta][batch] could not confirm the switch — want:',
+      wantId || key,
+      '| captioned image id now:',
+      core.currentAssetId ? core.currentAssetId() : '(n/a)',
+      '| tile aria-selected:',
+      tile.getAttribute('aria-selected'),
+      '| selected tile key:',
+      selectedTileKey()
+    );
+    core.showError('BATCH_SELECT_TIMEOUT');
+    return false;
+  }
+
   // Dump everything needed to fix the detection when it finds nothing, but only
   // every DIAG_INTERVAL_MS so the console stays readable.
   function diagnose(force) {
@@ -363,27 +451,10 @@
 
   // ---------------------------------------------------------------- one asset
   async function processAsset(tile, key, index, total, mode) {
-    // Fail closed: if we cannot prove the detail form switched to THIS asset,
-    // stop instead of risking writing one asset's metadata onto another.
-    if (selectedTileKey() !== key) {
-      reportPhase(index, total, mode === 'verify' ? 'batchVerifying' : 'batchSelecting');
-      try {
-        tile.scrollIntoView({ block: 'center' });
-      } catch (_) {}
-      await sleep(150);
-      const beforeTitle = core.titleValue();
-      tile.click();
-      const switched = await waitFor(() => {
-        if (selectedTileKey() !== key) return false;
-        if (!core.hasTitleInput()) return false;
-        return core.titleValue() !== beforeTitle;
-      }, SELECT_TIMEOUT_MS);
-      if (!switched) {
-        core.showError('BATCH_SELECT_TIMEOUT');
-        return 'abort';
-      }
-      await sleep(SETTLE_MS);
-    }
+    // Fail closed: if we cannot prove the detail view shows THIS asset, stop
+    // instead of risking writing one asset's metadata onto another.
+    const selected = await ensureSelected(tile, key, index, total, mode);
+    if (!selected) return stopRequested ? 'skip' : 'abort';
 
     // "Verify all" fallback: no red dot could be read, so decide from the asset
     // itself — anything with a title and enough keywords is left untouched.

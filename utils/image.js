@@ -7,17 +7,44 @@
   const JPEG_QUALITY = 0.82;
 
   // Candidate selectors for the "selected" asset container (do not rely on a
-  // single class — Adobe DOM changes frequently).
+  // single class — Adobe DOM changes frequently). The grid option comes first so
+  // "selected" always means the selected asset, never a nav tab that happens to
+  // carry aria-selected="true" earlier in the document.
   const SELECTED_CONTAINER_SELECTORS = [
-    '[aria-selected="true"]',
+    '[role="option"][aria-selected="true"]',
     '[data-selected="true"]',
+    '[aria-selected="true"]',
     '[data-testid*="selected" i]',
     '.is-selected',
     '.selected',
     '[aria-current="true"]',
     '.Mui-selected',
     '[data-state="selected"]',
+    // Last resort: Adobe sometimes only marks the tile with a modifier class.
+    // Kept at the end so it can never shadow a precise match above.
+    '[class*="selected" i]',
   ];
+
+  function usableUrl(img) {
+    if (!img) return '';
+    const url = img.currentSrc || img.src || img.getAttribute('data-src') || '';
+    if (!url) return '';
+    if (url.startsWith('data:image/svg+xml')) return '';
+    if (url.includes('placeholder')) return '';
+    return url;
+  }
+
+  // A container is only useful when it really holds the asset image; otherwise
+  // the search would silently fall through to "a random big img on the page".
+  function hasUsableImage(el) {
+    if (!el || !el.querySelectorAll) return false;
+    for (const sel of IMG_SELECTORS) {
+      for (const img of el.querySelectorAll(sel)) {
+        if (usableUrl(img)) return true;
+      }
+    }
+    return false;
+  }
 
   const IMG_SELECTORS = [
     'img[src]',
@@ -30,8 +57,10 @@
 
   function pickSelectedContainer() {
     for (const sel of SELECTED_CONTAINER_SELECTORS) {
-      const el = document.querySelector(sel);
-      if (el) return el;
+      const list = document.querySelectorAll(sel);
+      for (const el of list) {
+        if (hasUsableImage(el)) return el;
+      }
     }
     // Fallback: the element currently focused / active within a grid.
     const active = document.activeElement;
@@ -42,17 +71,13 @@
   }
 
   function findImageIn(scope) {
-    const root = scope || document;
     // Prefer selected container first.
     const container = scope || pickSelectedContainer();
     const searchRoot = container || document;
     for (const sel of IMG_SELECTORS) {
       const imgs = searchRoot.querySelectorAll(sel);
       for (const img of imgs) {
-        const url = img.currentSrc || img.src || img.getAttribute('data-src');
-        if (url && !url.startsWith('data:image/svg+xml') && !url.includes('placeholder')) {
-          return img;
-        }
+        if (usableUrl(img)) return img;
       }
     }
     return null;
@@ -145,5 +170,14 @@
     });
   }
 
-  window.StockMetaImage = { findCurrentImage, getCurrentImageBase64, MAX_EDGE, JPEG_QUALITY };
+  // Public: the URL of the image that would be captioned right now. Used by the
+  // batch engine to prove that the detail view really switched to the tile it
+  // clicked, instead of trusting the (often empty) title field.
+  function currentImageSrc() {
+    const img = findCurrentImage();
+    if (!img) return '';
+    return img.currentSrc || img.src || img.getAttribute('data-src') || '';
+  }
+
+  window.StockMetaImage = { findCurrentImage, getCurrentImageBase64, currentImageSrc, MAX_EDGE, JPEG_QUALITY };
 })();
