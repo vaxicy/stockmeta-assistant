@@ -1,25 +1,32 @@
 // content/batch.js
 // One-click batch mode for the Adobe Stock "Uploaded files" grid.
 //
-// Flow, for every tile flagged with a red dot (= missing title / keywords):
+// Flow, for every tile flagged with a RED dot (= missing title / keywords):
 //   select the tile -> wait until Adobe really switched the detail form to that
 //   asset -> read the thumbnail -> generate title & keywords -> apply everything
-//   -> save -> next asset.
+//   -> save -> VERIFY that title and keywords really landed -> next asset.
+//
+// A tile with a GREEN dot is complete and is never touched — not in dot mode and
+// not in the verify-all fallback. The run also refuses to advance while the
+// current asset still has no keywords, because the point of the batch is to
+// leave every asset submittable.
 //
 // DOM anchors confirmed by F12 inspection on contributor.stock.adobe.com/en/uploads:
-//   grid    : .content-grid[data-t="assets-content-grid"][role="listbox"]
-//   tile    : [role="option"][title="Content tile"]  (aria-selected toggles on click)
-//   thumb   : img.upload-tile__thumbnail
-//   red dot : i.icon-red inside .upload-statusbar
+//   grid      : .content-grid[data-t="assets-content-grid"][role="listbox"]
+//   tile      : [role="option"][title="Content tile"]  (aria-selected toggles on click)
+//   thumb     : img.upload-tile__thumbnail
+//   status bar: .upload-statusbar -> span.badge (keyword count) + the status dot
+//   red dot   : i.icon-red inside .upload-statusbar (i.icon-green when complete)
 //
-// The dot is detected through several independent signals, because Adobe ships
+// Both markers are read through several independent signals, because Adobe ships
 // slightly different markup between builds:
-//   1. a class containing "icon-red" anywhere inside the tile group, and
+//   1. a class containing "icon-red" / "icon-green" inside the status bar, and
 //   2. the computed colour of the small status icons (the dot is painted by a
-//      ::before box, so the colour is the only reliable marker).
-// If neither matches while the grid is clearly not empty, the panel offers a
-// "verify all" fallback that opens every tile and only processes the ones whose
-// title / keywords are actually missing.
+//      ::before box, so the colour is the only reliable marker),
+//   3. the keyword badge of the tile ("30") as a fallback for the dot.
+// If no marker is readable while the grid is clearly not empty, the panel offers
+// a "verify all" fallback that opens the ambiguous tiles only and processes the
+// ones whose title / keywords are actually missing.
 //
 // This module never touches the Adobe form itself: every write goes through the
 // `core` API handed over by content.js, so the single-asset flow and the batch
@@ -38,12 +45,25 @@
     '[role="listbox"][aria-multiselectable="true"]',
   ];
   const THUMB_SELECTORS = ['img.upload-tile__thumbnail', 'img[class*="upload-tile__thumbnail" i]'];
-  const RED_CLASS_SELECTORS = [
-    '.upload-statusbar i[class*="icon-red"]',
-    '[class*="icon-red"]',
-    '.upload-statusbar [class*="icon-danger"]',
-    '.upload-statusbar [class*="icon-error"]',
+  // The status dot carries the whole state: red = title/keywords missing,
+  // green = Adobe considers the asset complete. A green asset is NEVER touched —
+  // that is the contract of this feature (see dotState below).
+  const RED_CLASS_SELECTORS = ['[class*="icon-red"]', '[class*="icon-danger"]', '[class*="icon-error"]'];
+  const GREEN_CLASS_SELECTORS = [
+    '[class*="icon-green"]',
+    '[class*="icon-success"]',
+    '[class*="icon-done"]',
   ];
+  // Keyword-count badge of a tile inside its status bar (".badge", e.g. "30").
+  const BADGE_SELECTOR = '[class*="badge" i]';
+  // Adobe's own minimum for a submittable asset — used as the "keywords landed"
+  // threshold everywhere in this file.
+  const MIN_KEYWORDS = 5;
+  // How long the grid may lag behind a save before the landing check gives up.
+  const LANDING_TIMEOUT_MS = 9000;
+  // Once title/keywords are proven locally, a still-red dot is usually just an
+  // unrepainted grid: wait a little, then accept instead of failing a good asset.
+  const DOT_GRACE_MS = 2500;
   // Candidate elements the red dot may be painted on.
   const ICON_HINT_SELECTOR = 'i, svg, [class*="icon" i], [class*="dot" i], [class*="status" i]';
 
@@ -165,6 +185,28 @@
     return scope;
   }
 
+  // The status bar of one asset. It is normally inside the tile scope, but can
+  // also be a sibling of [role="option"] inside the grid element.
+  function statusBarFor(tile) {
+    if (!tile) return null;
+    const scope = tileScope(tile);
+    const bar = scope.querySelector('.upload-statusbar');
+    if (bar) return bar;
+    const wrap = tile.closest ? tile.closest('.content-grid-element') : null;
+    const fromWrap = wrap && wrap.querySelector('.upload-statusbar');
+    return fromWrap || scope;
+  }
+
+  function classMarker(root, selectors) {
+    if (!root) return false;
+    for (const sel of selectors) {
+      try {
+        if (root.querySelector(sel)) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
   function isRedish(value) {
     const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(String(value || ''));
     if (!m) return false;
@@ -174,38 +216,92 @@
     return r >= 140 && r - g >= 55 && r - b >= 55;
   }
 
-  // Signal 2: the dot is drawn by a ::before box, so the element's computed
-  // colour (inherited from icon-red / a danger token) is the marker.
-  function hasRedColorMarker(scope) {
-    const list = scope.querySelectorAll(ICON_HINT_SELECTOR);
+  function isGreenish(value) {
+    const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(String(value || ''));
+    if (!m) return false;
+    const r = +m[1];
+    const g = +m[2];
+    const b = +m[3];
+    return g >= 100 && g - r >= 35 && g - b >= 20;
+  }
+
+  // The dot is drawn by a ::before box, so size + computed colour are the only
+  // reliable markers. Scanning is limited to the small status icons.
+  function hasColorMarker(root, test) {
+    if (!root) return false;
+    const list = root.querySelectorAll(ICON_HINT_SELECTOR);
     const max = Math.min(list.length, COLOR_SCAN_MAX);
     for (let i = 0; i < max; i++) {
       const el = list[i];
       if ((el.textContent || '').trim().length > 24) continue; // not an icon
+      let rect = null;
+      try {
+        rect = el.getBoundingClientRect();
+      } catch (_) {}
+      // The dot is a 12px box — anything clearly larger is not the status dot.
+      if (rect && (rect.width > 26 || rect.height > 26)) continue;
       let cs;
       try {
         cs = getComputedStyle(el);
       } catch (_) {
         continue;
       }
-      if (isRedish(cs.color) || isRedish(cs.backgroundColor) || isRedish(cs.fill) || isRedish(cs.borderTopColor)) {
+      if (test(cs.color) || test(cs.backgroundColor) || test(cs.fill) || test(cs.borderTopColor)) {
         return true;
       }
     }
     return false;
   }
 
+  // 'red' = metadata missing, 'green' = Adobe says complete, 'unknown' = the
+  // markup could not be read (never guessed: guessing is what made finished
+  // assets get processed again).
+  function dotState(tile) {
+    if (!tile) return 'unknown';
+    const bar = statusBarFor(tile);
+    if (!bar) return 'unknown';
+    // Class signals are exact (icon-red / icon-green).
+    if (classMarker(bar, GREEN_CLASS_SELECTORS)) return 'green';
+    if (classMarker(bar, RED_CLASS_SELECTORS)) return 'red';
+    // Colour fallback; green wins because processing a finished asset is the
+    // one mistake the user explicitly asked us to stop making.
+    if (hasColorMarker(bar, isGreenish)) return 'green';
+    if (hasColorMarker(bar, isRedish)) return 'red';
+    return 'unknown';
+  }
+
+  // How many keywords Adobe already holds for this tile (-1 = unreadable). This
+  // is the number the user sees on the tile, so it doubles as the "the keywords
+  // really landed" proof.
+  function tileKeywordCount(tile) {
+    if (!tile) return -1;
+    const bar = statusBarFor(tile);
+    if (!bar) return -1;
+    const badge = bar.querySelector(BADGE_SELECTOR);
+    if (!badge) return -1;
+    const m = /(\d+)/.exec(badge.textContent || '');
+    return m ? parseInt(m[1], 10) : -1;
+  }
+
+  // An asset that is already fine must never be touched — not in red-dot mode
+  // and not in verify-all mode.
+  function tileLooksDone(tile) {
+    const dot = dotState(tile);
+    if (dot === 'green') return true;
+    const n = tileKeywordCount(tile);
+    return n >= MIN_KEYWORDS && dot !== 'red';
+  }
+
+  // Tiles Adobe flags red are queued; green ones never are. When the dot itself
+  // cannot be read, the keyword badge is used as a second, independent signal
+  // (a tile showing fewer than 5 keywords is incomplete by Adobe's own rule),
+  // so the feature still works when only one of the two markers is readable.
   function isPending(tile) {
-    if (!tile) return false;
-    const scope = tileScope(tile);
-    // Signal 1: explicit red class anywhere in this asset's group.
-    for (const sel of RED_CLASS_SELECTORS) {
-      if (scope.querySelector(sel)) return true;
-    }
-    // Signal 2: colour of the status icons — scan the status bar when there is
-    // one (precise, ~4 icons), otherwise the whole tile group.
-    const bar = scope.querySelector('.upload-statusbar');
-    return hasRedColorMarker(bar || scope);
+    const dot = dotState(tile);
+    if (dot === 'red') return true;
+    if (dot === 'green') return false;
+    const n = tileKeywordCount(tile);
+    return n >= 0 && n < MIN_KEYWORDS;
   }
 
   function scanGrid() {
@@ -371,6 +467,14 @@
       gridClass: gridContainer() ? String(gridContainer().className) : null,
       tiles: tiles.length,
       docRedClassMatches: document.querySelectorAll('[class*="icon-red"]').length,
+      docGreenClassMatches: document.querySelectorAll('[class*="icon-green"]').length,
+      // Per-tile verdicts: the fastest way to see whether the dot/badge reader
+      // works at all on the current Adobe build.
+      sample: tiles.slice(0, 6).map((t) => ({
+        dot: dotState(t),
+        keywords: tileKeywordCount(t),
+        done: tileLooksDone(t),
+      })),
     };
     if (first) {
       const scope = tileScope(first);
@@ -449,6 +553,52 @@
     if (core && core.notify) core.notify(null, running);
   }
 
+  // ---------------------------------------------------------------- landing
+  // Proof that the title and — above all — the keywords really stuck to the
+  // asset before the run walks on. Two independent sources are combined:
+  //   * the form itself (title field + keyword count), available immediately;
+  //   * Adobe's own tile state (keyword badge + green dot), which is what the
+  //     user looks at, but may need a beat to repaint after a save.
+  async function readLanding(tile, key) {
+    // React may re-render the tile while we poll, so re-resolve it by key.
+    const cur = findTileByKey(key) || tile;
+    return {
+      title: String((core.titleValue && core.titleValue()) || '').trim(),
+      formKeywords: core.keywordCount ? core.keywordCount() : 0,
+      badge: tileKeywordCount(cur),
+      dot: dotState(cur),
+    };
+  }
+
+  async function waitLanded(tile, key, timeout) {
+    const started = Date.now();
+    let seen = null;
+    while (Date.now() - started < timeout) {
+      if (stopRequested) return false;
+      const state = await readLanding(tile, key);
+      seen = state;
+      const landed =
+        !!state.title &&
+        (state.dot === 'green' || state.badge >= MIN_KEYWORDS || state.formKeywords >= MIN_KEYWORDS);
+      if (landed) {
+        // Green (or a keyword badge) is the user's own "this one is done" rule.
+        if (state.dot !== 'red') return true;
+        // Title + keywords are proven, the dot just has not repainted yet.
+        if (Date.now() - started >= DOT_GRACE_MS) return true;
+      }
+      await sleep(300);
+    }
+    console.warn(
+      '[StockMeta][batch] title/keywords did not land:',
+      key,
+      '| title:',
+      seen && seen.title ? 'yes' : 'NO',
+      '| keywords (form/badge/dot):',
+      seen ? seen.formKeywords + '/' + seen.badge + '/' + seen.dot : 'n/a'
+    );
+    return false;
+  }
+
   // ---------------------------------------------------------------- one asset
   async function processAsset(tile, key, index, total, mode) {
     // Fail closed: if we cannot prove the detail view shows THIS asset, stop
@@ -456,46 +606,77 @@
     const selected = await ensureSelected(tile, key, index, total, mode);
     if (!selected) return stopRequested ? 'skip' : 'abort';
 
+    // Already complete (green dot / keywords on the tile): leave it alone. This
+    // also covers tiles that turned green while the queue was being worked off.
+    if (tileLooksDone(tile)) {
+      console.log('[StockMeta][batch] already complete, skipping:', key);
+      return 'skip';
+    }
+
     // "Verify all" fallback: no red dot could be read, so decide from the asset
-    // itself — anything with a title and enough keywords is left untouched.
+    // itself once it is open — title present and enough keywords means done.
     if (mode === 'verify') {
       const title = String(core.titleValue() || '').trim();
-      const kw = core.keywordCount ? core.keywordCount() : 0;
+      const kw = Math.max(core.keywordCount ? core.keywordCount() : 0, tileKeywordCount(tile));
       console.log('[StockMeta][batch] verify:', title ? title.slice(0, 40) : '(no title)', '| keywords:', kw);
-      if (title && kw >= 5) return 'skip';
+      if (title && kw >= MIN_KEYWORDS) return 'skip';
     }
 
-    reportPhase(index, total, 'batchGenerating');
-    const gen = await withTimeout(
-      Promise.resolve().then(() => core.generate()),
-      GENERATE_TIMEOUT_MS,
-      'generate',
-      { ok: false, error: 'TIMEOUT' }
-    );
-    if (!gen || !gen.ok) {
-      console.warn('[StockMeta][batch] generate failed:', key, gen && gen.error);
-      core.showError((gen && gen.error) || 'UNKNOWN');
-      return 'fail';
-    }
+    // Two passes at most: generate -> apply -> save -> verify. A second pass
+    // only happens when the first one did not actually land on the asset.
+    for (let pass = 1; pass <= 2; pass++) {
+      if (stopRequested) return 'skip';
+      if (pass > 1) reportPhase(index, total, 'batchRetrying');
 
-    reportPhase(index, total, 'batchApplying');
-    try {
-      await withTimeout(
-        Promise.resolve().then(() => core.applyAll()),
-        APPLY_TIMEOUT_MS,
-        'apply',
-        undefined
+      reportPhase(index, total, 'batchGenerating');
+      const gen = await withTimeout(
+        Promise.resolve().then(() => core.generate()),
+        GENERATE_TIMEOUT_MS,
+        'generate',
+        { ok: false, error: 'TIMEOUT' }
       );
-    } catch (err) {
-      // A failing dropdown (category / file type) must not throw away an asset
-      // whose title and keywords are already written.
-      console.warn('[StockMeta][batch] apply warning (continuing):', err && err.message);
+      if (!gen || !gen.ok) {
+        console.warn('[StockMeta][batch] generate failed:', key, gen && gen.error);
+        core.showError((gen && gen.error) || 'UNKNOWN');
+        return 'fail';
+      }
+
+      // A result without keywords can never turn the tile green — ask again
+      // instead of writing a thin asset (this is the "keywords showed 0" case).
+      const produced = core.resultKeywordCount ? core.resultKeywordCount() : 0;
+      if (produced < MIN_KEYWORDS && pass < 2) {
+        console.warn(
+          '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — regenerating'
+        );
+        continue;
+      }
+
+      reportPhase(index, total, 'batchApplying');
+      try {
+        await withTimeout(
+          Promise.resolve().then(() => core.applyAll()),
+          APPLY_TIMEOUT_MS,
+          'apply',
+          undefined
+        );
+      } catch (err) {
+        // A failing dropdown (category / file type) must not throw away an asset
+        // whose title and keywords are already written.
+        console.warn('[StockMeta][batch] apply warning (continuing):', err && err.message);
+      }
+
+      reportPhase(index, total, 'batchSaving');
+      await withTimeout(Promise.resolve().then(() => core.save()), SAVE_TIMEOUT_MS, 'save', undefined);
+      await sleep(SAVE_SETTLE_MS);
+
+      // Only now may the next asset be selected: title AND keywords verified.
+      reportPhase(index, total, 'batchChecking');
+      if (await waitLanded(tile, key, LANDING_TIMEOUT_MS)) return 'ok';
+      console.warn('[StockMeta][batch] pass ' + pass + ' did not land on the asset:', key);
     }
 
-    reportPhase(index, total, 'batchSaving');
-    await withTimeout(Promise.resolve().then(() => core.save()), SAVE_TIMEOUT_MS, 'save', undefined);
-    await sleep(SAVE_SETTLE_MS);
-    return 'ok';
+    core.showError('BATCH_NOT_LANDED');
+    return 'fail';
   }
 
   // ---------------------------------------------------------------- run
@@ -523,7 +704,9 @@
       mode === 'verify'
         ? queryTiles().filter((t) => {
             const k = tileKey(t);
-            return !!k && processedKeys.indexOf(k) === -1;
+            // Even in verify mode a tile Adobe marks as complete is left alone;
+            // only ambiguous ones are opened and judged from the form.
+            return !!k && processedKeys.indexOf(k) === -1 && !tileLooksDone(t);
           })
         : unprocessedPending();
 
@@ -632,6 +815,10 @@
     // Debug helpers, also used by the panel's pending counter.
     scanTiles: queryTiles,
     pendingTiles,
+    // Per-tile readers: StockMetaDebug.batch.dotState(tile) etc.
+    dotState,
+    tileKeywordCount,
+    tileLooksDone,
     diagnose,
   };
 })();

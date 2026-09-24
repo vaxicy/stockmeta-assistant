@@ -192,6 +192,7 @@
       SELECT_OPTION_NOT_FOUND: 'errSelect',
       EXTENSION_CONTEXT_INVALIDATED: 'errContextInvalid',
       BATCH_SELECT_TIMEOUT: 'batchSelectTimeout',
+      BATCH_NOT_LANDED: 'errNotLanded',
     };
     let key;
     if (map[errCode]) {
@@ -806,17 +807,40 @@
     toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
   }
 
-  // How many keywords Adobe already holds for the asset on screen. The tag UI
-  // only exposes "Remaining keywords: N" (N = 49 - applied); the textarea path is
-  // kept for simpler markup. Used by the batch "verify all" fallback.
+  // How many keywords Adobe already holds for the asset on screen.
+  //
+  // The keyword UI is a CHECKLIST today (rows with a check mark), not a
+  // textarea: reading `input.value` alone returned 0 for every finished asset,
+  // which made the batch treat good assets as empty and re-process them. The
+  // readers below are tried in order of reliability and the first trustworthy
+  // number wins.
   function currentKeywordCount() {
+    // 1. plain textarea / contenteditable input (older markup).
     const el = Dom.findKeywordInput();
-    if (el && typeof el.value === 'string' && el.value.trim()) {
-      return el.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length;
+    if (el) {
+      const raw =
+        el.getAttribute('contenteditable') === 'true'
+          ? el.textContent || ''
+          : typeof el.value === 'string'
+          ? el.value
+          : '';
+      if (raw.trim()) {
+        const n = raw.split(/[,，;；\n]+/).map((s) => s.trim()).filter(Boolean).length;
+        if (n) return n;
+      }
     }
+    // 2. the applied keywords of the checklist UI.
+    try {
+      const checked = Dom.countAppliedKeywords ? Dom.countAppliedKeywords() : -1;
+      if (checked > 0) return checked;
+    } catch (_) {}
+    // 3. "Remaining keywords: N" combined with the max parsed from the label.
     try {
       const m = /Remaining keywords:\s*(\d+)/i.exec(document.body.innerText || '');
-      if (m) return Math.max(0, 49 - parseInt(m[1], 10));
+      if (m) {
+        const max = Dom.keywordMax ? Dom.keywordMax() : 49;
+        return Math.max(0, max - parseInt(m[1], 10));
+      }
     } catch (_) {}
     return 0;
   }
@@ -840,6 +864,10 @@
       },
       hasTitleInput: () => !!Dom.findTitleInput(),
       keywordCount: currentKeywordCount,
+      // What the model just produced (not what the form holds) — the batch uses
+      // it to refuse writing a result without keywords.
+      resultTitle: () => state.title,
+      resultKeywordCount: () => state.keywords.length,
       // The image that would be captioned right now — the batch uses its asset
       // id as the only trustworthy "did the detail view switch?" proof.
       currentImageSrc: () => (Img.currentImageSrc ? Img.currentImageSrc() : ''),

@@ -305,6 +305,55 @@
     });
   }
 
+  // --- Reading how many keywords Adobe currently holds -------------------
+  // The keyword UI changed shape over time: an old plain textarea, then a tag
+  // list, and now a checklist whose rows carry the applied keywords. Reading
+  // only `input.value` therefore returns 0 on the current markup — which made
+  // finished assets look empty (and were processed again and again).
+  function keywordRegion() {
+    const label = Array.from(
+      document.querySelectorAll('label, .spectrum-FieldLabel, [class*="FieldLabel"]')
+    ).find((el) => /keyword/i.test(el.textContent || ''));
+    if (label) {
+      const field = label.closest('[class*="spectrum-Field"]') || label.parentElement;
+      if (field) return field;
+    }
+    const el = findKeywordInput();
+    if (el) return el.closest('[class*="spectrum-Field"], form, section') || el.parentElement;
+    return null;
+  }
+
+  // Applied keywords of the checklist UI (React Aria rows carry the checked
+  // state). Returns -1 when it cannot be determined at all, so callers can keep
+  // looking elsewhere instead of trusting a false 0.
+  function countAppliedKeywords() {
+    const region = keywordRegion();
+    if (!region) return -1;
+    const checked = region.querySelectorAll(
+      '[role="checkbox"][aria-checked="true"], [aria-checked="true"], input[type="checkbox"]:checked, [class*="checked" i]'
+    ).length;
+    if (checked > 0) return checked;
+    const chips = region.querySelectorAll(
+      '[class*="tag" i], [class*="chip" i], [class*="keyword" i], [role="option"], [role="listitem"]'
+    );
+    let n = 0;
+    chips.forEach((el) => {
+      if ((el.textContent || '').trim()) n++;
+    });
+    return n > 0 ? n : -1;
+  }
+
+  // Adobe prints "KEYWORDS (min 5 - max 49)" next to the field. Parsed instead
+  // of hardcoding, so a change on Adobe's side cannot silently break the count.
+  function keywordMax() {
+    try {
+      const text = document.body ? document.body.innerText || '' : '';
+      const m = /min\s*5\s*[-–~]\s*max\s*(\d+)/i.exec(text) || /max\s*(\d+)\s*keywords?/i.exec(text);
+      if (m) return parseInt(m[1], 10);
+    } catch (_) {}
+    return 49;
+  }
+
   // --- Adobe category picker (React Spectrum select) ---
   // The Category field on the Adobe content-tagger is a React Spectrum
   // dropdown. We open the trigger button, wait for the listbox, then click the
@@ -464,6 +513,9 @@
     setAdobeTitle,
     addAdobeKeywords,
     replaceAdobeKeywords,
+    countAppliedKeywords,
+    keywordRegion,
+    keywordMax,
     setAdobeCategory,
     getAdobeCategory,
     setAdobeFileType,

@@ -73,7 +73,10 @@
       batchSelectTimeout: 'Could not confirm the asset switch. Batch stopped so nothing lands on the wrong asset.',
       batchGenFailed: 'Batch: generation failed for one asset (see console).',
       batchVerifying: 'checking…',
+      batchChecking: 'verifying title & keywords…',
+      batchRetrying: 'not landed yet, retrying…',
       batchNoGrid: 'Batch: no asset grid found on this page.',
+      errNotLanded: 'Adobe did not keep the title / keywords for this asset. Please check the form.',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -145,7 +148,10 @@
       batchSelectTimeout: '无法确认素材已切换，已停止批量，避免内容写进错误的素材。',
       batchGenFailed: '批量：某张素材生成失败（详情见控制台）。',
       batchVerifying: '校验中…',
+      batchChecking: '校验标题与关键词…',
+      batchRetrying: '未落到位，重试中…',
       batchNoGrid: '批量：当前页面未找到素材网格。',
+      errNotLanded: 'Adobe 未保留该素材的标题/关键词，请检查表单。',
     },
   };
 
