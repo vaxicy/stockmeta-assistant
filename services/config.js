@@ -57,6 +57,25 @@ export const DEFAULT_CONFIG = {
   batchIntervalMs: 1500,
 };
 
+// Adobe's own hard floor: a result never counts as usable below this.
+const ADOBE_MIN_KEYWORDS = 5;
+
+// The keyword count the USER asked for — the floor a result has to reach before
+// the batch treats it as "enough" and stops asking. Range mode uses the range
+// minimum (the prompt tells the model "never fewer than lo"); fixed mode uses the
+// exact target count. Never below Adobe's 5, never above the 50 the UI allows.
+export function targetKeywordMinimum(cfg) {
+  const c = cfg || {};
+  const clamp = (v, fallback) => {
+    const n = parseInt(v, 10);
+    const base = Number.isFinite(n) && n > 0 ? n : fallback;
+    return Math.max(1, Math.min(50, base));
+  };
+  const wanted =
+    c.keywordCountMode === 'range' ? clamp(c.keywordCountMin, 20) : clamp(c.keywordCount, 30);
+  return Math.max(ADOBE_MIN_KEYWORDS, wanted);
+}
+
 // Migrate legacy flat apiKey/baseUrl/model into the current provider's slot.
 function migrateLegacy(stored) {
   if (!stored) return null;

@@ -1,5 +1,5 @@
 // background/background.js  (MV3 service worker, ES module)
-import { getConfig } from '../services/config.js';
+import { getConfig, targetKeywordMinimum } from '../services/config.js';
 import { generateMetadata, getEndpoint, ADOBE_CATEGORIES, ADOBE_FILE_TYPES } from '../services/aiProvider.js';
 
 // In-memory config cache. The SW re-reads storage only when the cache is
@@ -109,7 +109,7 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
     // most likely to come back unusable (a keyword string instead of an array, a
     // short list, or bullets/numbering) and every asset paid for a second call.
     // Spelling the contract out up front is what makes the first call succeed.
-    parts.push('- "keywords" MUST be a JSON array of at least 15 entries — never a single string, never empty, never prose.');
+    parts.push('- "keywords" MUST be a JSON array with at least the number of entries requested above — never a single string, never empty, never prose.');
     parts.push('- Each keyword: lowercase plain English (a-z, digits, hyphens), 1-4 words, no numbering, no bullets, no trailing punctuation.');
   }
   if (mode === 'title') {
@@ -160,7 +160,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride),
           timeoutMs: cfg.timeoutMs,
           attempts: 3,
-          minKeywords: 5,
+          // Judge the answer against what the USER asked for, not just Adobe's
+          // minimum: a 12-keyword answer when 20-30 was configured is thin, so it
+          // is re-recognized here (and the retry prompt asks for that many). The
+          // batch repeats the same check on its side — the user's rule: "批量的时候
+          // 也检查如果关键词不满足用户设置数量也要重新生成".
+          minKeywords: targetKeywordMinimum(cfg),
           need: { title: mode !== 'keywords', keywords: mode !== 'title' },
         });
         // In range mode the model can overshoot the maximum; trim so Adobe
@@ -183,6 +188,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fileType: result.fileType,
           attempts: result.attempts || 1,
           keywordsPatched: !!result.keywordsPatched,
+          // The count this answer was judged against, so the batch can enforce the
+          // same bar without re-reading the settings itself.
+          targetMin: targetKeywordMinimum(cfg),
         });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);

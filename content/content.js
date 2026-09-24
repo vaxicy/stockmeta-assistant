@@ -12,7 +12,7 @@
 
   const INJECTED_FLAG = 'data-stockmeta-injected';
   let panel = null;
-  let state = { title: '', keywords: [], category: '', fileType: '', lastImageSrc: null, lastAssetId: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
+  let state = { title: '', keywords: [], category: '', fileType: '', targetKeywordMinimum: 0, lastImageSrc: null, lastAssetId: null, collapsed: false, lastStatus: { key: 'statusIdle', isError: false } };
 
   // ---------------------------------------------------------------- inject
   function injectPanel() {
@@ -334,6 +334,7 @@
     if (onPhase) onPhase('rescuing');
     const resp = await sendGenerateField(imageBase64, 'keywords');
     console.log('[StockMeta] keywords-only response:', resp);
+    if (resp && resp.targetMin) state.targetKeywordMinimum = resp.targetMin;
     if (resp && resp.ok && Array.isArray(resp.keywords) && resp.keywords.length) {
       state.keywords = resp.keywords;
       renderResults();
@@ -342,6 +343,7 @@
     // One more pass through the same rescue ladder before declaring failure.
     const rescued = await rescueKeywords(imageBase64, onPhase);
     if (!rescued) return { ok: false, error: (resp && resp.error) || 'NO_KEYWORDS' };
+    if (rescued.targetMin) state.targetKeywordMinimum = rescued.targetMin;
     state.keywords = rescued.keywords;
     renderResults();
     return { ok: true, keywordsOnly: true, keywordsPatched: !!rescued.keywordsPatched };
@@ -359,6 +361,10 @@
     const resp = await sendGenerate(imageBase64);
     console.log('[StockMeta] generate response:', resp);
     if (!resp.ok) return { ok: false, error: resp.error };
+    // How many keywords the user asked for (range minimum, or the fixed count).
+    // The SW already judged the answer against it; the batch reuses the same number
+    // to re-generate a result that came back "recognized but too short".
+    if (resp.targetMin) state.targetKeywordMinimum = resp.targetMin;
     // Only title + keywords decide whether anything was recognized. The category
     // always has a fallback value, so testing it here (as this used to) let an
     // empty answer pass as success and the panel showed "0 个关键词".
@@ -1068,6 +1074,9 @@
       // The batch clears the panel when it moves to the next asset, instead of
       // letting the mutation observer wipe it mid-flight (see updatePreview).
       resetResults,
+      // How many keywords the user asked for (0 = unknown). The batch treats a
+      // result below this as "recognized but too short" and regenerates it.
+      targetKeywordMinimum: () => state.targetKeywordMinimum || 0,
       notify: onBatchStateChange,
     };
   }

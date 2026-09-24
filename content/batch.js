@@ -738,13 +738,21 @@
       if (stopRequested) return 'skip';
       if (pass > 1) reportPhase(index, total, retryLabel);
 
-      // Retry pass only: if the panel STILL holds usable keywords, the recognition
-      // itself succeeded and only the write/store did not. Re-apply what we have
-      // instead of asking the model again — regenerating here spends a whole extra
-      // call for keywords we already got ("不消耗二次token"). A panel that really
-      // reads 0 goes back to the model.
+      // The bar is the count the USER configured (range minimum / fixed count),
+      // never below Adobe's own minimum: a result under it is "recognized but too
+      // short" and has to be regenerated — the user's rule: "批量的时候也检查如果
+      // 关键词不满足用户设置数量也要重新生成".
+      const targetMin = Math.max(
+        MIN_KEYWORDS,
+        core.targetKeywordMinimum ? core.targetKeywordMinimum() : MIN_KEYWORDS
+      );
+      // Retry pass only: if the panel already MEETS that bar, the recognition
+      // succeeded and only the write/store did not. Re-apply what we have instead
+      // of asking the model again — regenerating there spends a whole extra call
+      // for keywords we already got ("不消耗二次token"). A panel below the bar
+      // (including 0) goes back to the model.
       const panelKeywords = core.resultKeywordCount ? core.resultKeywordCount() : 0;
-      const reusePanel = pass > 1 && panelKeywords >= MIN_KEYWORDS;
+      const reusePanel = pass > 1 && panelKeywords >= targetMin;
       if (reusePanel) {
         console.log(
           '[StockMeta][batch] ' +
@@ -775,14 +783,22 @@
           return 'fail';
         }
 
-        // A result without keywords can never turn the tile green — ask again
-        // instead of writing a thin asset (this is the "keywords showed 0" case).
+        // A result below the requested count can never satisfy the user (and an
+        // empty one can never turn the tile green) — ask again instead of writing a
+        // thin asset. This covers both "0 keywords" and "12 keywords when 20-30
+        // was configured".
         const produced = core.resultKeywordCount ? core.resultKeywordCount() : 0;
-        if (produced < MIN_KEYWORDS && pass < GEN_ATTEMPTS) {
+        if (produced < targetMin && pass < GEN_ATTEMPTS) {
           console.warn(
-            '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — re-recognizing'
+            '[StockMeta][batch] model returned ' +
+              produced +
+              ' keyword(s) but the user wants at least ' +
+              targetMin +
+              ' — re-recognizing'
           );
           retryLabel = 'batchRecognizing';
+          // The title is already fine; only the keyword list is short.
+          keywordsOnly = true;
           await sleep(RETRY_BACKOFF_MS * pass);
           continue;
         }

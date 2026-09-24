@@ -455,14 +455,22 @@ export function parseModelJson(content) {
 
 // Extra instructions for a repeat call: the first answer was unusable, so make
 // the format requirements impossible to miss.
-function retrySuffix(needKeywords) {
+function retrySuffix(needKeywords, minKeywords) {
   const lines = [
     '',
     'IMPORTANT — this is a retry, the previous answer was unusable:',
     '- Reply with the JSON object ONLY. No explanation, no Markdown, no code fence.',
   ];
   if (needKeywords) {
-    lines.push('- "keywords" MUST be a JSON array with at least 15 entries (never a string, never empty).');
+    // Ask for the count the caller actually needs (the user's configured minimum
+    // when that is higher than 15), otherwise the retry can come back "usable but
+    // still short" and waste the attempt.
+    const floor = Math.max(15, parseInt(minKeywords, 10) || 0);
+    lines.push(
+      '- "keywords" MUST be a JSON array with at least ' +
+        floor +
+        ' entries (never a string, never empty).'
+    );
     lines.push('- Every keyword MUST be plain ASCII English: letters a-z, digits and hyphens only.');
     lines.push('- Lowercase, 1-4 words each, no leading numbers or bullets, no trailing punctuation.');
   }
@@ -530,7 +538,7 @@ export async function generateMetadata({
         baseUrl,
         model,
         imageBase64,
-        prompt: attempt === 1 ? prompt : prompt + retrySuffix(needKeywords),
+        prompt: attempt === 1 ? prompt : prompt + retrySuffix(needKeywords, minKeywords),
         timeoutMs,
         useJsonMode: attempt === 1,
       });
