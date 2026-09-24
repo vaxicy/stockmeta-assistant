@@ -711,8 +711,22 @@
     }
     btn.classList.remove('sm-danger');
     const n = Batch.countPending();
-    btn.disabled = n === 0;
-    btn.textContent = n ? tf('batchButton', { n }) : t('batchNoPending');
+    if (n > 0) {
+      btn.disabled = false;
+      btn.textContent = tf('batchButton', { n });
+      return;
+    }
+    // Nothing matched the red dot. Instead of claiming "nothing pending" while
+    // the grid is visibly full of red dots, offer the verify-all fallback: it
+    // opens each tile and only processes the ones that really lack metadata.
+    const all = Batch.countTiles();
+    if (all > 0) {
+      btn.disabled = false;
+      btn.textContent = tf('batchButtonAll', { n: all });
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = t('batchNoGrid');
   }
 
   async function onBatchClick() {
@@ -726,7 +740,15 @@
       toast('batchNeedSetting');
       return;
     }
-    await Batch.start({ intervalMs: batchCfg.batchIntervalMs });
+    // Red dot readable -> fast path. Otherwise verify every tile against its own
+    // title / keywords (slower, but independent of Adobe's status markup).
+    const mode = Batch.countPending() > 0 ? 'dots' : 'verify';
+    if (mode === 'verify' && Batch.countTiles() === 0) {
+      Batch.diagnose(true);
+      toast('batchNoGrid');
+      return;
+    }
+    await Batch.start({ intervalMs: batchCfg.batchIntervalMs, mode });
   }
 
   // Called by the batch engine whenever it starts or finishes a run.
@@ -737,6 +759,21 @@
     setStatus(summary.stopped ? 'batchStopped' : 'batchDone', summary.fail > 0, summary);
     clearTimeout(toast._t);
     toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
+  }
+
+  // How many keywords Adobe already holds for the asset on screen. The tag UI
+  // only exposes "Remaining keywords: N" (N = 49 - applied); the textarea path is
+  // kept for simpler markup. Used by the batch "verify all" fallback.
+  function currentKeywordCount() {
+    const el = Dom.findKeywordInput();
+    if (el && typeof el.value === 'string' && el.value.trim()) {
+      return el.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length;
+    }
+    try {
+      const m = /Remaining keywords:\s*(\d+)/i.exec(document.body.innerText || '');
+      if (m) return Math.max(0, 49 - parseInt(m[1], 10));
+    } catch (_) {}
+    return 0;
   }
 
   // Everything the batch engine is allowed to do. Keeping the write path in one
@@ -756,6 +793,7 @@
         return el && typeof el.value === 'string' ? el.value : '';
       },
       hasTitleInput: () => !!Dom.findTitleInput(),
+      keywordCount: currentKeywordCount,
       notify: onBatchStateChange,
     };
   }

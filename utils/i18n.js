@@ -71,6 +71,9 @@
       batchResumed: 'Resuming the interrupted batch…',
       batchSelectTimeout: 'Could not confirm the asset switch. Batch stopped so nothing lands on the wrong asset.',
       batchGenFailed: 'Batch: generation failed for one asset (see console).',
+      batchButtonAll: 'Batch process (verify all {n})',
+      batchVerifying: 'checking…',
+      batchNoGrid: 'Batch: no asset grid found on this page.',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -140,6 +143,9 @@
       batchResumed: '正在继续上次未完成的批量…',
       batchSelectTimeout: '无法确认素材已切换，已停止批量，避免内容写进错误的素材。',
       batchGenFailed: '批量：某张素材生成失败（详情见控制台）。',
+      batchButtonAll: '批量处理（全量校验 {n}）',
+      batchVerifying: '校验中…',
+      batchNoGrid: '批量：当前页面未找到素材网格。',
     },
   };
 
