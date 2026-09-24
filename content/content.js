@@ -1040,6 +1040,9 @@
       },
       hasTitleInput: () => !!Dom.findTitleInput(),
       keywordCount: currentKeywordCount,
+      // True while Adobe flags the keyword field as invalid ("Add minimum 5
+      // keywords"). The batch treats that as "not landed" and regenerates.
+      keywordError: () => (Dom.keywordFieldError ? Dom.keywordFieldError() : false),
       // What the model just produced (not what the form holds) — the batch uses
       // it to refuse writing a result without keywords.
       resultTitle: () => state.title,

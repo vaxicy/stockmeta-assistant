@@ -65,14 +65,15 @@
   // Adobe's own minimum for a submittable asset — used as the "keywords landed"
   // threshold everywhere in this file.
   const MIN_KEYWORDS = 5;
-  // How long to wait for an asset to be confirmed stored (green dot) after a
-  // save. The keyword badge NUMBER is no longer waited on — that repaint was
-  // what made every asset take ~20 s ("校验太久了"); the green dot is Adobe's own
-  // "saved" signal and usually paints within a couple of seconds.
-  const LANDING_TIMEOUT_MS = 6000;
-  // After the keywords are confirmed on the form but the tile has not gone green
-  // yet, wait this long for the first save to land before clicking Save again —
-  // a lagging save is cheaper to re-issue than to regenerate the keywords.
+  // How long to wait for the tile to show a stored asset: the keyword badge
+  // (>= Adobe's minimum) together with the green dot. Waiting for the badge is
+  // not optional — switching tiles before Adobe commits is what left previously
+  // processed assets stuck at 0. A tile Adobe is still rejecting bails out early
+  // (waitLanded), so this is only a ceiling for genuinely slow stores.
+  const LANDING_TIMEOUT_MS = 8000;
+  // Grace before acting on a "not stored yet" tile: after this long with the
+  // keywords on the form we re-click Save (cheaper than regenerating), and after
+  // this long with Adobe still flagging the field we give up and regenerate.
   const DOT_GRACE_MS = 2000;
   // Danger: never let an asset whose keywords were not recognized be treated as
   // done. Generation gets a second go per asset (the background service already
@@ -580,9 +581,11 @@
 
   // ---------------------------------------------------------------- landing
   // Proof that the title and — above all — the keywords really stuck to the
-  // asset before the run walks on. The PANEL/form is the primary source (it holds
-  // exactly what the panel displays and updates the moment we write); Adobe's own
-  // tile state (keyword badge + dot) is read along with it as a second signal.
+  // asset before the run walks on. Adobe's OWN tile state is the source of truth
+  // here: the keyword badge is the number the user reads on the tile, and the
+  // green dot is Adobe's "stored" signal. The form count is read too, but only
+  // for the log and as a fallback (a badge-0 tile can still have the raw text
+  // sitting in the box while Adobe has not committed it — see landingProven).
   async function readLanding(tile, key) {
     // React may re-render the tile while we poll, so re-resolve it by key.
     const cur = findTileByKey(key) || tile;
@@ -591,20 +594,28 @@
       formKeywords: core.keywordCount ? core.keywordCount() : 0,
       badge: tileKeywordCount(cur),
       dot: dotState(cur),
+      error: core.keywordError ? !!core.keywordError() : false,
     };
   }
 
-  // Is this asset finished? THE PANEL + THE GREEN DOT DECIDE (user's rule,
-  // 2026-09-24, restated: "批量识别到面板为 0 自动重新生成补充；直到面板不为 0
-  // 且绿点就做下一个"). An asset counts as done only when BOTH hold:
-  //   * the form/panel actually holds the keywords (>= Adobe's minimum), and
-  //   * Adobe confirms it saved — the green status dot.
-  // The keyword badge number is intentionally ignored: it repaints too slowly
-  // ("校验太久了") and is not what the user reads. A panel showing 0 keywords is
-  // never accepted; that asset gets its keywords regenerated (processAsset).
+  // Is this asset finished? THE TILE KEYWORD COUNT AND THE GREEN DOT DECIDE
+  // (user's rule, 2026-09-24: "这个上面的关键词显示不为 0 才到下一个"). An asset
+  // counts as done only when ALL hold:
+  //   * Adobe is no longer flagging the keyword field ("Add minimum 5 keywords"),
+  //   * the tile shows the green status dot (Adobe stored it), and
+  //   * the TILE badge holds keywords (>= Adobe's minimum) — the number the user
+  //     actually reads. Waiting for it is not optional: switching tiles before
+  //     Adobe commits leaves the previous asset stuck at 0.
+  // A tile whose badge reads 0 is never accepted — that asset gets its keywords
+  // regenerated and re-applied (processAsset). Only when the badge cannot be read
+  // at all (-1) do we fall back to the form count, so a build that hides the
+  // badge does not stall the whole run.
   function landingProven(state) {
     if (!state || !state.title) return false;
-    return state.formKeywords >= MIN_KEYWORDS && state.dot === 'green';
+    if (state.error) return false;
+    if (state.dot !== 'green') return false;
+    if (state.badge >= MIN_KEYWORDS) return true;
+    return state.badge < 0 && state.formKeywords >= MIN_KEYWORDS;
   }
 
   async function waitLanded(tile, key, timeout) {
@@ -616,14 +627,27 @@
       const state = await readLanding(tile, key);
       seen = state;
       if (landingProven(state)) return true;
+      const waited = Date.now() - started;
+      // Adobe is flagging the keyword field ("Add minimum 5 keywords") even after
+      // this pass wrote some: the write did not take. Do not burn the whole
+      // timeout on it — bail out early so processAsset can regenerate the keywords
+      // (user's rule: "这里为 0 的话就重新生成关键词然后应用然后才批量下一个").
+      if (state.error && state.badge < MIN_KEYWORDS && waited >= DOT_GRACE_MS) {
+        console.warn(
+          '[StockMeta][batch] Adobe still flags the keyword field — regenerating instead of waiting:',
+          key
+        );
+        return false;
+      }
       // Keywords are on the form but Adobe has not flipped to green: the SAVE is
       // lagging, not the generation. Re-saving once is far cheaper than
       // regenerating the keywords, so try that before giving up.
       if (
         !reSaved &&
         state.formKeywords >= MIN_KEYWORDS &&
+        !state.error &&
         state.dot !== 'green' &&
-        Date.now() - started >= DOT_GRACE_MS
+        waited >= DOT_GRACE_MS
       ) {
         reSaved = true;
         console.warn('[StockMeta][batch] keywords applied but tile not green yet — saving again:', key);
@@ -632,28 +656,22 @@
       await sleep(150);
     }
     console.warn(
-      '[StockMeta][batch] asset not confirmed (needs panel keywords + green dot):',
+      '[StockMeta][batch] asset not confirmed (needs tile keywords + green dot):',
       key,
       '| title:',
       seen && seen.title ? 'yes' : 'NO',
-      '| keywords (form/badge/dot):',
-      seen ? seen.formKeywords + '/' + seen.badge + '/' + seen.dot : 'n/a'
+      '| keywords (badge/form/dot/error):',
+      seen ? seen.badge + '/' + seen.formKeywords + '/' + seen.dot + '/' + (seen.error ? 'yes' : 'no') : 'n/a'
     );
-    if (seen && seen.title && seen.formKeywords >= MIN_KEYWORDS && seen.dot !== 'green') {
+    if (seen && seen.error) {
       console.warn(
-        '[StockMeta][batch] the form holds ' +
-          seen.formKeywords +
-          ' keywords but the tile is still ' +
-          seen.dot +
-          ' (badge ' +
-          seen.badge +
-          ') — Adobe has not confirmed the save'
+        '[StockMeta][batch] Adobe flagged the keyword field — this asset needs its keywords regenerated'
       );
-    } else if (seen && seen.formKeywords < MIN_KEYWORDS) {
+    } else if (seen && seen.badge >= 0 && seen.badge < MIN_KEYWORDS) {
       console.warn(
-        '[StockMeta][batch] the form holds only ' +
-          seen.formKeywords +
-          ' keywords — the keywords were not written/applied'
+        '[StockMeta][batch] the tile badge reads ' +
+          seen.badge +
+          ' keyword(s) — Adobe has not stored the keywords yet'
       );
     }
     return false;
@@ -766,17 +784,17 @@
       await saveAsset();
       await sleep(SAVE_SETTLE_MS);
 
-      // Only now may the next asset be selected: title AND keywords verified.
-      // The verdict comes from the form/panel, so this normally returns on the
-      // first poll instead of waiting on Adobe's grid.
+      // Only now may the next asset be selected: the TILE must show the green dot
+      // AND a non-zero keyword badge (the user's rule: "这个上面的关键词显示不为 0
+      // 才到下一个"). Switching earlier is what left assets stuck at badge 0.
       reportPhase(index, total, 'batchChecking');
       if (await waitLanded(tile, key, LANDING_TIMEOUT_MS)) return 'ok';
-      // The panel is still missing keywords, or the tile never went green within
-      // the timeout — so the next pass asks for the keywords alone (the user's
-      // rule: "面板这里显示为 0 就自己重新生成"). The end-of-run re-recognition
-      // round is the last safety net.
+      // The tile still shows 0 keywords, Adobe still flags the field, or it never
+      // went green — so the next pass asks for the keywords alone and re-applies
+      // (the user's rule: "这里为 0 的话就重新生成关键词然后应用"). The end-of-run
+      // re-recognition round is the last safety net.
       keywordsOnly = true;
-      console.warn('[StockMeta][batch] pass ' + pass + ' did not land (panel keywords / green dot missing):', key);
+      console.warn('[StockMeta][batch] pass ' + pass + ' did not land (tile keywords / green dot missing):', key);
     }
 
     core.showError('BATCH_NOT_LANDED');

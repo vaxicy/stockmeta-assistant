@@ -354,6 +354,25 @@
     return 49;
   }
 
+  // --- Is Adobe currently rejecting the keyword field? -------------------
+  // The uploader prints a red "Add minimum 5 keywords." under the field (with a
+  // warning icon) whenever it holds too few *accepted* keywords. That is exactly
+  // the state a batch run must not walk away from: the text may be sitting in the
+  // box while Adobe has not committed it, so the tile badge stays 0. The message
+  // is the reliable hook; the class/aria checks are a fallback for builds that do
+  // not print it.
+  function keywordFieldError() {
+    try {
+      const text = document.body ? document.body.innerText || '' : '';
+      if (/add\s+minimum\s+\d+\s+keywords?/i.test(text)) return true;
+    } catch (_) {}
+    const region = keywordRegion();
+    if (!region) return false;
+    return !!region.querySelector(
+      '[aria-invalid="true"], [class*="Field-error" i], [class*="FieldError" i]'
+    );
+  }
+
   // --- Adobe category picker (React Spectrum select) ---
   // The Category field on the Adobe content-tagger is a React Spectrum
   // dropdown. We open the trigger button, wait for the listbox, then click the
@@ -516,6 +535,7 @@
     countAppliedKeywords,
     keywordRegion,
     keywordMax,
+    keywordFieldError,
     setAdobeCategory,
     getAdobeCategory,
     setAdobeFileType,
