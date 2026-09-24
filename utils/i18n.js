@@ -75,8 +75,12 @@
       batchVerifying: 'checking…',
       batchChecking: 'verifying title & keywords…',
       batchRetrying: 'not landed yet, retrying…',
+      batchRecognizing: 'keywords missing, re-recognizing…',
+      batchRecovered: 'Re-recognized {n} asset(s) that failed the first time.',
       batchNoGrid: 'Batch: no asset grid found on this page.',
       errNotLanded: 'Adobe did not keep the title / keywords for this asset. Please check the form.',
+      statusKeywordsPatched:
+        'Title & keywords ready (keywords derived from the title — regenerate keywords for better ones).',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -150,8 +154,11 @@
       batchVerifying: '校验中…',
       batchChecking: '校验标题与关键词…',
       batchRetrying: '未落到位，重试中…',
+      batchRecognizing: '关键词未识别出，重新识别…',
+      batchRecovered: '已重新识别 {n} 张原本失败的素材。',
       batchNoGrid: '批量：当前页面未找到素材网格。',
       errNotLanded: 'Adobe 未保留该素材的标题/关键词，请检查表单。',
+      statusKeywordsPatched: '标题与关键词已生成（关键词由标题补齐，建议点「重新生成关键词」）。',
     },
   };
 

@@ -284,7 +284,10 @@
     const resp = await sendGenerate(imageBase64);
     console.log('[StockMeta] generate response:', resp);
     if (!resp.ok) return { ok: false, error: resp.error };
-    if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length) && !resp.category) {
+    // Only title + keywords decide whether anything was recognized. The category
+    // always has a fallback value, so testing it here (as this used to) let an
+    // empty answer pass as success and the panel showed "0 个关键词".
+    if (!resp.title && (!Array.isArray(resp.keywords) || !resp.keywords.length)) {
       return { ok: false, error: 'EMPTY_RESPONSE' };
     }
     state.title = resp.title || '';
@@ -292,7 +295,11 @@
     state.category = resp.category || '';
     state.fileType = resp.fileType || '';
     renderResults();
-    return { ok: true };
+    return {
+      ok: true,
+      attempts: resp.attempts || 1,
+      keywordsPatched: !!resp.keywordsPatched,
+    };
   }
 
   async function onGenerate() {
@@ -312,7 +319,9 @@
         setError(res.error);
         return;
       }
-      setStatus('statusDone');
+      // Keywords derived from the title mean every re-recognition call failed:
+      // say so instead of pretending the result is complete.
+      setStatus(res.keywordsPatched ? 'statusKeywordsPatched' : 'statusDone');
       // Optional: apply everything as soon as the result lands, so the user does
       // not have to press "Apply All" afterwards. Driven by the settings toggle.
       const cfg = await getApplyConfig();
@@ -405,7 +414,9 @@
         state.keywords = resp.keywords;
       }
       renderResults();
-      setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
+      // Keywords derived from the title = every recognition call failed.
+      if (mode === 'keywords' && resp.keywordsPatched) setStatus('statusKeywordsPatched');
+      else setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
       // Optional: apply the field that was just regenerated, so the ↻ buttons
       // also save a manual click when the auto-apply setting is on.
       const cfg = await getApplyConfig();
@@ -802,7 +813,16 @@
     if (!summary) return;
     // The summary deserves a longer dwell time than a regular toast.
     const key = summary.aborted ? 'batchAborted' : summary.stopped ? 'batchStopped' : 'batchDone';
-    setStatus(key, summary.fail > 0, summary);
+    const vars = { ok: summary.ok, fail: summary.fail, skip: summary.skip };
+    // Assets that failed once are re-recognized at the end of the run; report
+    // how many came back so the user can tell the retry apart from the rest.
+    const text = summary.recovered
+      ? t(key).replace('{ok}', vars.ok).replace('{fail}', vars.fail).replace('{skip}', vars.skip) +
+        ' ' +
+        tf('batchRecovered', { n: summary.recovered })
+      : '';
+    if (text) setStatusText(text, summary.fail > 0);
+    else setStatus(key, summary.fail > 0, vars);
     clearTimeout(toast._t);
     toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
   }

@@ -139,6 +139,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const ov = await chrome.storage.local.get(['defaultCategory', 'defaultFileType']);
         const categoryOverride = ov.defaultCategory || 'auto';
         const fileTypeOverride = ov.defaultFileType || 'auto';
+        // Re-recognition: a single call is often enough, but a timeout, a
+        // Markdown-wrapped answer or a "keywords": "a, b, c" string used to be
+        // accepted as "0 keywords". generateMetadata now repeats the call until
+        // the answer is usable and only asks for what this mode needs.
         const result = await generateMetadata({
           apiKey: cfg.apiKey,
           provider: cfg.provider,
@@ -147,6 +151,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           imageBase64: message.imageBase64,
           prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride),
           timeoutMs: cfg.timeoutMs,
+          attempts: 3,
+          minKeywords: 5,
+          need: { title: mode !== 'keywords', keywords: mode !== 'title' },
         });
         // In range mode the model can overshoot the maximum; trim so Adobe
         // never receives more keywords than the user allowed.
@@ -154,7 +161,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const hi = Math.max(1, Math.min(50, Number(cfg.keywordCountMax) || 30));
           if (result.keywords.length > hi) result.keywords = result.keywords.slice(0, hi);
         }
-        sendResponse({ ok: true, title: result.title, keywords: result.keywords, category: result.category, fileType: result.fileType });
+        console.log(
+          '[StockMeta] recognized in ' + (result.attempts || 1) + ' call(s)',
+          '| keywords:',
+          Array.isArray(result.keywords) ? result.keywords.length : 0,
+          result.keywordsPatched ? '| keywords derived from the title' : ''
+        );
+        sendResponse({
+          ok: true,
+          title: result.title,
+          keywords: result.keywords,
+          category: result.category,
+          fileType: result.fileType,
+          attempts: result.attempts || 1,
+          keywordsPatched: !!result.keywordsPatched,
+        });
       } catch (err) {
         console.error('[StockMeta] generateMetadata error:', err && err.message);
         sendResponse({ ok: false, error: err && err.message ? err.message : 'UNKNOWN' });

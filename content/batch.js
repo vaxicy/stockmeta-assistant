@@ -64,6 +64,12 @@
   // Once title/keywords are proven locally, a still-red dot is usually just an
   // unrepainted grid: wait a little, then accept instead of failing a good asset.
   const DOT_GRACE_MS = 2500;
+  // Danger: never let an asset whose keywords were not recognized be treated as
+  // done. Generation gets a second go per asset (the background service already
+  // re-asks the model up to 3 times per call), then the whole asset is retried
+  // once more at the end of the run.
+  const GEN_ATTEMPTS = 2;
+  const RETRY_BACKOFF_MS = 900;
   // Candidate elements the red dot may be painted on.
   const ICON_HINT_SELECTOR = 'i, svg, [class*="icon" i], [class*="dot" i], [class*="status" i]';
 
@@ -622,11 +628,13 @@
       if (title && kw >= MIN_KEYWORDS) return 'skip';
     }
 
-    // Two passes at most: generate -> apply -> save -> verify. A second pass
-    // only happens when the first one did not actually land on the asset.
-    for (let pass = 1; pass <= 2; pass++) {
+    // A few passes at most: generate -> apply -> save -> verify. Another pass
+    // only happens when the previous one did not produce usable keywords or did
+    // not land on the asset.
+    let retryLabel = 'batchRetrying';
+    for (let pass = 1; pass <= GEN_ATTEMPTS; pass++) {
       if (stopRequested) return 'skip';
-      if (pass > 1) reportPhase(index, total, 'batchRetrying');
+      if (pass > 1) reportPhase(index, total, retryLabel);
 
       reportPhase(index, total, 'batchGenerating');
       const gen = await withTimeout(
@@ -636,18 +644,27 @@
         { ok: false, error: 'TIMEOUT' }
       );
       if (!gen || !gen.ok) {
-        console.warn('[StockMeta][batch] generate failed:', key, gen && gen.error);
-        core.showError((gen && gen.error) || 'UNKNOWN');
+        const code = (gen && gen.error) || 'UNKNOWN';
+        console.warn('[StockMeta][batch] generate failed (' + pass + '/' + GEN_ATTEMPTS + '):', key, code);
+        // Re-recognize instead of giving up on the asset straight away.
+        if (pass < GEN_ATTEMPTS) {
+          retryLabel = 'batchRecognizing';
+          await sleep(RETRY_BACKOFF_MS * pass);
+          continue;
+        }
+        core.showError(code);
         return 'fail';
       }
 
       // A result without keywords can never turn the tile green — ask again
       // instead of writing a thin asset (this is the "keywords showed 0" case).
       const produced = core.resultKeywordCount ? core.resultKeywordCount() : 0;
-      if (produced < MIN_KEYWORDS && pass < 2) {
+      if (produced < MIN_KEYWORDS && pass < GEN_ATTEMPTS) {
         console.warn(
-          '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — regenerating'
+          '[StockMeta][batch] model returned only ' + produced + ' keywords (min ' + MIN_KEYWORDS + ') — re-recognizing'
         );
+        retryLabel = 'batchRecognizing';
+        await sleep(RETRY_BACKOFF_MS * pass);
         continue;
       }
 
@@ -722,8 +739,13 @@
     let ok = 0;
     let fail = 0;
     let skip = 0;
+    let recovered = 0;
     let consecutiveFail = 0;
     let aborted = false;
+    // Assets that failed get one more recognition round once the queue is done:
+    // the usual causes (a slow model answer, a rate limit, a single empty reply)
+    // are gone by then, so the second try has a real chance.
+    const failedKeys = [];
     const total = Math.min(queue.length, SAFETY_MAX_ASSETS);
     const startedAt = options.startedAt || Date.now();
     console.log('[StockMeta][batch] start', mode, '| tiles:', all, '| queue:', total, '| interval:', intervalMs + 'ms');
@@ -752,6 +774,7 @@
         } else if (res === 'fail') {
           fail++;
           consecutiveFail++;
+          failedKeys.push(key);
           console.warn('[StockMeta][batch] asset failed (' + consecutiveFail + ' in a row):', i + 1, '/', total, key);
         } else {
           skip++; // 'skip' / 'abort'
@@ -767,12 +790,43 @@
         }
         if (i < total - 1) await sleep(intervalMs);
       }
+
+      // ---- second chance: re-recognize the assets that failed ----------------
+      // "Keywords not recognized" is usually a one-off (slow answer, rate limit,
+      // empty reply), so the failed assets get another recognition round once
+      // the queue is done instead of being left at 0 keywords.
+      if (!stopRequested && !aborted && failedKeys.length) {
+        console.log('[StockMeta][batch] re-recognizing ' + failedKeys.length + ' failed asset(s)');
+        for (let j = 0; j < failedKeys.length; j++) {
+          if (stopRequested) break;
+          const key = failedKeys[j];
+          const tile = findTileByKey(key);
+          if (!tile) continue;
+          reportPhase(j + 1, failedKeys.length, 'batchRecognizing');
+          let res;
+          try {
+            res = await processAsset(tile, key, j + 1, failedKeys.length, mode);
+          } catch (err) {
+            console.warn('[StockMeta][batch] re-recognition crashed:', key, err);
+            res = 'fail';
+          }
+          if (res === 'ok') {
+            ok++;
+            fail--;
+            recovered++;
+            consecutiveFail = 0;
+            console.log('[StockMeta][batch] recovered by re-recognition:', key);
+          }
+          persist({ running: true, startedAt, processedKeys, total, mode });
+          if (j < failedKeys.length - 1) await sleep(intervalMs);
+        }
+      }
     } finally {
       const stopped = stopRequested;
       stopRequested = false;
       running = false;
       clearState();
-      lastSummary = { ok, fail, skip, stopped, aborted };
+      lastSummary = { ok, fail, skip, stopped, aborted, recovered };
       console.log('[StockMeta][batch] finished:', lastSummary);
       if (core && core.notify) core.notify(lastSummary, false);
     }
