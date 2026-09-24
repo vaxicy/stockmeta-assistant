@@ -81,6 +81,10 @@
   // form and the tile still shows nothing, until the tile proves it was stored.
   const SAVE_RETRIES = 3;
   const SAVE_RETRY_EVERY_MS = 1200;
+  // How long the CARD badge may take to show the keywords the apply just wrote.
+  // This is the gate in front of the save (user's rule: "验证完图片卡片上关键词
+  // 数量不为0之后保存，然后切换"), so it only has to cover a repaint.
+  const CARD_VERIFY_MS = 3000;
   // Danger: never let an asset whose keywords were not recognized be treated as
   // done. Generation gets a second go per asset (the background service already
   // re-asks the model up to 3 times per call), then the whole asset is retried
@@ -604,6 +608,28 @@
     };
   }
 
+  // Wait (bounded) for Adobe's tile to show the keywords we just applied. The
+  // badge is the number the user reads on the card, so it is the gate that has to
+  // pass BEFORE an asset is persisted — the user's rule: "验证完图片卡片上关键词
+  // 数量不为0之后保存，然后切换". Returns the last reading, never throws.
+  async function waitCardKeywords(tile, key, timeout) {
+    const started = Date.now();
+    let last = { badge: -1, dot: 'unknown', error: false, form: 0 };
+    while (Date.now() - started < timeout) {
+      if (stopRequested) return last;
+      const cur = findTileByKey(key) || tile;
+      last = {
+        badge: tileKeywordCount(cur),
+        dot: dotState(cur),
+        error: core.keywordError ? !!core.keywordError() : false,
+        form: core.keywordCount ? core.keywordCount() : 0,
+      };
+      if (last.badge >= MIN_KEYWORDS) return last;
+      await sleep(200);
+    }
+    return last;
+  }
+
   // Is this asset finished? THE TILE KEYWORD COUNT AND THE GREEN DOT DECIDE
   // (user's rule, 2026-09-24: "这个上面的关键词显示不为 0 才到下一个"). An asset
   // counts as done only when ALL hold:
@@ -829,26 +855,44 @@
         console.warn('[StockMeta][batch] apply warning (continuing):', err && err.message);
       }
 
-      // CONFIRM BEFORE SAVING (user's rule: "确认关键词没问题之后准备切换到下一个图之前
-      // 自动保存"). Persisting is only worth it once the keywords really are in the
-      // field, so a thin write goes back for another pass instead of being saved —
-      // and when the panel already holds enough, that pass re-applies WITHOUT a new
-      // model call (see reusePanel), so a failed write costs no extra tokens.
-      const formKeywords = core.keywordCount ? core.keywordCount() : 0;
-      if (formKeywords < targetMin && pass < GEN_ATTEMPTS) {
+      // VERIFY THE CARD BEFORE SAVING (user's rule, 2026-09-24: "验证完图片卡片上
+      // 关键词数量不为0之后保存，然后切换"). The tile badge is the number the user
+      // reads on the card, so it is the gate: an asset whose card still reads 0 is
+      // NOT persisted — it goes back for another pass instead.
+      reportPhase(index, total, 'batchChecking');
+      let card = await waitCardKeywords(tile, key, CARD_VERIFY_MS);
+      if (card.badge < MIN_KEYWORDS && card.form >= MIN_KEYWORDS && !card.error) {
+        // The keywords ARE in the form but Adobe has not repainted the badge yet —
+        // persisting is what makes it catch up. Save now and read the card again
+        // rather than spending another model call on keywords we already have.
         console.warn(
-          '[StockMeta][batch] only ' +
-            formKeywords +
-            ' keyword(s) reached the form (want ' +
-            targetMin +
-            ') — regenerating instead of saving'
+          '[StockMeta][batch] keywords are on the form but the card still reads 0 — saving so the card can catch up:',
+          key
         );
-        keywordsOnly = true;
-        retryLabel = 'batchRecognizing';
-        await sleep(RETRY_BACKOFF_MS * pass);
-        continue;
+        await saveAsset();
+        card = await waitCardKeywords(tile, key, CARD_VERIFY_MS);
+      }
+      if (card.badge < MIN_KEYWORDS) {
+        if (pass < GEN_ATTEMPTS) {
+          console.warn(
+            '[StockMeta][batch] the card still reads ' +
+              card.badge +
+              ' keyword(s) — NOT saving this asset, regenerating first'
+          );
+          keywordsOnly = true;
+          retryLabel = 'batchRecognizing';
+          await sleep(RETRY_BACKOFF_MS * pass);
+          continue;
+        }
+        // Nothing left to try: better to leave the asset untouched (still red) than
+        // to persist a card that shows 0 keywords.
+        console.warn('[StockMeta][batch] the card never showed the keywords — leaving this asset unsaved:', key);
+        core.showError('BATCH_NOT_LANDED');
+        return 'fail';
       }
 
+      // The card proves the keywords are in, so persist — the last action before
+      // switching to the next asset.
       reportPhase(index, total, 'batchSaving');
       await saveAsset();
       await sleep(SAVE_SETTLE_MS);
