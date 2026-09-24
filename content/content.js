@@ -740,11 +740,13 @@
     const busy = () => !!btn.disabled || btn.getAttribute('aria-disabled') === 'true';
     btn.click();
     await sleep(300);
+    // Bounded: the verdict on a batch asset comes from the panel, so there is no
+    // reason to hold the run for many seconds while Adobe writes.
     if (busy()) {
       const t0 = Date.now();
-      while (busy() && Date.now() - t0 < 8000) await sleep(200);
+      while (busy() && Date.now() - t0 < 4000) await sleep(200);
     }
-    await sleep(300);
+    await sleep(200);
     return true;
   }
 
@@ -752,8 +754,10 @@
   // Adobe's minimum for a submittable asset, and the number the tile badge shows
   // once the keywords are really stored.
   const MIN_KEYWORDS = 5;
-  // How long Adobe's grid may take to repaint one tile after a save.
-  const CARD_SETTLE_MS = 6000;
+  // How long Adobe's grid may take to repaint one tile after a save. Short on
+  // purpose: the panel already shows the keywords, so the card is only checked
+  // because it is what the user sees, not because the apply depends on it.
+  const CARD_SETTLE_MS = 3000;
 
   // The tile the user selected in the grid (its badge is the number they read).
   function selectedTileEl() {

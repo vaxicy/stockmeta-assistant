@@ -59,17 +59,20 @@
     '[class*="icon-done"]',
   ];
   // Keyword-count badge of a tile inside its status bar (".badge", e.g. "30").
-  // This is the number the user reads on the tile, so it outranks the status dot:
-  // it can both prove an asset is incomplete (0-4 keywords) and prove one is done.
+  // Read as a second signal next to the form/panel: it can both prove an asset is
+  // incomplete (0-4 keywords) and prove one is done.
   const BADGE_SELECTOR = '[class*="badge" i]';
   // Adobe's own minimum for a submittable asset — used as the "keywords landed"
   // threshold everywhere in this file.
   const MIN_KEYWORDS = 5;
-  // How long the grid may lag behind a save before the landing check gives up.
-  const LANDING_TIMEOUT_MS = 9000;
-  // Once title/keywords are proven locally, a still-red dot is usually just an
-  // unrepainted grid: wait a little, then accept instead of failing a good asset.
-  const DOT_GRACE_MS = 2500;
+  // How long the landing check may take. The verdict comes from the form/panel,
+  // which is filled the instant we write, so this only has to cover a form that
+  // is still catching up — NOT Adobe's grid repaint (that used to burn ~20 s per
+  // asset: "校验太久了").
+  const LANDING_TIMEOUT_MS = 2500;
+  // When the keywords are proven but the tile still shows a red dot, give the grid
+  // a brief beat — then move on instead of holding up the whole run.
+  const DOT_GRACE_MS = 1000;
   // Danger: never let an asset whose keywords were not recognized be treated as
   // done. Generation gets a second go per asset (the background service already
   // re-asks the model up to 3 times per call), then the whole asset is retried
@@ -576,10 +579,9 @@
 
   // ---------------------------------------------------------------- landing
   // Proof that the title and — above all — the keywords really stuck to the
-  // asset before the run walks on. Two independent sources are combined:
-  //   * the form itself (title field + keyword count), available immediately;
-  //   * Adobe's own tile state (keyword badge + green dot), which is what the
-  //     user looks at, but may need a beat to repaint after a save.
+  // asset before the run walks on. The PANEL/form is the primary source (it holds
+  // exactly what the panel displays and updates the moment we write); Adobe's own
+  // tile state (keyword badge + dot) is read along with it as a second signal.
   async function readLanding(tile, key) {
     // React may re-render the tile while we poll, so re-resolve it by key.
     const cur = findTileByKey(key) || tile;
@@ -591,17 +593,20 @@
     };
   }
 
-  // Is this asset really finished? The keyword badge on the tile is the number
-  // the user reads, so it decides whenever it can be read — the form is NOT an
-  // acceptable substitute: keywords sit in the form after an apply, while the
-  // badge only moves once Adobe has actually STORED the asset (saving failed,
-  // never clicked, or still in flight). That difference is exactly what the user
-  // kept staring at: keywords in the form, "0" on the card. Only when the badge
-  // cannot be read at all do the form / the dot speak for it.
+  // Is this asset finished? THE PANEL DECIDES (user's rule, 2026-09-24: "直接以
+  // 面板这里显示的为主"). What the panel shows is exactly what we just wrote, and
+  // it is there the instant the form is filled — whereas Adobe's grid tile may
+  // take many seconds to repaint, which is what made every asset take ~20 s
+  // ("校验太久了"). So the keyword count in the form/panel is proof enough; the
+  // tile badge is still read as a cheap second chance and for the log (a badge
+  // disagreeing with the form means Adobe has not stored the asset yet — worth
+  // knowing, not worth waiting for). A panel showing 0 keywords is never
+  // accepted: that asset gets its keywords regenerated instead (processAsset).
   function landingProven(state) {
     if (!state || !state.title) return false;
-    if (state.badge >= 0) return state.badge >= MIN_KEYWORDS;
-    return state.formKeywords >= MIN_KEYWORDS || state.dot === 'green';
+    if (state.formKeywords >= MIN_KEYWORDS) return true;
+    if (state.badge >= MIN_KEYWORDS) return true;
+    return state.badge < 0 && state.dot === 'green';
   }
 
   async function waitLanded(tile, key, timeout) {
@@ -612,11 +617,13 @@
       const state = await readLanding(tile, key);
       seen = state;
       if (landingProven(state)) {
-        // Keywords are on the asset; a still-red dot is just an unrepainted grid.
-        if (state.dot !== 'red') return true;
-        if (Date.now() - started >= DOT_GRACE_MS) return true;
+        // The form holds what the panel shows: the asset is done, no matter what
+        // the grid says. Waiting on the grid repaint is what made each asset take
+        // ~20 s, so only a genuinely lagging dot gets the short grace below.
+        if (state.formKeywords >= MIN_KEYWORDS) return true;
+        if (state.dot !== 'red' || Date.now() - started >= DOT_GRACE_MS) return true;
       }
-      await sleep(300);
+      await sleep(150);
     }
     console.warn(
       '[StockMeta][batch] title/keywords did not land:',
@@ -749,22 +756,15 @@
       await saveAsset();
       await sleep(SAVE_SETTLE_MS);
 
-      // Only now may the next asset be selected: title AND keywords verified —
-      // and "verified" means the CARD says so, not the form.
+      // Only now may the next asset be selected: title AND keywords verified.
+      // The verdict comes from the form/panel, so this normally returns on the
+      // first poll instead of waiting on Adobe's grid.
       reportPhase(index, total, 'batchChecking');
-      let landed = await waitLanded(tile, key, LANDING_TIMEOUT_MS);
-      if (!landed && pass < GEN_ATTEMPTS) {
-        // The card still reads 0. Re-saving costs nothing, and a save that never
-        // went through is the usual reason the badge lags — so try that first,
-        // before spending another API call on a fresh generation.
-        console.warn('[StockMeta][batch] card shows no keywords after pass ' + pass + ' — saving again');
-        await saveAsset();
-        landed = await waitLanded(tile, key, LANDING_TIMEOUT_MS);
-      }
-      if (landed) return 'ok';
-      // Not on the card yet: the next pass regenerates the keywords alone.
+      if (await waitLanded(tile, key, LANDING_TIMEOUT_MS)) return 'ok';
+      // Nothing usable in the panel for this asset, so the next pass asks for the
+      // keywords alone — the user's rule: "面板这里显示为 0 就自己重新生成".
       keywordsOnly = true;
-      console.warn('[StockMeta][batch] pass ' + pass + ' did not land on the card:', key);
+      console.warn('[StockMeta][batch] pass ' + pass + ' did not land (panel keywords missing):', key);
     }
 
     core.showError('BATCH_NOT_LANDED');
