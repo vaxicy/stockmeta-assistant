@@ -750,23 +750,64 @@
 
   // Save and wait for Adobe to finish writing, so a batch run never leaves the
   // previous asset unsaved (nor clicks the next tile mid-request).
+  //
+  // Two things made saving feel "random" (user report: "这个保存有点随机的"): the
+  // button node is replaced whenever Adobe re-renders, so a reference captured
+  // earlier silently no-ops on click(); and a single click was fired without ever
+  // checking that Adobe received it. So: re-resolve the button on every attempt
+  // and keep clicking until the click actually registers — Adobe disables the
+  // button while it writes.
+  const SAVE_CLICK_TIMEOUT_MS = 2500; // find the button and get a click to register
+  const SAVE_SETTLE_TIMEOUT_MS = 8000; // wait for Adobe to finish writing
+  const SAVE_MAX_CLICKS = 3;
+  function saveButtonBusy(btn) {
+    return !!btn.disabled || btn.getAttribute('aria-disabled') === 'true';
+  }
+  // Wait until Adobe's button stops showing the "writing" state.
+  async function waitSaveIdle() {
+    const t0 = Date.now();
+    while (Date.now() - t0 < SAVE_SETTLE_TIMEOUT_MS) {
+      const b = findSaveWorkButton();
+      if (!b || !saveButtonBusy(b)) return true;
+      await sleep(150);
+    }
+    return false;
+  }
   async function saveAndWait() {
-    const btn = findSaveWorkButton();
-    if (!btn) {
-      console.warn('[StockMeta] Save work button not found');
-      return false;
+    const t0 = Date.now();
+    let clicks = 0;
+    while (Date.now() - t0 < SAVE_CLICK_TIMEOUT_MS) {
+      const btn = findSaveWorkButton();
+      if (!btn) {
+        console.warn('[StockMeta] Save work button not found');
+        await sleep(200);
+        continue;
+      }
+      // A previous click is still being written — wait it out instead of stacking
+      // another request on top.
+      if (saveButtonBusy(btn)) {
+        await waitSaveIdle();
+        return true;
+      }
+      btn.click();
+      clicks++;
+      await sleep(250);
+      const after = findSaveWorkButton();
+      if (after && !saveButtonBusy(after) && clicks < SAVE_MAX_CLICKS) {
+        // Adobe never went busy: either the click missed the (re-rendered) node or
+        // the write was instant. Try again rather than trusting a single click.
+        await sleep(200);
+        continue;
+      }
+      // The click registered — wait for Adobe to finish writing.
+      await waitSaveIdle();
+      if (clicks > 1) {
+        console.log('[StockMeta] Save work registered after ' + clicks + ' clicks');
+      }
+      return true;
     }
-    const busy = () => !!btn.disabled || btn.getAttribute('aria-disabled') === 'true';
-    btn.click();
-    await sleep(300);
-    // Bounded: the verdict on a batch asset comes from the panel, so there is no
-    // reason to hold the run for many seconds while Adobe writes.
-    if (busy()) {
-      const t0 = Date.now();
-      while (busy() && Date.now() - t0 < 4000) await sleep(200);
-    }
-    await sleep(200);
-    return true;
+    console.warn('[StockMeta] Save work did not register within ' + SAVE_CLICK_TIMEOUT_MS + 'ms');
+    return clicks > 0;
   }
 
   // ---- the card (grid tile badge) is the authority -----------------------

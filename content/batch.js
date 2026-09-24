@@ -75,6 +75,12 @@
   // keywords on the form we re-click Save (cheaper than regenerating), and after
   // this long with Adobe still flagging the field we give up and regenerate.
   const DOT_GRACE_MS = 2000;
+  // The tile badge is the ONLY proof that a save took — a click Adobe never
+  // received changes nothing, which is exactly what made saving feel random
+  // ("这个保存有点随机的"). So keep re-issuing Save while the keywords are on the
+  // form and the tile still shows nothing, until the tile proves it was stored.
+  const SAVE_RETRIES = 3;
+  const SAVE_RETRY_EVERY_MS = 1200;
   // Danger: never let an asset whose keywords were not recognized be treated as
   // done. Generation gets a second go per asset (the background service already
   // re-asks the model up to 3 times per call), then the whole asset is retried
@@ -621,7 +627,8 @@
   async function waitLanded(tile, key, timeout) {
     const started = Date.now();
     let seen = null;
-    let reSaved = false;
+    let saves = 0;
+    let nextSaveAt = DOT_GRACE_MS;
     while (Date.now() - started < timeout) {
       if (stopRequested) return false;
       const state = await readLanding(tile, key);
@@ -639,18 +646,22 @@
         );
         return false;
       }
-      // Keywords are on the form but Adobe has not flipped to green: the SAVE is
-      // lagging, not the generation. Re-saving once is far cheaper than
-      // regenerating the keywords, so try that before giving up.
+      // Keywords are on the form but the tile still shows nothing, so the SAVE
+      // has not been received yet — keep re-issuing it (bounded) instead of
+      // walking away and leaving the asset unsaved. Re-saving is far cheaper than
+      // regenerating, and the tile badge then proves whether it took.
       if (
-        !reSaved &&
         state.formKeywords >= MIN_KEYWORDS &&
         !state.error &&
-        state.dot !== 'green' &&
-        waited >= DOT_GRACE_MS
+        saves < SAVE_RETRIES &&
+        waited >= nextSaveAt
       ) {
-        reSaved = true;
-        console.warn('[StockMeta][batch] keywords applied but tile not green yet — saving again:', key);
+        saves++;
+        nextSaveAt = waited + SAVE_RETRY_EVERY_MS;
+        console.warn(
+          '[StockMeta][batch] tile not stored yet — saving again (' + saves + '/' + SAVE_RETRIES + '):',
+          key
+        );
         await saveAsset();
       }
       await sleep(150);
@@ -816,6 +827,26 @@
         // A failing dropdown (category / file type) must not throw away an asset
         // whose title and keywords are already written.
         console.warn('[StockMeta][batch] apply warning (continuing):', err && err.message);
+      }
+
+      // CONFIRM BEFORE SAVING (user's rule: "确认关键词没问题之后准备切换到下一个图之前
+      // 自动保存"). Persisting is only worth it once the keywords really are in the
+      // field, so a thin write goes back for another pass instead of being saved —
+      // and when the panel already holds enough, that pass re-applies WITHOUT a new
+      // model call (see reusePanel), so a failed write costs no extra tokens.
+      const formKeywords = core.keywordCount ? core.keywordCount() : 0;
+      if (formKeywords < targetMin && pass < GEN_ATTEMPTS) {
+        console.warn(
+          '[StockMeta][batch] only ' +
+            formKeywords +
+            ' keyword(s) reached the form (want ' +
+            targetMin +
+            ') — regenerating instead of saving'
+        );
+        keywordsOnly = true;
+        retryLabel = 'batchRecognizing';
+        await sleep(RETRY_BACKOFF_MS * pass);
+        continue;
       }
 
       reportPhase(index, total, 'batchSaving');
