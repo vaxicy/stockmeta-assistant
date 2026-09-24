@@ -357,6 +357,12 @@
       }
       renderResults();
       setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
+      // Optional: apply the field that was just regenerated, so the ↻ buttons
+      // also save a manual click when the auto-apply setting is on.
+      const cfg = await getApplyConfig();
+      if (cfg.autoApplyAfterGenerate) {
+        await onApply(mode);
+      }
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       setError(code, err);
