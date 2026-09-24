@@ -81,6 +81,8 @@
       errNotLanded: 'Adobe did not keep the title / keywords for this asset. Please check the form.',
       statusKeywordsPatched:
         'Title & keywords ready (keywords derived from the title — regenerate keywords for better ones).',
+      errNoKeywords:
+        'No keywords could be recognized for this asset. Press the ↻ button next to KEYWORDS to try again.',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -159,6 +161,7 @@
       batchNoGrid: '批量：当前页面未找到素材网格。',
       errNotLanded: 'Adobe 未保留该素材的标题/关键词，请检查表单。',
       statusKeywordsPatched: '标题与关键词已生成（关键词由标题补齐，建议点「重新生成关键词」）。',
+      errNoKeywords: '这张素材没能识别出关键词，请点「关键词」右侧的 ↻ 按钮再试一次。',
     },
   };
 

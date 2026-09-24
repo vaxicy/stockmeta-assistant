@@ -191,6 +191,7 @@
       SELECT_TRIGGER_NOT_FOUND: 'errSelect',
       SELECT_OPTION_NOT_FOUND: 'errSelect',
       EXTENSION_CONTEXT_INVALIDATED: 'errContextInvalid',
+      NO_KEYWORDS: 'errNoKeywords',
       BATCH_SELECT_TIMEOUT: 'batchSelectTimeout',
       BATCH_NOT_LANDED: 'errNotLanded',
     };
@@ -274,6 +275,42 @@
 
   // ---------------------------------------------------------------- generate
 
+  // A result can come back with a title but no usable keywords. Adobe needs at
+  // least 5, so a panel showing "0 个关键词" is not a finished asset — and the
+  // batch used to skip exactly those tiles, forcing a manual "regenerate
+  // keywords" on every one of them. Escalating to the keywords-only request (the
+  // very same call the ↻ button makes) fixes that on its own.
+  const KEYWORD_RESCUE_ATTEMPTS = 2;
+
+  // Ask for the keywords alone, a couple of times at most. Returns the response
+  // or null; a missing key / unreadable image will not fix itself, so those stop
+  // the loop immediately.
+  async function rescueKeywords(imageBase64, onPhase) {
+    for (let attempt = 1; attempt <= KEYWORD_RESCUE_ATTEMPTS; attempt++) {
+      if (onPhase) onPhase('rescuing');
+      console.warn(
+        '[StockMeta] no keywords recognized — regenerating keywords (' + attempt + '/' + KEYWORD_RESCUE_ATTEMPTS + ')'
+      );
+      const resp = await sendGenerateField(imageBase64, 'keywords');
+      if (resp && resp.ok && Array.isArray(resp.keywords) && resp.keywords.length) {
+        console.log('[StockMeta] keyword regeneration returned', resp.keywords.length, 'keywords');
+        return resp;
+      }
+      const code = (resp && resp.error) || '';
+      console.warn('[StockMeta] keyword regeneration failed:', code || 'no keywords in the answer');
+      if (
+        code === 'MISSING_API_KEY' ||
+        code === 'INVALID_API_KEY' ||
+        code === 'MODEL_NOT_FOUND' ||
+        code === 'MISSING_IMAGE'
+      ) {
+        return null;
+      }
+      if (attempt < KEYWORD_RESCUE_ATTEMPTS) await sleep(700 * attempt);
+    }
+    return null;
+  }
+
   // Shared generation core: read the asset currently on screen, ask the model,
   // store the result in `state`. Status/error surfacing stays in the caller so
   // the panel button and the batch engine reuse exactly the same logic.
@@ -294,11 +331,24 @@
     state.keywords = Array.isArray(resp.keywords) ? resp.keywords : [];
     state.category = resp.category || '';
     state.fileType = resp.fileType || '';
+    let keywordsPatched = !!resp.keywordsPatched;
+    if (!state.keywords.length) {
+      const rescued = await rescueKeywords(imageBase64, onPhase);
+      if (rescued) {
+        state.keywords = rescued.keywords;
+        keywordsPatched = !!rescued.keywordsPatched;
+      }
+    }
     renderResults();
+    // Still nothing: report a failure instead of letting the caller apply (and
+    // later skip) an asset whose keyword list is empty.
+    if (!state.keywords.length) {
+      return { ok: false, error: 'NO_KEYWORDS' };
+    }
     return {
       ok: true,
       attempts: resp.attempts || 1,
-      keywordsPatched: !!resp.keywordsPatched,
+      keywordsPatched,
     };
   }
 
@@ -312,9 +362,11 @@
     const genBtn = panel.querySelector('#sm-generate');
     genBtn.disabled = true;
     try {
-      const res = await generateForCurrentAsset((phase) =>
-        setStatus(phase === 'reading' ? 'statusReading' : 'statusGenerating')
-      );
+      const res = await generateForCurrentAsset((phase) => {
+        if (phase === 'reading') setStatus('statusReading');
+        else if (phase === 'rescuing') setStatus('statusGeneratingKeywords');
+        else setStatus('statusGenerating');
+      });
       if (!res.ok) {
         setError(res.error);
         return;
