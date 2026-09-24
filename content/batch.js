@@ -591,18 +591,17 @@
     };
   }
 
-  // Is this asset really finished? A green dot alone is NOT proof: Adobe turns
-  // the dot green as soon as the asset is saved, and accepting that (as this used
-  // to) produced green tiles showing "0" keywords, which every later run then
-  // skipped. The keyword count must be readable and sufficient — from the form or
-  // from the badge — or the badge must be unreadable while the dot is green.
+  // Is this asset really finished? The keyword badge on the tile is the number
+  // the user reads, so it decides whenever it can be read — the form is NOT an
+  // acceptable substitute: keywords sit in the form after an apply, while the
+  // badge only moves once Adobe has actually STORED the asset (saving failed,
+  // never clicked, or still in flight). That difference is exactly what the user
+  // kept staring at: keywords in the form, "0" on the card. Only when the badge
+  // cannot be read at all do the form / the dot speak for it.
   function landingProven(state) {
     if (!state || !state.title) return false;
-    return (
-      state.formKeywords >= MIN_KEYWORDS ||
-      state.badge >= MIN_KEYWORDS ||
-      (state.badge < 0 && state.dot === 'green')
-    );
+    if (state.badge >= 0) return state.badge >= MIN_KEYWORDS;
+    return state.formKeywords >= MIN_KEYWORDS || state.dot === 'green';
   }
 
   async function waitLanded(tile, key, timeout) {
@@ -627,7 +626,38 @@
       '| keywords (form/badge/dot):',
       seen ? seen.formKeywords + '/' + seen.badge + '/' + seen.dot : 'n/a'
     );
+    // The distinction matters when reading the log: keywords in the form with a
+    // "0" badge means Adobe never stored the asset, not that the model failed.
+    if (seen && seen.title && seen.formKeywords >= MIN_KEYWORDS && seen.badge < MIN_KEYWORDS) {
+      console.warn(
+        '[StockMeta][batch] the form holds ' +
+          seen.formKeywords +
+          ' keywords while the tile badge reads ' +
+          seen.badge +
+          ' (dot: ' +
+          seen.dot +
+          ') — Adobe has not stored this asset yet'
+      );
+    }
     return false;
+  }
+
+  // Click "Save work" and say so when the button cannot be found, instead of
+  // silently pretending the asset was stored: an unsaved asset keeps its "0"
+  // badge forever, which is the state this whole check exists for.
+  async function saveAsset() {
+    const done = await withTimeout(
+      Promise.resolve().then(() => core.save()),
+      SAVE_TIMEOUT_MS,
+      'save',
+      false
+    );
+    if (done === false) {
+      console.warn(
+        '[StockMeta][batch] the Save work button was not found — this asset could not be stored'
+      );
+    }
+    return done !== false;
   }
 
   // ---------------------------------------------------------------- one asset
@@ -657,13 +687,18 @@
     // only happens when the previous one did not produce usable keywords or did
     // not land on the asset.
     let retryLabel = 'batchRetrying';
+    // When the first pass produced keywords but the card never showed them, the
+    // second pass asks for the keywords ALONE (what the ↻ button does) instead of
+    // redoing the whole metadata — that is the user's own rule: the card reads 0,
+    // so regenerate the keywords once more.
+    let keywordsOnly = false;
     for (let pass = 1; pass <= GEN_ATTEMPTS; pass++) {
       if (stopRequested) return 'skip';
       if (pass > 1) reportPhase(index, total, retryLabel);
 
-      reportPhase(index, total, 'batchGenerating');
+      reportPhase(index, total, keywordsOnly ? 'batchRegenKeywords' : 'batchGenerating');
       const gen = await withTimeout(
-        Promise.resolve().then(() => core.generate()),
+        Promise.resolve().then(() => core.generate({ keywordsOnly })),
         GENERATE_TIMEOUT_MS,
         'generate',
         { ok: false, error: 'TIMEOUT' }
@@ -711,13 +746,25 @@
       }
 
       reportPhase(index, total, 'batchSaving');
-      await withTimeout(Promise.resolve().then(() => core.save()), SAVE_TIMEOUT_MS, 'save', undefined);
+      await saveAsset();
       await sleep(SAVE_SETTLE_MS);
 
-      // Only now may the next asset be selected: title AND keywords verified.
+      // Only now may the next asset be selected: title AND keywords verified —
+      // and "verified" means the CARD says so, not the form.
       reportPhase(index, total, 'batchChecking');
-      if (await waitLanded(tile, key, LANDING_TIMEOUT_MS)) return 'ok';
-      console.warn('[StockMeta][batch] pass ' + pass + ' did not land on the asset:', key);
+      let landed = await waitLanded(tile, key, LANDING_TIMEOUT_MS);
+      if (!landed && pass < GEN_ATTEMPTS) {
+        // The card still reads 0. Re-saving costs nothing, and a save that never
+        // went through is the usual reason the badge lags — so try that first,
+        // before spending another API call on a fresh generation.
+        console.warn('[StockMeta][batch] card shows no keywords after pass ' + pass + ' — saving again');
+        await saveAsset();
+        landed = await waitLanded(tile, key, LANDING_TIMEOUT_MS);
+      }
+      if (landed) return 'ok';
+      // Not on the card yet: the next pass regenerates the keywords alone.
+      keywordsOnly = true;
+      console.warn('[StockMeta][batch] pass ' + pass + ' did not land on the card:', key);
     }
 
     core.showError('BATCH_NOT_LANDED');

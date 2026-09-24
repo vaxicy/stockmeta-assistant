@@ -311,10 +311,35 @@
     return null;
   }
 
+  // Keywords-only generation: keep the title that is already on the panel and ask
+  // for the keyword list alone — literally the request the ↻ button next to
+  // KEYWORDS sends. The batch uses it for its second pass when the card on the
+  // tile still reads 0 after the first pass.
+  async function generateKeywordsForCurrentAsset(onPhase) {
+    if (onPhase) onPhase('reading');
+    const imageBase64 = await Img.getCurrentImageBase64();
+    if (onPhase) onPhase('rescuing');
+    const resp = await sendGenerateField(imageBase64, 'keywords');
+    console.log('[StockMeta] keywords-only response:', resp);
+    if (resp && resp.ok && Array.isArray(resp.keywords) && resp.keywords.length) {
+      state.keywords = resp.keywords;
+      renderResults();
+      return { ok: true, keywordsOnly: true, keywordsPatched: !!resp.keywordsPatched };
+    }
+    // One more pass through the same rescue ladder before declaring failure.
+    const rescued = await rescueKeywords(imageBase64, onPhase);
+    if (!rescued) return { ok: false, error: (resp && resp.error) || 'NO_KEYWORDS' };
+    state.keywords = rescued.keywords;
+    renderResults();
+    return { ok: true, keywordsOnly: true, keywordsPatched: !!rescued.keywordsPatched };
+  }
+
   // Shared generation core: read the asset currently on screen, ask the model,
   // store the result in `state`. Status/error surfacing stays in the caller so
   // the panel button and the batch engine reuse exactly the same logic.
-  async function generateForCurrentAsset(onPhase) {
+  // `opts.keywordsOnly` regenerates the keyword list alone (title untouched).
+  async function generateForCurrentAsset(onPhase, opts) {
+    if (opts && opts.keywordsOnly) return generateKeywordsForCurrentAsset(onPhase);
     if (onPhase) onPhase('reading');
     const imageBase64 = await Img.getCurrentImageBase64();
     if (onPhase) onPhase('generating');
@@ -581,6 +606,10 @@
       if (cfg.autoCheckAI) checkAIDeclarationBoxes();
       if (cfg.autoSaveAfterApply) clickSaveWorkButton();
 
+      // Keywords only reach the tile badge after a save: if the form holds them
+      // but the card does not, save again (see syncCardWithForm).
+      const cardPending = primaryApplied && which === 'keywords' ? !(await syncCardWithForm()) : false;
+
       if (primaryApplied) {
         toast(which === 'title' ? 'appliedTitle' : which === 'keywords' ? 'appliedKeywords' : 'appliedCategory');
       } else if (settingsApplied) {
@@ -591,6 +620,11 @@
         toast('noKeywords');
       } else {
         toast('noCategory');
+      }
+      if (cardPending) {
+        // The toast timer would wipe this warning after 1.8s.
+        clearTimeout(toast._t);
+        setStatus('statusCardPending');
       }
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
@@ -632,6 +666,12 @@
         return;
       }
       toast('appliedAll');
+      // Everything is in the form now — but the tile badge (the card) only shows
+      // it after Adobe stored the asset.
+      if (!(await syncCardWithForm())) {
+        clearTimeout(toast._t);
+        setStatus('statusCardPending');
+      }
     } catch (err) {
       const code = err && err.message ? err.message : 'UNKNOWN';
       console.error('[StockMeta] apply all failed:', code, err);
@@ -706,6 +746,65 @@
     }
     await sleep(300);
     return true;
+  }
+
+  // ---- the card (grid tile badge) is the authority -----------------------
+  // Adobe's minimum for a submittable asset, and the number the tile badge shows
+  // once the keywords are really stored.
+  const MIN_KEYWORDS = 5;
+  // How long Adobe's grid may take to repaint one tile after a save.
+  const CARD_SETTLE_MS = 6000;
+
+  // The tile the user selected in the grid (its badge is the number they read).
+  function selectedTileEl() {
+    try {
+      return (
+        document.querySelector('[role="option"][aria-selected="true"]') ||
+        document.querySelector('[role="option"][title="Content tile"]')
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Keyword count shown on the tile badge (-1 = the badge cannot be read).
+  function cardKeywordCount() {
+    const tile = selectedTileEl();
+    if (!Batch || !tile || typeof Batch.tileKeywordCount !== 'function') return -1;
+    try {
+      return Batch.tileKeywordCount(tile);
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  // The form and the grid are two different places: the form holds what was just
+  // written, while the tile badge only moves once Adobe has STORED the asset.
+  // Applying without saving therefore leaves the card at "0" while the form shows
+  // the keywords — and the card is what the user (and the batch) go by. So after
+  // an apply that wrote keywords, make sure the two agree: save, then wait for the
+  // grid to repaint. Costs no API call and is independent of the auto-save setting.
+  // Returns true when the card shows the keywords (or there is nothing to prove).
+  async function syncCardWithForm() {
+    const form = currentKeywordCount();
+    if (form < MIN_KEYWORDS) return true;
+    // No grid on this page (single asset detail view, options, …): nothing to prove.
+    if (!selectedTileEl()) return true;
+    if (cardKeywordCount() >= MIN_KEYWORDS) return true;
+    await saveAndWait();
+    const t0 = Date.now();
+    while (Date.now() - t0 < CARD_SETTLE_MS) {
+      if (cardKeywordCount() >= MIN_KEYWORDS) return true;
+      await sleep(400);
+    }
+    console.warn(
+      '[StockMeta] the form holds ' +
+        form +
+        ' keywords while the tile badge still reads ' +
+        cardKeywordCount() +
+        ' — Adobe has not repainted the grid yet'
+    );
+    return false;
   }
 
   function checkAIDeclarationBoxes() {
@@ -927,7 +1026,8 @@
       status: setStatusText,
       phase: onBatchPhase,
       showError: (code) => setError(code),
-      generate: generateForCurrentAsset,
+      // generate({ keywordsOnly: true }) re-asks for the keywords alone.
+      generate: (opts) => generateForCurrentAsset(undefined, opts),
       applyAll: () => applyAllCurrent({ skipAutoSave: true }),
       save: saveAndWait,
       titleValue: () => {

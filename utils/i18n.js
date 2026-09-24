@@ -76,6 +76,7 @@
       batchChecking: 'verifying title & keywords…',
       batchRetrying: 'not landed yet, retrying…',
       batchRecognizing: 'keywords missing, re-recognizing…',
+      batchRegenKeywords: 'card still shows 0 — regenerating keywords…',
       batchRecovered: 'Re-recognized {n} asset(s) that failed the first time.',
       batchNoGrid: 'Batch: no asset grid found on this page.',
       errNotLanded: 'Adobe did not keep the title / keywords for this asset. Please check the form.',
@@ -83,6 +84,8 @@
         'Title & keywords ready (keywords derived from the title — regenerate keywords for better ones).',
       errNoKeywords:
         'No keywords could be recognized for this asset. Press the ↻ button next to KEYWORDS to try again.',
+      statusCardPending:
+        'Applied — but the grid card still shows 0 keywords. They are in the form; saved again, so reload the page if the card does not catch up.',
     },
     zh: {
       panelTitle: 'StockMeta Assistant',
@@ -157,11 +160,14 @@
       batchChecking: '校验标题与关键词…',
       batchRetrying: '未落到位，重试中…',
       batchRecognizing: '关键词未识别出，重新识别…',
+      batchRegenKeywords: '卡片仍是 0，重新生成关键词…',
       batchRecovered: '已重新识别 {n} 张原本失败的素材。',
       batchNoGrid: '批量：当前页面未找到素材网格。',
       errNotLanded: 'Adobe 未保留该素材的标题/关键词，请检查表单。',
       statusKeywordsPatched: '标题与关键词已生成（关键词由标题补齐，建议点「重新生成关键词」）。',
       errNoKeywords: '这张素材没能识别出关键词，请点「关键词」右侧的 ↻ 按钮再试一次。',
+      statusCardPending:
+        '已应用，但网格卡片上的关键词数还是 0（表单里已写入）。已再次保存；卡片仍未更新的话请刷新页面。',
     },
   };
 
