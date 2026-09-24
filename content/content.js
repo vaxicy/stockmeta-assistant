@@ -945,13 +945,15 @@
       btn.textContent = tf('generateBatch', { n });
       return;
     }
-    // Nothing matched the red dot. Instead of claiming "nothing pending" while
-    // the grid is visibly full of red dots, offer the verify-all fallback: it
-    // opens each tile and only processes the ones that really lack metadata.
+    // Nothing pending: say so plainly instead of surfacing the per-tile fallback
+    // as its own label ("verify N" confused everyone — the number was the grid
+    // total, not the workload). Clicking still runs the same per-tile check when
+    // the markers could not be read, so that safety net is unchanged — it just no
+    // longer needs a label of its own.
     const all = Batch.countTiles();
     if (all > 0) {
       btn.disabled = false;
-      btn.textContent = tf('generateBatchAll', { n: all });
+      btn.textContent = tf('generateBatch', { n: 0 });
       return;
     }
     btn.disabled = false;
@@ -977,8 +979,11 @@
       toast('batchNeedSetting');
       return;
     }
-    // Red dot readable -> fast path. Otherwise verify every tile against its own
-    // title / keywords (slower, but independent of Adobe's status markup).
+    // Red dot readable -> fast path. Zero pending -> double-check the grid per
+    // tile against its own title / keywords: slower, but independent of Adobe's
+    // status markup. Batch.start() still drops every tile that is already complete
+    // (it reports "nothing pending"), so a genuinely finished grid costs nothing —
+    // which is why this fallback needs no button label of its own.
     const mode = Batch.countPending() > 0 ? 'dots' : 'verify';
     if (mode === 'verify' && Batch.countTiles() === 0) {
       Batch.diagnose(true);
