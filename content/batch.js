@@ -838,7 +838,7 @@
     const mode = options.mode === 'verify' ? 'verify' : 'dots';
     const intervalMs = Math.max(
       300,
-      parseInt(options.intervalMs, 10) || (mode === 'verify' ? 700 : 1500)
+      parseInt(options.intervalMs, 10) || (mode === 'verify' ? 700 : 2000)
     );
     if (!options.resume) processedKeys = [];
     scanCache = { at: 0, pending: null, tiles: 0 };

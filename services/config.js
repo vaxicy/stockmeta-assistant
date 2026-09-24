@@ -54,7 +54,7 @@ export const DEFAULT_CONFIG = {
   batchProcess: false,
   // Pause between two assets during a batch run, to stay well inside provider
   // rate limits.
-  batchIntervalMs: 1500,
+  batchIntervalMs: 2000,
 };
 
 // Adobe's own hard floor: a result never counts as usable below this.

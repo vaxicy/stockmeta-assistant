@@ -42,7 +42,7 @@ const DEFAULTS = {
   defaultFileType: 'auto',
   autoApplyAfterGenerate: false,
   batchProcess: false,
-  batchIntervalMs: 1500,
+  batchIntervalMs: 2000,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -215,9 +215,9 @@ const OPT_I18N = {
     optAutoApplyAfterGenerate: 'Auto-apply',
     optAutoApplyAfterGenerateDesc: 'Apply automatically after generating: once "Generate Title & Keywords" returns a result, "Apply All" is clicked for you; the ↻ buttons also apply the field they just regenerated (title or keywords). Category / file type settings still apply as usual.',
     optBatchProcess: 'Batch process pending assets',
-    optBatchProcessDesc: 'With this on, the panel\'s "Generate Title & Keywords" button drives a whole run: it scans the Uploaded files grid for tiles marked with a red dot (missing title / keywords) and handles them one by one — select, generate, apply, save — from that single click. The button shows the live pending count and turns into "Stop batch" while running. If the red dot cannot be read from the page, it switches to "verify all": every tile is opened and only the ones whose title / keywords are really missing are processed (slower). Keep the Uploaded files page open while it runs — every asset is saved before moving on.',
+    optBatchProcessDesc: 'With this on, one click on the panel\'s "Generate Title & Keywords" button processes every asset in the grid that is missing a title or keywords — no need to open them one by one. The button becomes "Stop batch" while it runs; each asset is saved before it moves on, so keep this page open.',
     optBatchInterval: 'Batch interval (ms)',
-    optBatchIntervalDesc: 'Pause between two assets so the AI provider is not rate-limited. 1500 ms suits most providers.',
+    optBatchIntervalDesc: 'Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.',
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
@@ -282,9 +282,9 @@ const OPT_I18N = {
     optAutoApplyAfterGenerate: '自动应用',
     optAutoApplyAfterGenerateDesc: '生成后自动应用：点击「生成标题和关键词」返回结果后，自动替你点击「全部应用」；点击标题或关键词旁的 ↻ 重新生成后，自动应用对应的那个字段。默认类别、素材类型等设置项照常一并生效。',
     optBatchProcess: '批量处理待处理素材',
-    optBatchProcessDesc: '开启后，面板上的「生成标题和关键词」按钮点一次就自动批量：扫描「Uploaded files」网格里带红点（缺标题/关键词）的素材，逐个执行「切换素材 → 生成 → 应用 → 保存」。按钮上会显示实时待处理数量，运行中变为「停止批量」。若页面的红点识别不到，按钮会变成「生成标题和关键词（全量校验 N）」：逐个打开素材检查，只处理真的缺标题/关键词的那些（较慢）。运行期间请保持停留在上传页，每张都会先保存再切下一张。',
+    optBatchProcessDesc: '开启后，点一次面板上的「生成标题和关键词」就会自动处理网格里所有缺标题/关键词（红点）的素材，无需逐张点击。运行中按钮变为「停止批量」，每张都会先保存再切下一张，请保持停留在上传页。',
     optBatchInterval: '批量间隔（毫秒）',
-    optBatchIntervalDesc: '两张素材之间的停顿，避免 AI 接口被限流；1500 毫秒适合大多数服务商。',
+    optBatchIntervalDesc: '两张素材之间的停顿，用来避免接口限流。默认 2000 毫秒，一般不用改。',
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
@@ -530,6 +530,15 @@ function toggleKeywordCountModeUI(mode) {
   const isRange = mode === 'range';
   if (singleField) singleField.classList.toggle('is-hidden', isRange);
   if (rangeField) rangeField.classList.toggle('is-hidden', !isRange);
+}
+
+// The batch interval only matters while batch mode is on, so its field is hidden
+// while the toggle is off — keeps the settings page short.
+function syncBatchIntervalVisibility() {
+  const field = document.getElementById('batchIntervalField');
+  const toggle = document.getElementById('batchProcess');
+  if (!field || !toggle) return;
+  field.classList.toggle('is-hidden', !toggle.checked);
 }
 
 async function onSave() {
@@ -888,6 +897,9 @@ function initAutoSave() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
   });
+  // The batch interval field is only shown while batch mode is on.
+  const batchToggle = document.getElementById('batchProcess');
+  if (batchToggle) batchToggle.addEventListener('change', syncBatchIntervalVisibility);
   // Persist the current slot whenever the provider changes.
   const sel = document.getElementById('providerSelect');
   if (sel) sel.addEventListener('change', autoSave);
@@ -1048,6 +1060,8 @@ async function load() {
   if (bp) bp.checked = !!stored.batchProcess;
   const bi = document.getElementById('batchIntervalMs');
   if (bi) bi.value = stored.batchIntervalMs ?? DEFAULTS.batchIntervalMs;
+  // Show/hide the interval field to match the restored toggle state.
+  syncBatchIntervalVisibility();
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');

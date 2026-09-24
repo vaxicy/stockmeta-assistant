@@ -888,14 +888,14 @@
   // keywords): select -> generate -> apply -> save. The engine itself lives in
   // content/batch.js; the panel only owns the button, the counter and the
   // progress line, and hands the engine the same write path the buttons use.
-  let batchCfg = { batchProcess: false, batchIntervalMs: 1500 };
+  let batchCfg = { batchProcess: false, batchIntervalMs: 2000 };
 
   function loadBatchConfig() {
     try {
       chrome.storage.local.get(['batchProcess', 'batchIntervalMs'], (s) => {
         batchCfg = {
           batchProcess: !!(s && s.batchProcess),
-          batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 1500,
+          batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 2000,
         };
         renderBatchUi();
       });
