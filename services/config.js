@@ -55,6 +55,9 @@ export const DEFAULT_CONFIG = {
   // Pause between two assets during a batch run, to stay well inside provider
   // rate limits.
   batchIntervalMs: 2000,
+  // Panel: 'expanded' or 'collapsed' — the state the injected panel starts in
+  // each time it loads on a page. Purely visual; never persisted per page.
+  panelDefaultState: 'expanded',
 };
 
 // Adobe's own hard floor: a result never counts as usable below this.
@@ -116,6 +119,7 @@ export async function getConfig() {
     'autoApplyAfterGenerate',
     'batchProcess',
     'batchIntervalMs',
+    'panelDefaultState',
   ]);
   const provider = stored.provider ?? DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
@@ -145,6 +149,7 @@ export async function getConfig() {
       stored.autoApplyAfterGenerate ?? DEFAULT_CONFIG.autoApplyAfterGenerate,
     batchProcess: stored.batchProcess ?? DEFAULT_CONFIG.batchProcess,
     batchIntervalMs: stored.batchIntervalMs ?? DEFAULT_CONFIG.batchIntervalMs,
+    panelDefaultState: stored.panelDefaultState ?? DEFAULT_CONFIG.panelDefaultState,
   };
 }
 
@@ -152,7 +157,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate', 'batchProcess', 'batchIntervalMs']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate', 'batchProcess', 'batchIntervalMs', 'panelDefaultState']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,

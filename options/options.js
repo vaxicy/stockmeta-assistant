@@ -43,6 +43,7 @@ const DEFAULTS = {
   autoApplyAfterGenerate: false,
   batchProcess: false,
   batchIntervalMs: 2000,
+  panelDefaultState: 'expanded',
 };
 
 const PROVIDER_DEFAULTS = {
@@ -218,6 +219,10 @@ const OPT_I18N = {
     optBatchProcessDesc: 'With this on, one click on the panel\'s "Generate Title & Keywords" button processes every asset in the grid that is missing a title or keywords — no need to open them one by one. The button becomes "Stop batch" while it runs; each asset is saved before it moves on, so keep this page open.',
     optBatchInterval: 'Batch interval (ms)',
     optBatchIntervalDesc: 'Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.',
+    optPanelState: 'Panel default state',
+    optPanelStateExpanded: 'Expanded',
+    optPanelStateCollapsed: 'Collapsed',
+    optPanelStateDesc: 'How the panel first appears on an Adobe Stock page. "Collapsed" shows only the title bar until it is expanded.',
     optTest: 'Test Connection',
     optSave: 'Save',
     optSaved: 'Settings saved.',
@@ -285,6 +290,10 @@ const OPT_I18N = {
     optBatchProcessDesc: '开启后，点一次面板上的「生成标题和关键词」就会自动处理网格里所有缺标题/关键词（红点）的素材，无需逐张点击。运行中按钮变为「停止批量」，每张都会先保存再切下一张，请保持停留在上传页。',
     optBatchInterval: '批量间隔（毫秒）',
     optBatchIntervalDesc: '两张素材之间的停顿，用来避免接口限流。默认 2000 毫秒，一般不用改。',
+    optPanelState: '面板默认状态',
+    optPanelStateExpanded: '展开',
+    optPanelStateCollapsed: '折叠',
+    optPanelStateDesc: '面板在 Adobe Stock 页面首次加载时的显示方式。「折叠」时只显示标题栏，点击后展开。',
     optTest: '测试连接',
     optSave: '保存',
     optSaved: '设置已保存。',
@@ -465,6 +474,7 @@ async function saveAllSettings() {
     autoApplyAfterGenerate: s.autoApplyAfterGenerate,
     batchProcess: s.batchProcess,
     batchIntervalMs: s.batchIntervalMs,
+    panelDefaultState: s.panelDefaultState,
   });
 }
 
@@ -496,6 +506,8 @@ function collectSettings() {
   let batchIntervalMs = parseInt(document.getElementById('batchIntervalMs').value, 10);
   if (isNaN(batchIntervalMs)) batchIntervalMs = DEFAULTS.batchIntervalMs;
   batchIntervalMs = Math.max(300, Math.min(10000, batchIntervalMs));
+  const panelStateSel = document.getElementById('panelDefaultState');
+  const panelDefaultState = panelStateSel && panelStateSel.value === 'collapsed' ? 'collapsed' : 'expanded';
   return {
     provider,
     apiKey,
@@ -513,6 +525,7 @@ function collectSettings() {
     autoApplyAfterGenerate,
     batchProcess,
     batchIntervalMs,
+    panelDefaultState,
   };
 }
 
@@ -892,7 +905,7 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'panelDefaultState'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -1028,6 +1041,7 @@ async function load() {
     'batchProcess',
     'batchIntervalMs',
     'autoSelectCategory',
+    'panelDefaultState',
   ]);
   // Provider select + module pointer.
   const provider = stored.provider || DEFAULTS.provider;
@@ -1062,6 +1076,8 @@ async function load() {
   if (bi) bi.value = stored.batchIntervalMs ?? DEFAULTS.batchIntervalMs;
   // Show/hide the interval field to match the restored toggle state.
   syncBatchIntervalVisibility();
+  const pds = document.getElementById('panelDefaultState');
+  if (pds) pds.value = stored.panelDefaultState === 'collapsed' ? 'collapsed' : 'expanded';
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');

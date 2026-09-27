@@ -122,6 +122,25 @@
     panel.querySelector('#sm-collapse').setAttribute('aria-label', state.collapsed ? t('expand') : t('collapse'));
   }
 
+  // The panel's opening state comes from the settings page ('expanded' or
+  // 'collapsed'). Applied once on load; the header button still toggles it
+  // freely afterwards, and a live change in settings re-applies it.
+  function applyPanelState(value) {
+    state.collapsed = value === 'collapsed';
+    if (!panel) return;
+    panel.classList.toggle('sm-collapsed', state.collapsed);
+    const btn = panel.querySelector('#sm-collapse');
+    if (btn) btn.setAttribute('aria-label', state.collapsed ? t('expand') : t('collapse'));
+  }
+
+  function loadPanelState() {
+    try {
+      chrome.storage.local.get(['panelDefaultState'], (s) => {
+        applyPanelState((s && s.panelDefaultState) || 'expanded');
+      });
+    } catch (_) {}
+  }
+
   // ---------------------------------------------------------------- draggable
   function makeDraggable() {
     const header = panel.querySelector('.sm-header');
@@ -1123,10 +1142,17 @@
   // ---------------------------------------------------------------- boot
   function boot() {
     injectPanel();
+    loadPanelState();
     observeSelection();
     window.addEventListener('stockmeta-lang', refreshLang);
     // Re-check preview after lazy images load.
     window.addEventListener('load', updatePreview);
+    // Live-apply a settings change without needing a page reload.
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.panelDefaultState) loadPanelState();
+      });
+    } catch (_) {}
     if (Batch) {
       Batch.init(createCoreApi());
       loadBatchConfig();

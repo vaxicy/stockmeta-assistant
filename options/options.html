@@ -155,6 +155,25 @@
       <p class="opt-hint" data-i18n="optBatchIntervalDesc">Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.</p>
     </section>
 
+    <section class="opt-field">
+      <label for="panelDefaultState" data-i18n="optPanelState">Panel default state</label>
+      <div class="opt-select" data-target="panelDefaultState">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="panelDefaultState" class="opt-native-select">
+          <option value="expanded" data-i18n="optPanelStateExpanded">Expanded</option>
+          <option value="collapsed" data-i18n="optPanelStateCollapsed">Collapsed</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
+      <p class="opt-hint" data-i18n="optPanelStateDesc">How the panel first appears on an Adobe Stock page. "Collapsed" shows only the title bar until it is expanded.</p>
+    </section>
+
     <section class="opt-field opt-toggle-field">
       <label class="opt-toggle">
         <input type="checkbox" id="autoSelectCategory" />
