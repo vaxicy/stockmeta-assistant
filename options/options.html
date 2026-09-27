@@ -9,6 +9,8 @@
   <main class="opt-wrap">
     <h1 data-i18n="optTitle">Settings</h1>
 
+    <h2 class="opt-section" data-i18n="optSectionInterface">Interface</h2>
+
     <section class="opt-field opt-lang-field">
       <label for="langSelect" data-i18n="optLang">Language</label>
       <div class="opt-select" data-target="langSelect">
@@ -27,6 +29,27 @@
         </div>
       </div>
     </section>
+
+    <section class="opt-field">
+      <label for="panelDefaultState" data-i18n="optPanelState">Panel default state</label>
+      <div class="opt-select" data-target="panelDefaultState">
+        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="opt-select-text"></span>
+          <span class="opt-select-arrow" aria-hidden="true"></span>
+        </button>
+        <select id="panelDefaultState" class="opt-native-select">
+          <option value="expanded" data-i18n="optPanelStateExpanded">Expanded</option>
+          <option value="collapsed" data-i18n="optPanelStateCollapsed">Collapsed</option>
+        </select>
+        <div class="opt-select-scroll">
+          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
+          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
+        </div>
+      </div>
+      <p class="opt-hint" data-i18n="optPanelStateDesc">How the panel first appears on an Adobe Stock page. "Collapsed" shows only the title bar until it is expanded.</p>
+    </section>
+
+    <h2 class="opt-section" data-i18n="optSectionAi">AI Provider</h2>
 
     <section class="opt-field">
       <label for="providerSelect" data-i18n="optProvider">AI Provider</label>
@@ -82,6 +105,8 @@
       <input type="text" id="modelCustom" class="opt-model-custom is-hidden" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" autocomplete="off" />
     </section>
 
+    <h2 class="opt-section" data-i18n="optSectionKeywords">Keywords</h2>
+
     <section class="opt-field">
       <label for="keywordCountMode" data-i18n="optKeywordCountMode">Keyword Count Mode</label>
       <div class="opt-select" data-target="keywordCountMode">
@@ -117,6 +142,8 @@
       <p class="opt-hint" data-i18n="optKeywordRangeDesc">The model generates within this range — richer images land closer to the maximum.</p>
     </section>
 
+    <h2 class="opt-section" data-i18n="optSectionAutomation">Automation</h2>
+
     <section class="opt-field opt-toggle-field">
       <label class="opt-toggle">
         <input type="checkbox" id="autoCheckAI" />
@@ -141,38 +168,7 @@
       <p class="opt-hint" data-i18n="optAutoApplyAfterGenerateDesc">Apply automatically after generating: once "Generate Title &amp; Keywords" returns a result, "Apply All" is clicked for you; the ↻ buttons also apply the field they just regenerated (title or keywords). Settings-driven fields (category, file type) still apply as usual. Optional.</p>
     </section>
 
-    <section class="opt-field opt-toggle-field">
-      <label class="opt-toggle">
-        <input type="checkbox" id="batchProcess" />
-        <span data-i18n="optBatchProcess">Batch process pending assets</span>
-      </label>
-      <p class="opt-hint" data-i18n="optBatchProcessDesc">With this on, one click on the panel's "Generate Title & Keywords" button processes every asset in the grid that is missing a title or keywords — no need to open them one by one. The button becomes "Stop batch" while it runs; each asset is saved before it moves on, so keep this page open.</p>
-    </section>
-
-    <section class="opt-field" id="batchIntervalField">
-      <label for="batchIntervalMs" data-i18n="optBatchInterval">Batch interval (ms)</label>
-      <input type="number" id="batchIntervalMs" min="300" max="10000" step="100" />
-      <p class="opt-hint" data-i18n="optBatchIntervalDesc">Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.</p>
-    </section>
-
-    <section class="opt-field">
-      <label for="panelDefaultState" data-i18n="optPanelState">Panel default state</label>
-      <div class="opt-select" data-target="panelDefaultState">
-        <button type="button" class="opt-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-          <span class="opt-select-text"></span>
-          <span class="opt-select-arrow" aria-hidden="true"></span>
-        </button>
-        <select id="panelDefaultState" class="opt-native-select">
-          <option value="expanded" data-i18n="optPanelStateExpanded">Expanded</option>
-          <option value="collapsed" data-i18n="optPanelStateCollapsed">Collapsed</option>
-        </select>
-        <div class="opt-select-scroll">
-          <ul class="opt-select-list" role="listbox" tabindex="-1"></ul>
-          <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
-        </div>
-      </div>
-      <p class="opt-hint" data-i18n="optPanelStateDesc">How the panel first appears on an Adobe Stock page. "Collapsed" shows only the title bar until it is expanded.</p>
-    </section>
+    <h2 class="opt-section" data-i18n="optSectionFormDefaults">Adobe form defaults</h2>
 
     <section class="opt-field opt-toggle-field">
       <label class="opt-toggle">
@@ -218,6 +214,22 @@
         </div>
       </div>
       <p class="opt-hint" data-i18n="optDefaultFileTypeDesc">When "AI auto-detect", applies the AI-suggested file type (or Photos if unsure). A fixed choice always overrides the AI and is applied on Apply All.</p>
+    </section>
+
+    <h2 class="opt-section" data-i18n="optSectionBatch">Batch processing</h2>
+
+    <section class="opt-field opt-toggle-field">
+      <label class="opt-toggle">
+        <input type="checkbox" id="batchProcess" />
+        <span data-i18n="optBatchProcess">Batch process pending assets</span>
+      </label>
+      <p class="opt-hint" data-i18n="optBatchProcessDesc">With this on, one click on the panel's "Generate Title & Keywords" button processes every asset in the grid that is missing a title or keywords — no need to open them one by one. The button becomes "Stop batch" while it runs; each asset is saved before it moves on, so keep this page open.</p>
+    </section>
+
+    <section class="opt-field" id="batchIntervalField">
+      <label for="batchIntervalMs" data-i18n="optBatchInterval">Batch interval (ms)</label>
+      <input type="number" id="batchIntervalMs" min="300" max="10000" step="100" />
+      <p class="opt-hint" data-i18n="optBatchIntervalDesc">Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.</p>
     </section>
 
     <div class="opt-actions">

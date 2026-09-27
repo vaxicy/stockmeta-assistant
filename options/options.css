@@ -112,6 +112,20 @@ h1 {
   margin: 0 0 16px;
 }
 
+/* Group header that splits the settings page into scannable sections. */
+.opt-section {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 26px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.opt-section:first-of-type {
+  margin-top: 4px;
+}
+
 .opt-field {
   margin-bottom: 16px;
   display: flex;
