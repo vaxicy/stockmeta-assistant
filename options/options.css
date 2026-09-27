@@ -210,6 +210,18 @@ h1 {
   margin-top: 8px;
 }
 
+/* A single action button that belongs to a section (e.g. Test Connection). */
+.opt-inline-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.opt-inline-actions .opt-btn {
+  flex: none;
+  padding: 9px 16px;
+}
+
 .opt-btn {
   flex: 1;
   padding: 10px 14px;

@@ -105,6 +105,10 @@
       <input type="text" id="modelCustom" class="opt-model-custom is-hidden" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" autocomplete="off" />
     </section>
 
+    <div class="opt-inline-actions">
+      <button id="testBtn" class="opt-btn" data-i18n="optTest">Test Connection</button>
+    </div>
+
     <h2 class="opt-section" data-i18n="optSectionKeywords">Keywords</h2>
 
     <section class="opt-field">
@@ -129,7 +133,7 @@
     <section class="opt-field" id="keywordCountField">
       <label for="keywordCount" data-i18n="optKeywordCount">Keyword Count</label>
       <input type="number" id="keywordCount" min="1" max="50" step="1" />
-      <p class="opt-hint" data-i18n="optKeywordCountDesc">Exact number of keywords to request (1–50).</p>
+      <p class="opt-hint" data-i18n="optKeywordCountDesc">Exact number of keywords to request. Adobe Stock requires between 5 and 50.</p>
     </section>
 
     <section class="opt-field is-hidden" id="keywordRangeField">
@@ -139,7 +143,7 @@
         <span class="opt-range-sep" aria-hidden="true">–</span>
         <input type="number" id="keywordMax" min="1" max="50" step="1" aria-label="Maximum keywords" />
       </div>
-      <p class="opt-hint" data-i18n="optKeywordRangeDesc">The model generates within this range — richer images land closer to the maximum.</p>
+      <p class="opt-hint" data-i18n="optKeywordRangeDesc">The model generates within this range — richer images land closer to the maximum. Adobe Stock requires between 5 and 50; a batch run treats the lower bound as the floor.</p>
     </section>
 
     <h2 class="opt-section" data-i18n="optSectionAutomation">Automation</h2>
@@ -149,7 +153,7 @@
         <input type="checkbox" id="autoCheckAI" />
         <span data-i18n="optAutoCheckAI">Auto-check AI declaration boxes</span>
       </label>
-      <p class="opt-hint" data-i18n="optAutoCheckAIDesc">When applying the title, keywords, or all, also tick "Created using generative AI tools" and "People and Property are fictional" on the Adobe Stock form. Optional.</p>
+      <p class="opt-hint" data-i18n="optAutoCheckAIDesc">When applying the title, keywords, or all, also tick the two AI declaration boxes on the Adobe Stock form.</p>
     </section>
 
     <section class="opt-field opt-toggle-field">
@@ -157,7 +161,7 @@
         <input type="checkbox" id="autoSaveAfterApply" />
         <span data-i18n="optAutoSaveAfterApply">Auto-save after Apply</span>
       </label>
-      <p class="opt-hint" data-i18n="optAutoSaveAfterApplyDesc">After applying the title, keywords, or all metadata, automatically click the "Save work" button on Adobe Stock. Optional.</p>
+      <p class="opt-hint" data-i18n="optAutoSaveAfterApplyDesc">After applying, automatically click "Save work" on Adobe Stock.</p>
     </section>
 
     <section class="opt-field opt-toggle-field">
@@ -165,7 +169,7 @@
         <input type="checkbox" id="autoApplyAfterGenerate" />
         <span data-i18n="optAutoApplyAfterGenerate">Auto-apply</span>
       </label>
-      <p class="opt-hint" data-i18n="optAutoApplyAfterGenerateDesc">Apply automatically after generating: once "Generate Title &amp; Keywords" returns a result, "Apply All" is clicked for you; the ↻ buttons also apply the field they just regenerated (title or keywords). Settings-driven fields (category, file type) still apply as usual. Optional.</p>
+      <p class="opt-hint" data-i18n="optAutoApplyAfterGenerateDesc">After generating, "Apply All" is clicked for you; the ↻ buttons apply the field they just regenerated. Category / file type settings still apply.</p>
     </section>
 
     <h2 class="opt-section" data-i18n="optSectionFormDefaults">Adobe form defaults</h2>
@@ -175,7 +179,7 @@
         <input type="checkbox" id="autoSelectCategory" />
         <span data-i18n="optAutoSelectCategory">Auto-select Adobe Category</span>
       </label>
-      <p class="opt-hint" data-i18n="optAutoSelectCategoryDesc">When generating, let the AI also suggest the best Adobe Stock category. Apply it from the panel.</p>
+      <p class="opt-hint" data-i18n="optAutoSelectCategoryDesc">Let the AI also suggest the best Adobe Stock category while generating, then apply it from the panel.</p>
     </section>
 
     <section class="opt-field" id="defaultCategoryField">
@@ -193,7 +197,7 @@
           <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
         </div>
       </div>
-      <p class="opt-hint" data-i18n="optDefaultCategoryDesc">When a fixed category is selected, it overrides the AI suggestion and is applied to the Adobe Stock form.</p>
+      <p class="opt-hint" data-i18n="optDefaultCategoryDesc">A fixed category overrides the AI suggestion and is applied to the Adobe Stock form.</p>
     </section>
 
     <section class="opt-field" id="defaultFileTypeField">
@@ -213,7 +217,7 @@
           <div class="opt-scrollbar-track" aria-hidden="true"><div class="opt-scrollbar-thumb"></div></div>
         </div>
       </div>
-      <p class="opt-hint" data-i18n="optDefaultFileTypeDesc">When "AI auto-detect", applies the AI-suggested file type (or Photos if unsure). A fixed choice always overrides the AI and is applied on Apply All.</p>
+      <p class="opt-hint" data-i18n="optDefaultFileTypeDesc">"AI auto-detect" applies the AI-suggested file type (or Photos if unsure); a fixed choice always overrides it.</p>
     </section>
 
     <h2 class="opt-section" data-i18n="optSectionBatch">Batch processing</h2>
@@ -223,7 +227,7 @@
         <input type="checkbox" id="batchProcess" />
         <span data-i18n="optBatchProcess">Batch process pending assets</span>
       </label>
-      <p class="opt-hint" data-i18n="optBatchProcessDesc">With this on, one click on the panel's "Generate Title & Keywords" button processes every asset in the grid that is missing a title or keywords — no need to open them one by one. The button becomes "Stop batch" while it runs; each asset is saved before it moves on, so keep this page open.</p>
+      <p class="opt-hint" data-i18n="optBatchProcessDesc">One click on the panel's "Generate Title &amp; Keywords" processes every asset in the grid that is missing a title or keywords. Each asset is saved before the next one starts, so keep this page open.</p>
     </section>
 
     <section class="opt-field" id="batchIntervalField">
@@ -233,7 +237,6 @@
     </section>
 
     <div class="opt-actions">
-      <button id="testBtn" class="opt-btn" data-i18n="optTest">Test Connection</button>
       <button id="saveBtn" class="opt-btn opt-primary" data-i18n="optSave">Save</button>
     </div>
 
