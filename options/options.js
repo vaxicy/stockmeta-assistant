@@ -375,7 +375,10 @@ function setStatus(text, kind, target) {
   const el = target || document.getElementById('status');
   if (!el) return;
   el.textContent = text || '';
-  el.className = 'opt-status' + (kind ? ' ' + kind : '');
+  // Toggle only the state classes instead of replacing className, so extra
+  // layout classes (e.g. .opt-status-inline) survive.
+  el.classList.remove('ok', 'err');
+  if (kind) el.classList.add(kind);
   if (el._toastTimer) {
     clearTimeout(el._toastTimer);
     el._toastTimer = null;

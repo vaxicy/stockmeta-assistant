@@ -210,16 +210,28 @@ h1 {
   margin-top: 8px;
 }
 
-/* A single action button that belongs to a section (e.g. Test Connection). */
+/* Test Connection: the button on the left, its result right-aligned on the
+   same row. */
 .opt-inline-actions {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
   margin-top: 12px;
 }
 
 .opt-inline-actions .opt-btn {
   flex: none;
   padding: 9px 16px;
+}
+
+/* Inline variant of .opt-status: shares the row and hugs the right edge.
+   Scoped with .opt-status so it wins over .opt-status's own margin-top
+   regardless of rule order. */
+.opt-status.opt-status-inline {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  text-align: right;
 }
 
 .opt-btn {
