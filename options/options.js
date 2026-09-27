@@ -368,15 +368,17 @@ function applyStaticI18n() {
   document.documentElement.lang = currentLang() === 'zh' ? 'zh-CN' : 'en';
 }
 
-let toastTimer = null;
-function setStatus(text, kind) {
-  const el = document.getElementById('status');
+// `target` lets a second status line live next to its own button: the
+// Test Connection result sits directly under the Test button, while the
+// "Settings saved." feedback stays under the Save button at the page bottom.
+function setStatus(text, kind, target) {
+  const el = target || document.getElementById('status');
   if (!el) return;
   el.textContent = text || '';
   el.className = 'opt-status' + (kind ? ' ' + kind : '');
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-    toastTimer = null;
+  if (el._toastTimer) {
+    clearTimeout(el._toastTimer);
+    el._toastTimer = null;
   }
   if (!text) {
     el.classList.remove('is-visible');
@@ -388,10 +390,22 @@ function setStatus(text, kind) {
   // results and making them invisible).
   el.classList.add('is-visible');
   if (kind === 'ok' && text === msg('optSaved')) {
-    toastTimer = setTimeout(() => {
+    el._toastTimer = setTimeout(() => {
       el.classList.remove('is-visible');
     }, 2500);
   }
+}
+
+// Connection feedback lives right under the Test Connection button.
+function setTestStatus(text, kind) {
+  setStatus(text, kind, document.getElementById('testStatus'));
+}
+
+// A previous "Connection successful" must not linger after the endpoint, key,
+// model, or provider changes — the answer would no longer apply to them.
+function clearTestStatus() {
+  const el = document.getElementById('testStatus');
+  if (el) el.classList.remove('is-visible');
 }
 
 // Module-level pointer to the slot currently shown in the inputs.
@@ -583,10 +597,10 @@ function autoSave() {
 async function onTest() {
   const apiKey = document.getElementById('apiKey').value.trim();
   if (!apiKey) {
-    setStatus(msg('optTestMissing'), 'err');
+    setTestStatus(msg('optTestMissing'), 'err');
     return;
   }
-  setStatus('…');
+  setTestStatus('…');
   // Flush the live DOM inputs into storage before testing. The background reads
   // its config from chrome.storage, so a debounced autoSave (300ms) would leave
   // it one step behind when the user types a fresh key after switching providers
@@ -604,14 +618,14 @@ async function onTest() {
     override: { apiKey, baseUrl, model, provider: currentProvider },
   }, (resp) => {
     if (chrome.runtime.lastError) {
-      setStatus(msg('optTestFail') + ' ' + chrome.runtime.lastError.message, 'err');
+      setTestStatus(msg('optTestFail') + ' ' + chrome.runtime.lastError.message, 'err');
       return;
     }
     if (resp && resp.ok) {
       if (resp.hasModel) {
-        setStatus(msg('optTestOk'), 'ok');
+        setTestStatus(msg('optTestOk'), 'ok');
       } else {
-        setStatus(msg('optTestOk') + ' ' + msg('optTestModelWarn'), 'ok');
+        setTestStatus(msg('optTestOk') + ' ' + msg('optTestModelWarn'), 'ok');
       }
     } else {
       const errMap = {
@@ -622,7 +636,7 @@ async function onTest() {
         TIMEOUT: 'optTestFail',
       };
       const label = errMap[resp && resp.error] || 'optTestFail';
-      setStatus(msg(label) + (resp && resp.error && label === 'optTestFail' ? ' ' + resp.error : ''), 'err');
+      setTestStatus(msg(label) + (resp && resp.error && label === 'optTestFail' ? ' ' + resp.error : ''), 'err');
     }
   });
 }
@@ -921,6 +935,16 @@ function initAutoSave() {
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
+  });
+  // Any change to the endpoint / key / model makes a previous Test Connection
+  // result stale — hide it instead of showing an answer that no longer applies.
+  ['providerSelect', 'apiKey', 'baseUrl', 'modelSelect', 'modelCustom'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', clearTestStatus);
+    if (id === 'apiKey' || id === 'baseUrl' || id === 'modelCustom') {
+      el.addEventListener('input', clearTestStatus);
+    }
   });
   // The batch interval field is only shown while batch mode is on.
   const batchToggle = document.getElementById('batchProcess');
