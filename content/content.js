@@ -41,7 +41,7 @@
           <img id="sm-preview" class="sm-preview" alt="" />
         </div>
         <button class="sm-btn sm-primary" id="sm-generate" data-i18n="generate"></button>
-        <button class="sm-btn sm-outline-danger is-hidden" id="sm-delete" data-i18n="deleteRedDots"></button>
+        <button class="sm-btn sm-danger is-hidden" id="sm-delete" data-i18n="deleteRedDots"></button>
         <div class="sm-confirm is-hidden" id="sm-delete-confirm">
           <div class="sm-confirm-text" id="sm-delete-confirm-text"></div>
           <div class="sm-row">
@@ -1088,14 +1088,12 @@
     if (running) {
       // The button doubles as the stop control while the run is in flight.
       btn.disabled = false;
-      btn.classList.remove('sm-outline-danger');
-      btn.classList.add('sm-danger');
       btn.textContent = t('deleteStop');
       hideDeleteConfirm();
       return;
     }
-    btn.classList.remove('sm-danger');
-    btn.classList.add('sm-outline-danger');
+    // Solid red in every state (see panel.css): it must never look like the
+    // primary Generate button.
     const n = Delete ? Delete.countRed() : 0;
     btn.textContent = tf('deleteRedDots', { n });
     btn.disabled = n === 0 || batchRunning;

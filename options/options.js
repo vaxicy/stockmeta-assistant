@@ -187,7 +187,7 @@ const OPT_I18N = {
   en: {
     optTitle: 'Settings',
     optSectionInterface: 'Interface',
-    optSectionAi: 'AI Provider',
+    optSectionAi: 'AI Service',
     optSectionKeywords: 'Keywords',
     optSectionAutomation: 'Automation',
     optSectionBatch: 'Batch processing',

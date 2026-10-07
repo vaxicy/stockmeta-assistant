@@ -10,7 +10,7 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 
 <br>
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 ![License](https://img.shields.io/badge/license-Non--Commercial-red)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/stockmeta-assistant-for-a/afiigmeicppdepjodjeemfhmeimmbeio?authuser=0&hl=zh-CN)
 
@@ -48,7 +48,7 @@ A Chrome extension that helps Adobe Stock contributors generate English **titles
 | 💬 **自定义 Tooltip** | 用 CSS 自绘提示替代原生 `title`，避免样式冲突。 |
 | ↔️ **面板折叠** | 可折叠 / 展开面板，最小化占用屏幕空间；默认展开或折叠可在设置里选择。 |
 | ⚡ **批量处理** | 设置中开启后，点一次「生成标题和关键词」即自动处理网格里所有待处理素材（逐张生成 → 校验卡片关键词 → 保存）。 |
-| 🗑️ **批量删除红点素材** | 设置中开启后，面板会多出一个独立按钮，可一次删掉那些字段齐全却一直是红点、无法提交的素材。只处理红点素材，删除前二次确认，删除后不可恢复。 |
+| 🗑️ **批量删除红点素材** | 设置中开启后，面板会多出一个独立的红色按钮，可一次删掉那些字段齐全却一直是红点、无法提交的素材。只处理红点素材，删除前二次确认，删除后不可恢复。 |
 | 🛡️ **健壮错误处理** | 覆盖 Key 缺失、模型不存在、网络/超时、图片读取、JSON 解析、空内容等场景，扩展不崩溃。 |
 | 🧱 **原生实现** | Manifest V3 + 原生 HTML/CSS/JS，无框架依赖。 |
 

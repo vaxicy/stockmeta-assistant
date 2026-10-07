@@ -359,6 +359,14 @@ SHOTS = [
         "en": "Step 3 - One-click apply fills the Adobe Stock form automatically.",
         "zh": "第 3 步 - 一键应用，自动填充 Adobe Stock 表单。",
     }),
+    ("04-batch", "batch", {
+        "en": "Step 4 - Batch mode: one click processes every pending asset.",
+        "zh": "第 4 步 - 批量模式：一键处理所有待处理素材。",
+    }),
+    ("05-delete", "delete", {
+        "en": "Step 5 - Delete the assets Adobe keeps flagging with a red dot (confirmation first).",
+        "zh": "第 5 步 - 一键删除 Adobe 卡住的红点素材（删除前二次确认）。",
+    }),
 ]
 
 CAPTION_BG = (26, 115, 232)

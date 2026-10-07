@@ -260,19 +260,8 @@
   background: #b91c1c;
 }
 
-/* Delete red-dot assets: an OUTLINED danger button, deliberately different from
-   the primary Generate control — deleting cannot be undone. */
-.sm-btn.sm-outline-danger {
-  background: #fff;
-  border-color: #f0a6a6;
-  color: #c62828;
-}
-
-.sm-btn.sm-outline-danger:hover:not(:disabled) {
-  background: #fef2f2;
-  border-color: #dc2626;
-  color: #b91c1c;
-}
+/* Note: the delete button uses .sm-danger (solid red / white text) so it can
+   never be mistaken for the blue Generate control — deleting cannot be undone. */
 
 /* In-panel confirmation in front of the destructive run. */
 .sm-confirm {
