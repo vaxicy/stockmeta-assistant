@@ -21,6 +21,17 @@ OUT = os.path.join(ROOT, "store-assets")
 
 F_REG = r"C:\Windows\Fonts\msyh.ttc"
 F_BOLD = r"C:\Windows\Fonts\msyhbd.ttc"
+# Latin captions use a Latin UI face: Microsoft YaHei's bold face draws the "fi"
+# ligature so tightly that words like "first" / "confirmation" look broken.
+F_LATIN_BOLD = r"C:\Windows\Fonts\segoeuib.ttf"
+
+def caption_font(size, lang):
+    if lang == "zh":
+        return ImageFont.truetype(F_BOLD, size)
+    try:
+        return ImageFont.truetype(F_LATIN_BOLD, size)
+    except OSError:
+        return ImageFont.truetype(F_BOLD, size)
 
 # ---- palette -------------------------------------------------------------
 BLUE = (26, 115, 232)
@@ -418,10 +429,13 @@ def render_shot(name, view, lang, out_path):
     bar = Image.new("RGBA", (W, bar_h), CAPTION_BG + (255,))
     img.paste(bar, (0, H - bar_h))
     d = ImageDraw.Draw(img)
-    f = font(CAPTION_FONT, bold=True)
+    f = caption_font(CAPTION_FONT, lang)
     text = SHOTS_CAPTIONS[name][lang]
-    tw, th = text_size(d, text, f)
-    d.text((40, H - bar_h + (bar_h - th) // 2), text, font=f, fill=WHITE)
+    b = d.textbbox((0, 0), text, font=f)
+    tw, th = b[2] - b[0], b[3] - b[1]
+    # Same ink-offset correction as center_text: the bbox offsets must be
+    # subtracted or the line sits low in the bar.
+    d.text((40 - b[0], H - bar_h + (bar_h - th) / 2 - b[1]), text, font=f, fill=WHITE)
     save_img(img.convert("RGB"), out_path)
     print("saved", out_path, img.size)
 
