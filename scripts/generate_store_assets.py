@@ -145,6 +145,14 @@ def center_wrapped(draw, box, text, f, color, line_h=None, anchor_top=False):
         x = box[0] + (box[2] - box[0] - w) / 2
         draw.text((x, y0 + i * line_h), ln, font=f, fill=color, anchor="la")
 
+def left_wrapped(draw, box, text, f, color, line_h=None):
+    """Left-aligned wrapped paragraph (textareas in the panel read left-aligned,
+    so centering them inside the mock looked wrong)."""
+    lines = wrap(draw, text, f, box[2] - box[0])
+    line_h = line_h or (text_size(draw, "Ag", f)[1] + 4)
+    for i, ln in enumerate(lines):
+        draw.text((box[0], box[1] + i * line_h), ln, font=f, fill=color, anchor="la")
+
 def draw_button(draw, box, text, f, fill, text_color, r=8):
     rr(draw, box, r, fill=fill)
     center_text(draw, box, text, f, text_color)
@@ -814,12 +822,12 @@ def draw_mini_panel(d, img, x, y, w, lang):
     draw_text(d, (cx, cur), SAMPLE[lang]["titleLabel"], font(11, True), INK, anchor="la")
     cur += 18
     rr(d, (cx, cur, cx + cw, cur + 36), 8, fill=WHITE, outline=BORDER, width=1)
-    center_wrapped(d, (cx + 8, cur + 4, cx + cw - 8, cur + 32), SAMPLE_TITLE[lang], font(11), INK, line_h=15, anchor_top=True)
+    left_wrapped(d, (cx + 10, cur + 6, cx + cw - 10, cur + 32), SAMPLE_TITLE[lang], font(11), INK, line_h=15)
     cur += 44
     draw_text(d, (cx, cur), SAMPLE[lang]["keywordsLabel"], font(11, True), INK, anchor="la")
     cur += 18
     rr(d, (cx, cur, cx + cw, cur + 50), 8, fill=WHITE, outline=BORDER, width=1)
-    center_wrapped(d, (cx + 8, cur + 6, cx + cw - 8, cur + 44), ", ".join(SAMPLE_KW[lang][:18]), font(10), INK, line_h=13, anchor_top=True)
+    left_wrapped(d, (cx + 10, cur + 8, cx + cw - 10, cur + 44), ", ".join(SAMPLE_KW[lang][:18]), font(10), INK, line_h=13)
 
 
 # =========================================================================
