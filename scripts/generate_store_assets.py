@@ -13,7 +13,7 @@ Outputs:
   store-assets/promo/1400x560.png     (bilingual)
 """
 import os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(ROOT, "assets")
@@ -39,6 +39,15 @@ SOFT = (248, 250, 252)
 # ---- fonts ---------------------------------------------------------------
 def font(size, bold=False):
     return ImageFont.truetype(F_BOLD if bold else F_REG, size)
+
+def save_img(img, abs_path):
+    """PIL intermittently raises OSError 22 when saving to a non-ASCII absolute
+    path on Windows (project lives under 迅雷下载). Falling back to the
+    cwd-relative path makes the save deterministic."""
+    try:
+        img.save(abs_path)
+    except OSError:
+        img.save(os.path.relpath(abs_path, os.getcwd()))
 
 # ---- drawing helpers -----------------------------------------------------
 def rr(draw, box, r, fill=None, outline=None, width=1):
@@ -398,7 +407,7 @@ def render_shot(name, view, lang, out_path):
     text = SHOTS_CAPTIONS[name][lang]
     tw, th = text_size(d, text, f)
     d.text((40, H - bar_h + (bar_h - th) // 2), text, font=f, fill=WHITE)
-    img.convert("RGB").save(out_path)
+    save_img(img.convert("RGB"), out_path)
     print("saved", out_path, img.size)
 
 SHOTS_CAPTIONS = {name: cap for name, view, cap in SHOTS}
@@ -620,6 +629,53 @@ def paste(img, photo, box):
     img.paste(photo, (box[0], box[1]))
 
 
+def load_logo(size):
+    """Extension icon without its own blue tile.
+
+    The raw icon is a blue rounded square, so pasting it on the blue gradient
+    reads as a boxy patch with a dark fringe. Here the tile is removed with a
+    flood fill started from the four borders (every reachable non-white pixel is
+    background), leaving only the white glyph, which then sits directly on the
+    gradient. The alpha is eroded 1px and softened so no dark fringe survives.
+    """
+    from collections import deque
+    src = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA")
+    w, h = src.size
+    px = src.load()
+
+    def removable(p):
+        r, g, b, a = p
+        return a > 0 and min(r, g, b) < 190  # anything not clearly white
+
+    seen = bytearray(w * h)
+    dq = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if removable(px[x, y]) and not seen[y * w + x]:
+                seen[y * w + x] = 1
+                dq.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if removable(px[x, y]) and not seen[y * w + x]:
+                seen[y * w + x] = 1
+                dq.append((x, y))
+    while dq:
+        x, y = dq.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and removable(px[nx, ny]):
+                seen[ny * w + nx] = 1
+                dq.append((nx, ny))
+    out = src.copy()
+    op = out.load()
+    for x in range(w):
+        for y in range(h):
+            if seen[y * w + x]:
+                op[x, y] = (255, 255, 255, 0)
+    out.putalpha(out.split()[3].filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.6)))
+    return out.resize((size, size), Image.LANCZOS)
+
+
 def promo_440():
     W, H = 440, 280
     img = Image.new("RGBA", (W, H), BLUE)
@@ -630,8 +686,14 @@ def promo_440():
         t = y / H
         d.line((0, y, W, y), fill=(int(26 + 10 * t), int(115 + 20 * t), int(232 - 20 * t)))
     # everything centered on the canvas axis: icon -> title -> taglines -> CTAs
-    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((56, 56))
-    img.paste(icon, (int(W / 2 - 28), 20), icon)
+    # A soft white glow behind the logo grounds it on the gradient (no pasted-box feel).
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((int(W / 2) - 150, -70, int(W / 2) + 150, 210), fill=(255, 255, 255, 42))
+    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(55)))
+    d = ImageDraw.Draw(img)
+    logo = load_logo(56)
+    img.paste(logo, (int(W / 2 - 28), 20), logo)
     center_wrapped(d, (24, 84, W - 24, 108), PROMO["title_zh"], font(18, True), WHITE, line_h=22, anchor_top=True)
     center_wrapped(d, (24, 114, W - 24, 140), PROMO["tag_zh"], font(14), WHITE, line_h=18, anchor_top=True)
     center_wrapped(d, (24, 146, W - 24, 168), PROMO["tag_en"], font(12), WHITE, line_h=15, anchor_top=True)
@@ -660,8 +722,14 @@ def promo_1400():
     title_f = font(32, True)
     tw, _ = text_size(d, PROMO["title_zh"], title_f)
     gx = col_l + ((col_r - col_l) - (icon_w + 20 + tw)) / 2
-    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((icon_w, icon_w))
-    img.paste(icon, (int(gx), 60), icon)
+    # soft glow behind the logo group, then the clean glyph (no blue tile)
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((int(gx) - 120, 20, int(gx + icon_w) + 120, 220), fill=(255, 255, 255, 42))
+    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(60)))
+    d = ImageDraw.Draw(img)
+    logo = load_logo(icon_w)
+    img.paste(logo, (int(gx), 60), logo)
     draw_text(d, (gx + icon_w + 20, 60 + icon_w / 2), PROMO["title_zh"], title_f, WHITE, anchor="lm")
     center_wrapped(d, (col_l, 150, col_r, 186), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
     center_wrapped(d, (col_l, 196, col_r, 230), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
@@ -726,8 +794,8 @@ def main():
     generate_screenshots()
     # 2) Bilingual promo tiles (PIL)
     os.makedirs(os.path.join(OUT, "promo"), exist_ok=True)
-    promo_440().save(os.path.join(OUT, "promo", "440x280.png"))
-    promo_1400().save(os.path.join(OUT, "promo", "1400x560.png"))
+    save_img(promo_440(), os.path.join(OUT, "promo", "440x280.png"))
+    save_img(promo_1400(), os.path.join(OUT, "promo", "1400x560.png"))
     print("saved promo images")
 
 if __name__ == "__main__":
