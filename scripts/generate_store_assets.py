@@ -49,6 +49,15 @@ def save_img(img, abs_path):
     except OSError:
         img.save(os.path.relpath(abs_path, os.getcwd()))
 
+def save_bytes(data, abs_path):
+    """Same non-ASCII absolute path workaround for raw bytes (Playwright PNG)."""
+    try:
+        with open(abs_path, "wb") as f:
+            f.write(data)
+    except OSError:
+        with open(os.path.relpath(abs_path, os.getcwd()), "wb") as f:
+            f.write(data)
+
 # ---- drawing helpers -----------------------------------------------------
 def rr(draw, box, r, fill=None, outline=None, width=1):
     draw.rounded_rectangle(box, radius=r, fill=fill, outline=outline, width=width)
@@ -393,8 +402,11 @@ def render_shot(name, view, lang, out_path):
         page.goto("file://" + TEMPLATE.replace("\\", "/"))
         page.evaluate(f"window.__shot({view!r}, {lang!r})")
         page.wait_for_timeout(150)
-        page.screenshot(path=out_path, clip={"x": 0, "y": 0, "width": 1280, "height": 800})
+        # Return bytes instead of letting Playwright open the file: it trips over
+        # non-ASCII absolute paths exactly like PIL does (OSError 22).
+        data = page.screenshot(clip={"x": 0, "y": 0, "width": 1280, "height": 800})
         browser.close()
+    save_bytes(data, out_path)
 
     # Resize to 1280x800 (Chrome Web Store requirement) and strip alpha
     img = Image.open(out_path).convert("RGBA")
@@ -765,9 +777,8 @@ def draw_mini_panel(d, img, x, y, w, lang):
     rr(d, (x, y, x + w, y + ph_total), 14, fill=WHITE, outline=(220, 224, 230), width=1)
     rr(d, (x, y, x + w, y + header_h + 14), 14, fill=BLUE)
     d.rectangle((x, y + header_h - 14, x + w, y + header_h + 14), fill=BLUE)
-    icon = Image.open(os.path.join(ROOT, "icons", "icon48.png")).convert("RGBA").resize((24, 24))
-    img.paste(icon, (x + 14, y + 11), icon)
-    draw_text(d, (x + 46, y + header_h / 2), SAMPLE[lang]["panelTitle"], font(15, True), WHITE, anchor="lm")
+    # The real panel header is title only (no logo), so no icon is drawn here.
+    draw_text(d, (x + 14, y + header_h / 2), SAMPLE[lang]["panelTitle"], font(15, True), WHITE, anchor="lm")
     pad = 14
     cx = x + pad
     cw = w - 2 * pad
