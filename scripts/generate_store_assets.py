@@ -753,15 +753,24 @@ def promo_1400():
     draw_text(d, (gx + icon_w + 20, 60 + icon_w / 2), PROMO["title_zh"], title_f, WHITE, anchor="lm")
     center_wrapped(d, (col_l, 150, col_r, 186), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
     center_wrapped(d, (col_l, 196, col_r, 230), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
-    # features 2x2, filling the column exactly
-    fx, fy, fw = col_l, 278, 340
-    for i, (zh, en) in enumerate(PROMO["feat"]):
+    # features 2x2: measure each cell, center the grid on the column axis and
+    # center every cell inside its own column. Ragged left-aligned columns read
+    # as "off-centre" next to the centered title / taglines above.
+    fy, row_h, gap = 278, 58, 60
+    feats = []
+    for zh, en in PROMO["feat"]:
+        tw = max(text_size(d, zh, font(15, True))[0], text_size(d, en, font(12))[0])
+        feats.append((zh, en, tw))
+    col_w = max(tw for _, _, tw in feats) + 40  # 40 = check icon + its gap
+    grid_w = col_w * 2 + gap
+    gx0 = col_l + ((col_r - col_l) - grid_w) / 2
+    for i, (zh, en, tw) in enumerate(feats):
         r, c = divmod(i, 2)
-        x = fx + c * (fw + 20)
-        y = fy + r * 58
-        draw_check(d, x + 14, y + 14, 12, WHITE)
-        d.text((x + 40, y + 4), zh, font=font(15, True), fill=WHITE, anchor="la")
-        d.text((x + 40, y + 30), en, font=font(12), fill=WHITE, anchor="la")
+        content_x = gx0 + c * (col_w + gap) + (col_w - (40 + tw)) / 2
+        y = fy + r * row_h
+        draw_check(d, content_x + 14, y + 14, 12, WHITE)
+        d.text((content_x + 40, y + 4), zh, font=font(15, True), fill=WHITE, anchor="la")
+        d.text((content_x + 40, y + 30), en, font=font(12), fill=WHITE, anchor="la")
     # two CTAs centered on the column axis, text centered inside each button
     bw, bh, gap = 180, 54, 20
     x0 = int((col_l + col_r) / 2 - (bw * 2 + gap) / 2)
