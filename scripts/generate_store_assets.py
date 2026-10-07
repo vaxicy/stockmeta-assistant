@@ -106,10 +106,13 @@ def draw_text(draw, pos, text, f, color, anchor="la"):
     draw.text(pos, text, font=f, fill=color, anchor=anchor)
 
 def center_text(draw, box, text, f, color):
-    """Vertically + horizontally center a single line of text in box."""
-    w, h = text_size(draw, text, f)
-    x = box[0] + (box[2] - box[0] - w) / 2
-    y = box[1] + (box[3] - box[1] - h) / 2
+    """Center the text INK inside box. textbbox reports the ink box, whose
+    top/left offsets must be subtracted — otherwise CJK labels ride up-left
+    inside the button instead of sitting in the middle."""
+    b = draw.textbbox((0, 0), text, font=f)
+    w, h = b[2] - b[0], b[3] - b[1]
+    x = box[0] + (box[2] - box[0] - w) / 2 - b[0]
+    y = box[1] + (box[3] - box[1] - h) / 2 - b[1]
     draw.text((x, y), text, font=f, fill=color, anchor="la")
 
 def center_wrapped(draw, box, text, f, color, line_h=None, anchor_top=False):
