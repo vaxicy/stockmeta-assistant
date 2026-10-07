@@ -753,20 +753,26 @@ def promo_1400():
     draw_text(d, (gx + icon_w + 20, 60 + icon_w / 2), PROMO["title_zh"], title_f, WHITE, anchor="lm")
     center_wrapped(d, (col_l, 150, col_r, 186), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
     center_wrapped(d, (col_l, 196, col_r, 230), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
-    # features 2x2: measure each cell, center the grid on the column axis and
-    # center every cell inside its own column. Ragged left-aligned columns read
-    # as "off-centre" next to the centered title / taglines above.
+    # features 2x2: the whole block is centered on the column axis, but inside a
+    # column both rows share ONE left edge (centering each cell individually made
+    # the rows start at different x, which reads as misalignment).
     fy, row_h, gap = 278, 58, 60
     feats = []
     for zh, en in PROMO["feat"]:
         tw = max(text_size(d, zh, font(15, True))[0], text_size(d, en, font(12))[0])
         feats.append((zh, en, tw))
-    col_w = max(tw for _, _, tw in feats) + 40  # 40 = check icon + its gap
-    grid_w = col_w * 2 + gap
+    # Column width follows the widest cell of that column (40 = check + its gap).
+    col_w = [
+        max(feats[0][2], feats[2][2]) + 40,
+        max(feats[1][2], feats[3][2]) + 40,
+    ]
+    grid_w = col_w[0] + gap + col_w[1]
     gx0 = col_l + ((col_r - col_l) - grid_w) / 2
+    assert gx0 >= col_l and gx0 + grid_w <= col_r, "feature grid overflows the text column"
+    col_x = [gx0, gx0 + col_w[0] + gap]
     for i, (zh, en, tw) in enumerate(feats):
         r, c = divmod(i, 2)
-        content_x = gx0 + c * (col_w + gap) + (col_w - (40 + tw)) / 2
+        content_x = col_x[c]  # shared left edge for both rows of the column
         y = fy + r * row_h
         draw_check(d, content_x + 14, y + 14, 12, WHITE)
         d.text((content_x + 40, y + 4), zh, font=font(15, True), fill=WHITE, anchor="la")
