@@ -715,12 +715,8 @@ def promo_440():
         t = y / H
         d.line((0, y, W, y), fill=(int(26 + 10 * t), int(115 + 20 * t), int(232 - 20 * t)))
     # everything centered on the canvas axis: icon -> title -> taglines -> CTAs
-    # A soft white glow behind the logo grounds it on the gradient (no pasted-box feel).
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.ellipse((int(W / 2) - 150, -70, int(W / 2) + 150, 210), fill=(255, 255, 255, 42))
-    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(55)))
-    d = ImageDraw.Draw(img)
+    # No glow behind the logo: at thumbnail size a soft halo just reads as a
+    # smudge, so the glyph sits straight on the gradient.
     logo = load_logo(56)
     img.paste(logo, (int(W / 2 - 28), 20), logo)
     center_wrapped(d, (24, 84, W - 24, 108), PROMO["title_zh"], font(18, True), WHITE, line_h=22, anchor_top=True)
@@ -751,12 +747,7 @@ def promo_1400():
     title_f = font(32, True)
     tw, _ = text_size(d, PROMO["title_zh"], title_f)
     gx = col_l + ((col_r - col_l) - (icon_w + 20 + tw)) / 2
-    # soft glow behind the logo group, then the clean glyph (no blue tile)
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.ellipse((int(gx) - 120, 20, int(gx + icon_w) + 120, 220), fill=(255, 255, 255, 42))
-    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(60)))
-    d = ImageDraw.Draw(img)
+    # no glow here either — the glyph sits straight on the gradient
     logo = load_logo(icon_w)
     img.paste(logo, (int(gx), 60), logo)
     draw_text(d, (gx + icon_w + 20, 60 + icon_w / 2), PROMO["title_zh"], title_f, WHITE, anchor="lm")
