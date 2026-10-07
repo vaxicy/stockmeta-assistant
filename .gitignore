@@ -2,6 +2,9 @@
 preview_*.png
 *.zip
 
+# Temporary git commit-message file
+commit_msg.txt
+
 # IDE / agent memory
 .codebuddy/
 
