@@ -629,14 +629,19 @@ def promo_440():
     for y in range(H):
         t = y / H
         d.line((0, y, W, y), fill=(int(26 + 10 * t), int(115 + 20 * t), int(232 - 20 * t)))
-    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((52, 52))
-    img.paste(icon, (24, 30), icon)
-    draw_text(d, (92, 34), PROMO["title_zh"], font(18, True), WHITE, anchor="la")
-    center_wrapped(d, (24, 100, W - 24, 134), PROMO["tag_zh"], font(14), WHITE, line_h=20, anchor_top=True)
-    center_wrapped(d, (24, 152, W - 24, 180), PROMO["tag_en"], font(12), WHITE, line_h=16, anchor_top=True)
-    # cta
-    draw_button(d, (24, 224, 200, 262), PROMO["cta_zh"], font(15, True), WHITE, BLUE, r=20)
-    d.text((216, 243), PROMO["cta_en"], font=font(14, True), fill=WHITE, anchor="lm")
+    # everything centered on the canvas axis: icon -> title -> taglines -> CTAs
+    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((56, 56))
+    img.paste(icon, (int(W / 2 - 28), 20), icon)
+    center_wrapped(d, (24, 84, W - 24, 108), PROMO["title_zh"], font(18, True), WHITE, line_h=22, anchor_top=True)
+    center_wrapped(d, (24, 114, W - 24, 140), PROMO["tag_zh"], font(14), WHITE, line_h=18, anchor_top=True)
+    center_wrapped(d, (24, 146, W - 24, 168), PROMO["tag_en"], font(12), WHITE, line_h=15, anchor_top=True)
+    # two CTAs, centered as a pair (zh + en), text centered inside each button
+    bw, bh, gap = 150, 42, 24
+    x0 = int(W / 2 - (bw * 2 + gap) / 2)
+    y0 = 196
+    draw_button(d, (x0, y0, x0 + bw, y0 + bh), PROMO["cta_zh"], font(15, True), WHITE, BLUE, r=21)
+    draw_button(d, (x0 + bw + gap, y0, x0 + bw * 2 + gap, y0 + bh), PROMO["cta_en"], font(14, True), WHITE, BLUE, r=21)
+    assert y0 + bh <= H - 12 and x0 + bw * 2 + gap <= W - 12, "440 promo overflows the safe area"
     return img
 
 
@@ -648,25 +653,34 @@ def promo_1400():
     for y in range(H):
         t = y / H
         d.line((0, y, W, y), fill=(int(26 + 14 * t), int(115 + 26 * t), int(232 - 26 * t)))
-    # left text block
-    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((76, 76))
-    img.paste(icon, (60, 50), icon)
-    draw_text(d, (156, 60), PROMO["title_zh"], font(32, True), WHITE, anchor="la")
-    center_wrapped(d, (60, 126, 760, 160), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
-    center_wrapped(d, (60, 174, 760, 208), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
-    # features 2x2 small
-    fx, fy = 60, 300
-    fw = 350
+    # left text column (60..760): icon+title group, taglines, features and CTAs
+    # are all centered on the column axis; the mini panel sits on the right.
+    col_l, col_r = 60, 760
+    icon_w = 76
+    title_f = font(32, True)
+    tw, _ = text_size(d, PROMO["title_zh"], title_f)
+    gx = col_l + ((col_r - col_l) - (icon_w + 20 + tw)) / 2
+    icon = Image.open(os.path.join(ROOT, "icons", "icon128.png")).convert("RGBA").resize((icon_w, icon_w))
+    img.paste(icon, (int(gx), 60), icon)
+    draw_text(d, (gx + icon_w + 20, 60 + icon_w / 2), PROMO["title_zh"], title_f, WHITE, anchor="lm")
+    center_wrapped(d, (col_l, 150, col_r, 186), PROMO["tag_zh"], font(20), WHITE, line_h=26, anchor_top=True)
+    center_wrapped(d, (col_l, 196, col_r, 230), PROMO["tag_en"], font(16), WHITE, line_h=20, anchor_top=True)
+    # features 2x2, filling the column exactly
+    fx, fy, fw = col_l, 278, 340
     for i, (zh, en) in enumerate(PROMO["feat"]):
         r, c = divmod(i, 2)
         x = fx + c * (fw + 20)
-        y = fy + r * 56
+        y = fy + r * 58
         draw_check(d, x + 14, y + 14, 12, WHITE)
-        d.text((x + 40, y + 6), zh, font=font(15, True), fill=WHITE, anchor="la")
+        d.text((x + 40, y + 4), zh, font=font(15, True), fill=WHITE, anchor="la")
         d.text((x + 40, y + 30), en, font=font(12), fill=WHITE, anchor="la")
-    # cta
-    draw_button(d, (60, 470, 250, 520), PROMO["cta_zh"], font(18, True), WHITE, BLUE, r=24)
-    d.text((270, 495), PROMO["cta_en"], font=font(17, True), fill=WHITE, anchor="lm")
+    # two CTAs centered on the column axis, text centered inside each button
+    bw, bh, gap = 180, 54, 20
+    x0 = int((col_l + col_r) / 2 - (bw * 2 + gap) / 2)
+    y0 = 452
+    draw_button(d, (x0, y0, x0 + bw, y0 + bh), PROMO["cta_zh"], font(18, True), WHITE, BLUE, r=26)
+    draw_button(d, (x0 + bw + gap, y0, x0 + bw * 2 + gap, y0 + bh), PROMO["cta_en"], font(16, True), WHITE, BLUE, r=26)
+    assert y0 + bh <= H - 12 and x0 + bw * 2 + gap <= col_r, "1400 promo overflows the safe area"
     # right: mini panel illustration
     px = 860
     py = 70
@@ -676,7 +690,8 @@ def promo_1400():
 
 def draw_mini_panel(d, img, x, y, w, lang):
     header_h = 46
-    rr(d, (x, y, x + w, y + 360), 14, fill=WHITE, outline=(220, 224, 230), width=1)
+    ph_total = 400  # body must not overflow the frame (keywords box ends at y+456)
+    rr(d, (x, y, x + w, y + ph_total), 14, fill=WHITE, outline=(220, 224, 230), width=1)
     rr(d, (x, y, x + w, y + header_h + 14), 14, fill=BLUE)
     d.rectangle((x, y + header_h - 14, x + w, y + header_h + 14), fill=BLUE)
     icon = Image.open(os.path.join(ROOT, "icons", "icon48.png")).convert("RGBA").resize((24, 24))
