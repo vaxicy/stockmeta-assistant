@@ -235,6 +235,14 @@
       <p class="opt-hint" data-i18n="optBatchIntervalDesc">Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.</p>
     </section>
 
+    <section class="opt-field opt-toggle-field">
+      <label class="opt-toggle">
+        <input type="checkbox" id="batchDeleteRedDots" />
+        <span data-i18n="optBatchDeleteRedDots">Delete red-dot assets</span>
+      </label>
+      <p class="opt-hint" data-i18n="optBatchDeleteRedDotsDesc">Adds a separate "Delete red-dot assets (N)" button to the panel: it removes the assets that keep a red dot even though their metadata is complete. Only red-dot assets are touched and every deletion is confirmed first — it cannot be undone.</p>
+    </section>
+
     <div class="opt-actions">
       <button id="saveBtn" class="opt-btn opt-primary" data-i18n="optSave">Save</button>
     </div>

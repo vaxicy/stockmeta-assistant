@@ -44,6 +44,7 @@ const DEFAULTS = {
   batchProcess: false,
   batchIntervalMs: 2000,
   panelDefaultState: 'expanded',
+  batchDeleteRedDots: false,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -224,6 +225,8 @@ const OPT_I18N = {
     optBatchProcessDesc: 'One click on the panel\'s "Generate Title & Keywords" processes every asset in the grid that is missing a title or keywords. Each asset is saved before the next one starts, so keep this page open.',
     optBatchInterval: 'Batch interval (ms)',
     optBatchIntervalDesc: 'Pause between two assets so the provider is not rate-limited. 2000 ms (the default) suits most providers.',
+    optBatchDeleteRedDots: 'Delete red-dot assets',
+    optBatchDeleteRedDotsDesc: 'Adds a separate "Delete red-dot assets (N)" button to the panel: it removes the assets that keep a red dot even though their metadata is complete. Only red-dot assets are touched and every deletion is confirmed first — it cannot be undone.',
     optPanelState: 'Panel default state',
     optPanelStateExpanded: 'Expanded',
     optPanelStateCollapsed: 'Collapsed',
@@ -300,6 +303,8 @@ const OPT_I18N = {
     optBatchProcessDesc: '点一次面板上的「生成标题和关键词」就会处理网格里所有缺标题/关键词的素材；每张保存后才切下一张，请保持停留在上传页。',
     optBatchInterval: '批量间隔（毫秒）',
     optBatchIntervalDesc: '两张素材之间的停顿，用来避免接口限流。默认 2000 毫秒，一般不用改。',
+    optBatchDeleteRedDots: '批量删除红点素材',
+    optBatchDeleteRedDotsDesc: '在面板上增加一个独立的「删除红点素材（N）」按钮，用于删掉那些字段齐全却一直是红点、无法提交的素材。只会处理红点素材，且每次删除前都要确认；删除后不可恢复。',
     optPanelState: '面板默认状态',
     optPanelStateExpanded: '展开',
     optPanelStateCollapsed: '折叠',
@@ -502,6 +507,7 @@ async function saveAllSettings() {
     batchProcess: s.batchProcess,
     batchIntervalMs: s.batchIntervalMs,
     panelDefaultState: s.panelDefaultState,
+    batchDeleteRedDots: s.batchDeleteRedDots,
   });
 }
 
@@ -535,6 +541,8 @@ function collectSettings() {
   batchIntervalMs = Math.max(300, Math.min(10000, batchIntervalMs));
   const panelStateSel = document.getElementById('panelDefaultState');
   const panelDefaultState = panelStateSel && panelStateSel.value === 'collapsed' ? 'collapsed' : 'expanded';
+  const bdrd = document.getElementById('batchDeleteRedDots');
+  const batchDeleteRedDots = !!(bdrd && bdrd.checked);
   return {
     provider,
     apiKey,
@@ -553,6 +561,7 @@ function collectSettings() {
     batchProcess,
     batchIntervalMs,
     panelDefaultState,
+    batchDeleteRedDots,
   };
 }
 
@@ -932,7 +941,7 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'panelDefaultState'];
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'panelDefaultState', 'batchDeleteRedDots'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);
@@ -1079,6 +1088,7 @@ async function load() {
     'batchIntervalMs',
     'autoSelectCategory',
     'panelDefaultState',
+    'batchDeleteRedDots',
   ]);
   // Provider select + module pointer.
   const provider = stored.provider || DEFAULTS.provider;
@@ -1115,6 +1125,8 @@ async function load() {
   syncBatchIntervalVisibility();
   const pds = document.getElementById('panelDefaultState');
   if (pds) pds.value = stored.panelDefaultState === 'collapsed' ? 'collapsed' : 'expanded';
+  const bdrd = document.getElementById('batchDeleteRedDots');
+  if (bdrd) bdrd.checked = !!stored.batchDeleteRedDots;
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');

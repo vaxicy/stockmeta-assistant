@@ -260,6 +260,44 @@
   background: #b91c1c;
 }
 
+/* Delete red-dot assets: an OUTLINED danger button, deliberately different from
+   the primary Generate control — deleting cannot be undone. */
+.sm-btn.sm-outline-danger {
+  background: #fff;
+  border-color: #f0a6a6;
+  color: #c62828;
+}
+
+.sm-btn.sm-outline-danger:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+/* In-panel confirmation in front of the destructive run. */
+.sm-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #f0a6a6;
+  border-radius: 8px;
+  background: #fff5f5;
+}
+
+.sm-confirm-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #b91c1c;
+  word-break: break-word;
+}
+
+/* Scoped: this stylesheet is injected into Adobe's page, so an unscoped
+   .is-hidden could hide the site's own elements. */
+#stockmeta-panel .is-hidden {
+  display: none !important;
+}
+
 /* While a batch run is in flight, manual actions would interleave with it.
    #sm-generate is deliberately absent: it is the stop control during a run. */
 #stockmeta-panel.sm-busy #sm-apply-title,

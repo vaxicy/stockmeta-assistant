@@ -7,6 +7,7 @@
   const Img = window.StockMetaImage;
   const Dom = window.StockMetaDom;
   const Batch = window.StockMetaBatch;
+  const Delete = window.StockMetaDelete;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -40,6 +41,14 @@
           <img id="sm-preview" class="sm-preview" alt="" />
         </div>
         <button class="sm-btn sm-primary" id="sm-generate" data-i18n="generate"></button>
+        <button class="sm-btn sm-outline-danger is-hidden" id="sm-delete" data-i18n="deleteRedDots"></button>
+        <div class="sm-confirm is-hidden" id="sm-delete-confirm">
+          <div class="sm-confirm-text" id="sm-delete-confirm-text"></div>
+          <div class="sm-row">
+            <button class="sm-btn sm-danger" id="sm-delete-yes" data-i18n="deleteConfirmYes"></button>
+            <button class="sm-btn" id="sm-delete-no" data-i18n="deleteConfirmNo"></button>
+          </div>
+        </div>
         <div class="sm-field">
           <label class="sm-label">
             <span data-i18n="titleLabel"></span>
@@ -86,6 +95,9 @@
   // ---------------------------------------------------------------- events
   function bindEvents() {
     panel.querySelector('#sm-generate').addEventListener('click', onGenerate);
+    panel.querySelector('#sm-delete').addEventListener('click', onDeleteClick);
+    panel.querySelector('#sm-delete-yes').addEventListener('click', onDeleteConfirmYes);
+    panel.querySelector('#sm-delete-no').addEventListener('click', hideDeleteConfirm);
     panel.querySelector('#sm-apply-title').addEventListener('click', () => onApply('title'));
     panel.querySelector('#sm-apply-kw').addEventListener('click', () => onApply('keywords'));
     panel.querySelector('#sm-apply-all').addEventListener('click', onApplyAll);
@@ -213,6 +225,10 @@
       NO_KEYWORDS: 'errNoKeywords',
       BATCH_SELECT_TIMEOUT: 'batchSelectTimeout',
       BATCH_NOT_LANDED: 'errNotLanded',
+      DELETE_SELECT_TIMEOUT: 'errDeleteSelect',
+      DELETE_NO_BUTTON: 'errDeleteNoButton',
+      DELETE_NO_DIALOG: 'errDeleteNoDialog',
+      DELETE_NOT_GONE: 'errDeleteNotGone',
     };
     let key;
     if (map[errCode]) {
@@ -907,16 +923,18 @@
   // keywords): select -> generate -> apply -> save. The engine itself lives in
   // content/batch.js; the panel only owns the button, the counter and the
   // progress line, and hands the engine the same write path the buttons use.
-  let batchCfg = { batchProcess: false, batchIntervalMs: 2000 };
+  let batchCfg = { batchProcess: false, batchIntervalMs: 2000, batchDeleteRedDots: false };
 
   function loadBatchConfig() {
     try {
-      chrome.storage.local.get(['batchProcess', 'batchIntervalMs'], (s) => {
+      chrome.storage.local.get(['batchProcess', 'batchIntervalMs', 'batchDeleteRedDots'], (s) => {
         batchCfg = {
           batchProcess: !!(s && s.batchProcess),
           batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 2000,
+          batchDeleteRedDots: !!(s && s.batchDeleteRedDots),
         };
         renderBatchUi();
+        renderDeleteUi();
       });
     } catch (_) {}
   }
@@ -924,24 +942,38 @@
   // Progress is rendered by the panel (not the engine): it owns the status line
   // and a 1 s ticker, so a slow API call visibly counts up instead of looking
   // frozen while Adobe repaints the grid underneath.
-  let batchPhase = null; // { i, total, phaseKey, at }
+  let batchPhase = null; // { kind, i, total, phaseKey, at }
 
   function renderBatchProgress() {
     if (!batchPhase) return;
     const secs = Math.round((Date.now() - batchPhase.at) / 1000);
     const phase = t(batchPhase.phaseKey) + (secs >= 5 ? ' ' + secs + 's' : '');
-    setStatusText(tf('batchProgress', { i: batchPhase.i, total: batchPhase.total, phase }), false);
+    const key = batchPhase.kind === 'delete' ? 'deleteProgress' : 'batchProgress';
+    setStatusText(tf(key, { i: batchPhase.i, total: batchPhase.total, phase }), false);
+  }
+
+  function onPhase(kind, i, total, phaseKey) {
+    batchPhase = { kind, i, total, phaseKey, at: Date.now() };
+    renderBatchProgress();
   }
 
   function onBatchPhase(i, total, phaseKey) {
-    batchPhase = { i, total, phaseKey, at: Date.now() };
-    renderBatchProgress();
+    onPhase('batch', i, total, phaseKey);
   }
 
   function renderBatchUi(info) {
     if (!panel) return;
     const btn = panel.querySelector('#sm-generate');
     if (!btn) return;
+    // A delete run owns the panel: the generate button is only "busy" then, never
+    // a stop control (that would be an easy way to delete the wrong thing).
+    if (Delete && Delete.isRunning()) {
+      btn.disabled = true;
+      btn.classList.remove('sm-danger');
+      btn.textContent = t('generate');
+      panel.classList.add('sm-busy');
+      return;
+    }
     const isRunning =
       info && typeof info.running === 'boolean' ? info.running : !!(Batch && Batch.isRunning());
     panel.classList.toggle('sm-busy', isRunning);
@@ -1016,6 +1048,7 @@
   function onBatchStateChange(summary, isRunning) {
     if (!isRunning) batchPhase = null;
     renderBatchUi({ running: isRunning });
+    renderDeleteUi();
     if (!summary) return;
     // The summary deserves a longer dwell time than a regular toast.
     const key = summary.aborted ? 'batchAborted' : summary.stopped ? 'batchStopped' : 'batchDone';
@@ -1029,6 +1062,95 @@
       : '';
     if (text) setStatusText(text, summary.fail > 0);
     else setStatus(key, summary.fail > 0, vars);
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
+  }
+
+  // ---------------------------------------------------------------- delete
+  // Deleting is irreversible, so it gets its own outlined danger button (never
+  // the primary Generate control) plus an in-panel confirmation before anything
+  // happens. The engine (content/delete.js) only ever targets red-dot tiles.
+  let deleteConfirmCount = 0;
+
+  function renderDeleteUi(info) {
+    if (!panel) return;
+    const btn = panel.querySelector('#sm-delete');
+    if (!btn) return;
+    const running =
+      info && typeof info.running === 'boolean' ? info.running : !!(Delete && Delete.isRunning());
+    const batchRunning = !!(Batch && Batch.isRunning());
+    if (!batchCfg.batchDeleteRedDots && !running) {
+      btn.classList.add('is-hidden');
+      hideDeleteConfirm();
+      return;
+    }
+    btn.classList.remove('is-hidden');
+    if (running) {
+      // The button doubles as the stop control while the run is in flight.
+      btn.disabled = false;
+      btn.classList.remove('sm-outline-danger');
+      btn.classList.add('sm-danger');
+      btn.textContent = t('deleteStop');
+      hideDeleteConfirm();
+      return;
+    }
+    btn.classList.remove('sm-danger');
+    btn.classList.add('sm-outline-danger');
+    const n = Delete ? Delete.countRed() : 0;
+    btn.textContent = tf('deleteRedDots', { n });
+    btn.disabled = n === 0 || batchRunning;
+    if (n === 0 || batchRunning) hideDeleteConfirm();
+  }
+
+  function showDeleteConfirm(n) {
+    if (!panel) return;
+    const box = panel.querySelector('#sm-delete-confirm');
+    const text = panel.querySelector('#sm-delete-confirm-text');
+    if (!box || !text) return;
+    deleteConfirmCount = n;
+    text.textContent = tf('deleteConfirmText', { n });
+    box.classList.remove('is-hidden');
+  }
+
+  function hideDeleteConfirm() {
+    deleteConfirmCount = 0;
+    if (!panel) return;
+    const box = panel.querySelector('#sm-delete-confirm');
+    if (box) box.classList.add('is-hidden');
+  }
+
+  function onDeleteClick() {
+    if (!Delete) return;
+    if (Delete.isRunning()) {
+      Delete.stop();
+      return;
+    }
+    if (!batchCfg.batchDeleteRedDots) {
+      toast('deleteNeedSetting');
+      return;
+    }
+    const n = Delete.countRed();
+    if (!n) {
+      toast('deleteNoRed');
+      return;
+    }
+    showDeleteConfirm(n);
+  }
+
+  async function onDeleteConfirmYes() {
+    if (!Delete) return;
+    hideDeleteConfirm();
+    await Delete.start({ intervalMs: batchCfg.batchIntervalMs });
+  }
+
+  // Called by the delete engine whenever a run starts or finishes.
+  function onDeleteStateChange(summary, isRunning) {
+    if (!isRunning) batchPhase = null;
+    renderDeleteUi({ running: isRunning });
+    renderBatchUi({ running: false });
+    if (!summary) return;
+    const key = summary.stopped ? 'deleteStopped' : summary.dryRun ? 'deleteDryDone' : 'deleteDone';
+    setStatus(key, summary.fail > 0, { ok: summary.ok, fail: summary.fail, skip: summary.skip });
     clearTimeout(toast._t);
     toast._t = setTimeout(() => setStatus('statusIdle'), 6000);
   }
@@ -1120,6 +1242,9 @@
     findKeywordInput: Dom.findKeywordInput,
     // e.g. StockMetaDebug.batch.pendingTiles() to sanity-check the red-dot scan.
     batch: Batch,
+    // e.g. StockMetaDebug.delete.dryRun() to walk the delete path without
+    // confirming a single dialog.
+    delete: Delete,
   };
 
   // Re-apply translations when the language is changed from the settings page.
@@ -1137,6 +1262,12 @@
       setStatusText(state.lastStatus.text, state.lastStatus.isError);
     }
     renderBatchUi();
+    renderDeleteUi();
+    // The confirmation text carries a count, so it has to be re-rendered too.
+    if (deleteConfirmCount) {
+      const textEl = panel.querySelector('#sm-delete-confirm-text');
+      if (textEl) textEl.textContent = tf('deleteConfirmText', { n: deleteConfirmCount });
+    }
   }
 
   // ---------------------------------------------------------------- boot
@@ -1156,23 +1287,40 @@
     if (Batch) {
       Batch.init(createCoreApi());
       loadBatchConfig();
+    }
+    if (Delete) {
+      // Same read/write helpers, but its own phase prefix ("Delete 3/7") and its
+      // own summary handler.
+      Delete.init(
+        Object.assign({}, createCoreApi(), {
+          phase: (i, total, key) => onPhase('delete', i, total, key),
+          notify: onDeleteStateChange,
+        })
+      );
+    }
+    if (Batch || Delete) {
       try {
         chrome.storage.onChanged.addListener((changes, area) => {
-          if (area === 'local' && (changes.batchProcess || changes.batchIntervalMs)) loadBatchConfig();
+          if (area !== 'local') return;
+          if (changes.batchProcess || changes.batchIntervalMs || changes.batchDeleteRedDots) {
+            loadBatchConfig();
+          }
         });
       } catch (_) {}
       // 1 s tick: keeps the progress counter ticking during a run (proof of
-      // life) and the pending counter honest while the grid itself changes
+      // life) and the pending counters honest while the grid itself changes
       // (uploads finishing, filters, pagination).
       setInterval(() => {
-        if (Batch.isRunning()) {
+        const busy = (Batch && Batch.isRunning()) || (Delete && Delete.isRunning());
+        if (busy) {
           if (!state.lastStatus.isError) renderBatchProgress();
           return;
         }
         renderBatchUi();
+        renderDeleteUi();
       }, 1000);
       // Drop any leftover run flag from a previous page session.
-      Batch.clearStaleRun();
+      if (Batch) Batch.clearStaleRun();
     }
   }
 

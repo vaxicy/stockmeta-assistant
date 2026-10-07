@@ -58,6 +58,10 @@ export const DEFAULT_CONFIG = {
   // Panel: 'expanded' or 'collapsed' — the state the injected panel starts in
   // each time it loads on a page. Purely visual; never persisted per page.
   panelDefaultState: 'expanded',
+  // Adds a separate "Delete red-dot assets" button to the panel. Some assets keep
+  // a red dot even though their metadata is complete (Adobe gets stuck on them)
+  // and can no longer be submitted. OFF by default: deleting cannot be undone.
+  batchDeleteRedDots: false,
 };
 
 // Adobe's own hard floor: a result never counts as usable below this.
@@ -120,6 +124,7 @@ export async function getConfig() {
     'batchProcess',
     'batchIntervalMs',
     'panelDefaultState',
+    'batchDeleteRedDots',
   ]);
   const provider = stored.provider ?? DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
@@ -150,6 +155,7 @@ export async function getConfig() {
     batchProcess: stored.batchProcess ?? DEFAULT_CONFIG.batchProcess,
     batchIntervalMs: stored.batchIntervalMs ?? DEFAULT_CONFIG.batchIntervalMs,
     panelDefaultState: stored.panelDefaultState ?? DEFAULT_CONFIG.panelDefaultState,
+    batchDeleteRedDots: stored.batchDeleteRedDots ?? DEFAULT_CONFIG.batchDeleteRedDots,
   };
 }
 
@@ -157,7 +163,7 @@ export async function getConfig() {
 // of one provider never clobbers the others.
 export async function saveConfig(partial) {
   const update = {};
-  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate', 'batchProcess', 'batchIntervalMs', 'panelDefaultState']) {
+  for (const k of ['provider', 'keywordCount', 'keywordCountMode', 'keywordCountMin', 'keywordCountMax', 'timeoutMs', 'autoCheckAI', 'autoSaveAfterApply', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'autoApplyAfterGenerate', 'batchProcess', 'batchIntervalMs', 'panelDefaultState', 'batchDeleteRedDots']) {
     if (k in partial) update[k] = partial[k];
   }
   // If apiKey/baseUrl/model are present without an explicit providerConfigs patch,

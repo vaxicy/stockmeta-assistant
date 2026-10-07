@@ -36,6 +36,7 @@
         "utils/image.js",
         "utils/dom.js",
         "content/batch.js",
+        "content/delete.js",
         "content/content.js"
       ],
       "css": [
