@@ -80,8 +80,9 @@ A Chrome extension for Adobe Stock contributors: it generates English **titles a
 3. 点击「加载已解压的扩展程序（Load unpacked）」，选择本项目文件夹。
 4. 点击拼图图标 → 固定 **StockMeta Assistant**。
 5. 打开扩展「选项（Options）」（右键图标 → 选项，或面板内 ⚙ 设置），填写：
-   - **SiliconFlow API Key**
-   - **Vision Model ID**（如 `Qwen/Qwen3-Omni-30B-A3B-Captioner`）
+   - **Provider**：SiliconFlow / OpenAI / Gemini / 自定义
+   - **API Key**
+   - **Model ID**：默认依次为 `Qwen/Qwen3-Omni-30B-A3B-Captioner`、`gpt-4o-mini`、`gemini-2.5-flash`
    - **Keyword Count**（1–50，默认 30）
 6. 点击 **Test Connection**，再点击 **Save**。
 7. 进入 Adobe Stock Contributor 页面使用面板。
