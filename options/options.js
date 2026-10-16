@@ -94,8 +94,16 @@ const PROVIDER_MODEL_PRESETS = {
   ],
   custom: [],
   // Fallback list for a local server; when the server answers, the dropdown is
-  // rebuilt from what is actually installed (`ollama list`).
-  local: ['qwen2.5vl:7b', 'qwen2.5vl:3b', 'qwen3-vl:8b', 'llava:latest', 'minicpm-v:latest'],
+  // rebuilt from what is actually installed (`ollama list`). Ordered by how
+  // well each one does on Adobe-Stock-style caption + keyword work.
+  local: [
+    'qwen3-vl:8b',
+    'qwen2.5vl:7b',
+    'qwen2.5vl:7b-q8_0',
+    'minicpm-v:latest',
+    'gemma3:12b',
+    'llava:latest',
+  ],
 };
 
 // Rebuild the model <select> options for the given provider. Presets come
