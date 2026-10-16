@@ -54,7 +54,7 @@ const PROVIDER_DEFAULTS = {
   custom: { model: '', url: '' },
   // A local server needs no key, so the endpoint is prefilled here: picking
   // this provider works without typing anything except the model name.
-  local: { model: '', url: 'http://localhost:11434/v1' },
+  local: { model: '', url: 'http://localhost:11434/v1', apiKey: 'local' },
 };
 
 // Per-provider vision model presets shown in the model dropdown. The sentinel
@@ -92,32 +92,50 @@ const PROVIDER_MODEL_PRESETS = {
     'gemini-3-pro-preview',
   ],
   custom: [],
-  local: [],
+  // Fallback list for a local server; when the server answers, the dropdown is
+  // rebuilt from what is actually installed (`ollama list`).
+  local: ['qwen2.5vl:7b', 'qwen2.5vl:3b', 'qwen3-vl:8b', 'llava:latest', 'minicpm-v:latest'],
 };
 
 // Rebuild the model <select> options for the given provider. Presets come
 // first, then a manual-input sentinel. Called on init and on provider switch.
 // For the "custom" provider there is no preset list, so we hide the whole
 // dropdown and show only the manual input box.
-function rebuildModelOptions(provider) {
+async function fetchLocalModels() {
+  // Ask the local server what it actually has, so the dropdown lists real tags
+  // instead of a guessed preset list. Silent on failure: the presets remain.
+  try {
+    const base = normalizeBaseUrl(document.getElementById('baseUrl').value) || 'http://localhost:11434/v1';
+    const res = await fetch(base + '/models', { headers: { Authorization: 'Bearer local' } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list = data.data || data.models || (Array.isArray(data) ? data : []);
+    return list.map((m) => (m && (m.id || m.name || m.model)) || '').filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+async function rebuildModelOptions(provider) {
   const selWrap = document.querySelector('.opt-select[data-target="modelSelect"]');
   const customInput = document.getElementById('modelCustom');
   const sel = document.getElementById('modelSelect');
   if (!sel) return;
-  if (provider === 'custom' || provider === 'local') {
+  if (provider === 'custom') {
     if (selWrap) selWrap.classList.add('is-hidden');
     if (customInput) {
-      customInput.placeholder =
-        provider === 'local'
-          ? 'e.g. qwen2.5vl:7b  (the name shown by `ollama list`)'
-          : 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
+      customInput.placeholder = 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
       customInput.classList.remove('is-hidden');
     }
     return;
   }
   if (selWrap) selWrap.classList.remove('is-hidden');
   sel.innerHTML = '';
-  const presets = PROVIDER_MODEL_PRESETS[provider] || [];
+  let presets = PROVIDER_MODEL_PRESETS[provider] || [];
+  if (provider === 'local') {
+    const live = await fetchLocalModels();
+    if (live.length) presets = live;
+  }
   presets.forEach((m) => {
     const o = document.createElement('option');
     o.value = m;
@@ -140,14 +158,11 @@ function restoreModelSelection(model) {
   const customInput = document.getElementById('modelCustom');
   if (!sel || !customInput) return;
   const presets = PROVIDER_MODEL_PRESETS[currentProvider] || [];
-  if (currentProvider === 'custom' || currentProvider === 'local') {
+  if (currentProvider === 'custom') {
     // Manual endpoint: no dropdown, always show the manual box.
     if (selWrap) selWrap.classList.add('is-hidden');
     customInput.classList.remove('is-hidden');
-    customInput.placeholder =
-      currentProvider === 'local'
-        ? 'e.g. qwen2.5vl:7b  (the name shown by `ollama list`)'
-        : 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
+    customInput.placeholder = 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
     customInput.value = model || '';
     // Keep the hidden dropdown in sync so it never holds a stale preset model.
     if (sel) sel.value = CUSTOM_MODEL_VALUE;
@@ -174,7 +189,7 @@ function readModelValue() {
   // When the custom provider is active, the dropdown is hidden and may still
   // hold the previously-selected preset model from another provider. Reading
   // it would leak that model into the custom slot. Always read the manual box.
-  if (currentProvider === 'custom' || currentProvider === 'local') {
+  if (currentProvider === 'custom') {
     return (customInput ? customInput.value.trim() : '');
   }
   if (!sel) return '';
@@ -450,7 +465,11 @@ async function loadSlot(provider) {
   const slot = (raw && raw[provider]) || {};
   const def = PROVIDER_DEFAULTS[provider] || { model: DEFAULTS.model, url: '' };
   let baseUrl = slot.baseUrl ?? '';
-  let apiKey = slot.apiKey ?? '';
+  // Local servers authenticate nothing, so this provider ships a placeholder
+  // key: the field is never empty and Test Connection works out of the box.
+  // `||` (not `??`) on purpose — a previously saved EMPTY string must still
+  // fall back to the placeholder.
+  let apiKey = slot.apiKey || def.apiKey || '';
   let model = slot.model ?? '';
   // Migrate legacy flat apiKey/baseUrl/model into THIS provider's slot on first load.
   if (stored && ('apiKey' in stored || 'baseUrl' in stored || 'model' in stored) && stored.provider === provider) {
@@ -467,7 +486,9 @@ async function applySlotToInputs(provider) {
   const apiKeyInput = document.getElementById('apiKey');
   baseUrlInput.value = normalizeBaseUrl(baseUrl) || def.url || '';
   apiKeyInput.value = apiKey;
-  rebuildModelOptions(provider);
+  // Await the rebuild: for the local provider it fetches the installed models,
+  // and the stored selection must be matched against that fresh list.
+  await rebuildModelOptions(provider);
   restoreModelSelection(model || getDefaultModelFor(provider));
 }
 
@@ -621,7 +642,8 @@ function autoSave() {
 
 async function onTest() {
   const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) {
+  // A local endpoint needs no key, so don't block the test on it.
+  if (!apiKey && currentProvider !== 'local') {
     setTestStatus(msg('optTestMissing'), 'err');
     return;
   }
