@@ -730,7 +730,14 @@ function updateProviderUI() {
 // no third-party lib). Attaches to the .opt-select-scroll wrapper which holds
 // the real scrolling .opt-select-list and a .opt-scrollbar-track sibling.
 function initCustomScrollbar(wrap) {
-  const view = wrap.querySelector('.opt-select-list');
+  // Already wired (dropdowns call this on every open): just re-measure, so we
+  // never stack duplicate document/window listeners on repeated opens.
+  if (wrap._optScrollUpdate) {
+    wrap._optScrollUpdate();
+    return;
+  }
+  // .opt-select-list = dropdown list; .opt-scroll-view = any other host (guide).
+  const view = wrap.querySelector('.opt-scroll-view') || wrap.querySelector('.opt-select-list');
   const track = wrap.querySelector('.opt-scrollbar-track');
   const thumb = wrap.querySelector('.opt-scrollbar-thumb');
   if (!view || !track || !thumb) return;
@@ -1174,6 +1181,8 @@ function initTutorial() {
     updateTutorialLink();
     renderGuide();
     mask.hidden = false;
+    // Native scrollbar is hidden by CSS; attach the JS one once layout is ready.
+    requestAnimationFrame(() => initCustomScrollbar(document.getElementById('tutorialScroll')));
   });
   close.addEventListener('click', () => {
     mask.hidden = true;

@@ -501,10 +501,36 @@ h1 {
   text-decoration: none;
 }
 .opt-guide-link:hover { text-decoration: underline; }
-/* The guide gets long: let the modal scroll rather than grow past the screen. */
+/* The guide gets long: it scrolls inside its own host, with the native bar
+   hidden and the shared JS scrollbar (track + thumb) drawn on top. */
 .opt-modal {
-  max-height: 78vh;
+  overflow: hidden;
+}
+.opt-modal-scroll {
+  position: relative;
+  max-height: 62vh;
+  overflow: hidden;
+}
+.opt-guide {
+  max-height: 62vh;
   overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-width: none;         /* Firefox */
+  -ms-overflow-style: none;      /* legacy Edge */
+}
+.opt-guide::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.opt-guide::-webkit-scrollbar-button,
+.opt-guide::-webkit-scrollbar-track,
+.opt-guide::-webkit-scrollbar-thumb,
+.opt-guide::-webkit-scrollbar-corner {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 .opt-link-sep {
