@@ -94,16 +94,9 @@ const PROVIDER_MODEL_PRESETS = {
   ],
   custom: [],
   // Fallback list for a local server; when the server answers, the dropdown is
-  // rebuilt from what is actually installed (`ollama list`). Ordered by how
-  // well each one does on Adobe-Stock-style caption + keyword work.
-  local: [
-    'qwen3-vl:8b',
-    'qwen2.5vl:7b',
-    'qwen2.5vl:7b-q8_0',
-    'minicpm-v:latest',
-    'gemma3:12b',
-    'llava:latest',
-  ],
+  // rebuilt from what is actually installed (`ollama list`). qwen3-vl was
+  // dropped: it is a thinking model and took ~2x as long per asset.
+  local: ['qwen2.5vl:7b', 'qwen2.5vl:7b-q8_0', 'minicpm-v:latest', 'gemma3:12b', 'llava:latest'],
 };
 
 // Rebuild the model <select> options for the given provider. Presets come
@@ -142,6 +135,7 @@ async function rebuildModelOptions(provider) {
   sel.innerHTML = '';
   let presets = PROVIDER_MODEL_PRESETS[provider] || [];
   if (provider === 'local') {
+    // Prefer what the server actually has installed over the guessed presets.
     const live = await fetchLocalModels();
     if (live.length) presets = live;
   }
@@ -1104,13 +1098,13 @@ const GUIDE = {
     urlLabel: 'ollama.com',
     note: 'optGuideLocalNote',
     zh: [
-      '安装 Ollama，拉一个视觉模型：ollama pull qwen2.5vl:7b（约 6 GB）。',
+      '安装 Ollama，拉一个视觉模型：ollama pull qwen2.5vl:7b（约 6 GB；qwen2.5vl 出词快，qwen3-vl 是推理型模型，同样一张图约慢一倍）。',
       "放行扩展来源：PowerShell 执行一次 [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','User')，然后重启 Ollama。",
       '设置里提供商选「本地（Ollama / LM Studio）」→ Base URL 与 API Key 会自动填好 → 视觉模型下拉会自动列出本机已装模型 → 保存。',
       '提示：面板报「网络错误」时，多为加速器/代理拦截了 localhost，请把 localhost;127.0.0.1 加入不代理列表，或测试时暂时关闭。',
     ],
     en: [
-      'Install Ollama and pull a vision model: ollama pull qwen2.5vl:7b (~6 GB).',
+      'Install Ollama and pull a vision model: ollama pull qwen2.5vl:7b (~6 GB; qwen2.5vl is fast, while qwen3-vl is a thinking model and takes about twice as long per image).',
       "Allow the extension origin: run [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','User') once in PowerShell, then restart Ollama.",
       'In Settings pick "Local (Ollama / LM Studio)" — Base URL and API Key are prefilled, the model dropdown lists what is installed — then Save.',
       'If the panel reports a network error, a proxy/accelerator is usually intercepting localhost: add localhost;127.0.0.1 to its bypass list.',
@@ -1283,11 +1277,16 @@ async function load() {
     'panelDefaultState',
     'batchDeleteRedDots',
   ]);
-  // Provider select + module pointer.
-  const provider = stored.provider || DEFAULTS.provider;
-  currentProvider = provider;
+  // Provider select + module pointer. A stored provider that no longer exists
+  // (the removed "local" option) falls back to the default, and the storage is
+  // repaired, so neither this page nor the extension points at a dead slot.
   const sel = document.getElementById('providerSelect');
+  const requested = stored.provider || DEFAULTS.provider;
+  const known = sel ? Array.from(sel.options).map((o) => o.value) : [DEFAULTS.provider];
+  const provider = known.includes(requested) ? requested : DEFAULTS.provider;
+  currentProvider = provider;
   if (sel) sel.value = provider;
+  if (provider !== requested) await chrome.storage.local.set({ provider });
   // Per-provider slot into the three endpoint inputs.
   await applySlotToInputs(provider);
   // Scalar fields.

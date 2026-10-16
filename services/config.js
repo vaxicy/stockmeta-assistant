@@ -9,8 +9,8 @@ export const DEFAULT_PROVIDER_CONFIGS = {
   openai: { baseUrl: '', apiKey: '', model: 'gpt-4o-mini' },
   gemini: { baseUrl: '', apiKey: '', model: 'gemini-2.5-flash' },
   custom: { baseUrl: '', apiKey: '', model: '' },
-  // A local server (Ollama / LM Studio / vLLM) needs no real API key, so the
-  // slot ships with the endpoint and a placeholder key prefilled: picking this
+  // A local server (Ollama / LM Studio) needs no real API key, so the slot
+  // ships with the endpoint and a placeholder key prefilled: picking this
   // provider works immediately, without any "missing API key" detour.
   local: { baseUrl: 'http://localhost:11434/v1', apiKey: 'local', model: '' },
 };
@@ -18,8 +18,9 @@ export const DEFAULT_PROVIDER_CONFIGS = {
 const PROVIDER_KEYS = ['siliconflow', 'openai', 'gemini', 'custom', 'local'];
 
 // Anything pointing at the loopback interface is a local model server: it does
-// not authenticate, so an empty key must not block the request. The dummy value
-// keeps the Authorization header well-formed for servers that expect one.
+// not authenticate, so an empty key must not block the request (the dummy value
+// keeps the Authorization header well-formed), and such endpoints get the
+// /no_think hint (see aiProvider.js).
 const LOOPBACK_RE = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?(\/|$)/i;
 
 export function isLocalEndpoint(provider, baseUrl) {
@@ -139,7 +140,10 @@ export async function getConfig() {
     'panelDefaultState',
     'batchDeleteRedDots',
   ]);
-  const provider = stored.provider ?? DEFAULT_CONFIG.provider;
+  // A stored provider that no longer exists (the removed "local" option is the
+  // real case) must not break the whole config: fall back to the default one.
+  const requested = stored.provider ?? DEFAULT_CONFIG.provider;
+  const provider = PROVIDER_KEYS.includes(requested) ? requested : DEFAULT_CONFIG.provider;
   const providerConfigs = await getProviderConfigs(stored);
   // Apply legacy migration on top of the slot for the active provider.
   const legacy = migrateLegacy(stored);
