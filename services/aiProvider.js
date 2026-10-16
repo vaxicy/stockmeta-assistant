@@ -338,11 +338,16 @@ async function requestMetadata({
   }
   clearTimeout(timer);
 
-  if (res.status === 401 || res.status === 403) {
-    throw new Error('INVALID_API_KEY');
-  }
-  if (res.status === 404) {
-    throw new Error('MODEL_NOT_FOUND');
+  // Read the body before throwing: a local server explains itself here (Ollama
+  // answers 403 with an Origin/CORS message), and without it the panel would
+  // only say "invalid API key", which is misleading for a 403.
+  if (res.status === 401 || res.status === 403 || res.status === 404) {
+    let detail = '';
+    try {
+      detail = (await res.text()).slice(0, 500);
+    } catch (_) {}
+    if (detail) console.error('[StockMeta] HTTP ' + res.status + ' body:', detail);
+    throw new Error(res.status === 404 ? 'MODEL_NOT_FOUND' : 'INVALID_API_KEY');
   }
   if (!res.ok) {
     let detail = '';
