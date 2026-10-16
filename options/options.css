@@ -453,6 +453,60 @@ h1 {
 }
 .opt-tutorial-line a:hover { text-decoration: underline; }
 
+/* Setup guide: one section per provider, the active one highlighted. */
+.opt-guide-sec {
+  padding: 12px 0;
+  border-top: 1px solid #eef2f7;
+}
+.opt-guide-sec:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.opt-guide-sec h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.opt-guide-sec.is-active {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+}
+.opt-guide-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a73e8;
+  background: #e8f0fe;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+.opt-guide-note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.opt-guide-sec ol {
+  margin: 6px 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+}
+.opt-guide-sec li { margin-bottom: 4px; }
+.opt-guide-link {
+  font-size: 13px;
+  color: #1a73e8;
+  text-decoration: none;
+}
+.opt-guide-link:hover { text-decoration: underline; }
+/* The guide gets long: let the modal scroll rather than grow past the screen. */
+.opt-modal {
+  max-height: 78vh;
+  overflow-y: auto;
+}
+
 .opt-link-sep {
   color: #cbd5e1;
   margin: 0 6px;

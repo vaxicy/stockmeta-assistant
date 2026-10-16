@@ -45,6 +45,7 @@ const DEFAULTS = {
   batchIntervalMs: 2000,
   panelDefaultState: 'expanded',
   batchDeleteRedDots: false,
+  timeoutMs: 60000,
 };
 
 const PROVIDER_DEFAULTS = {
@@ -267,12 +268,13 @@ const OPT_I18N = {
     optTestModelWarn: 'Model ID was not found in the endpoint model list — if this model actually works, you can ignore this notice.',
     optTestFail: 'Connection failed:',
     optTestMissing: 'Please enter an API Key first.',
-    optTutorialLink: 'How to get an API Key?',
-    optTutorialTitle: 'How to get an API Key',
-    optTutorialStep1: 'Open the provider\'s API Keys page.',
-    optTutorialStep2: 'Create a new API Key and copy it.',
-    optTutorialStep3: 'Paste the key above and click Save, then Test Connection.',
-    optTutorialGo: 'Open API Keys page',
+    optTimeout: 'Request timeout (seconds)',
+    optTimeoutDesc: 'How long one request may take before it is given up. 60 s suits cloud APIs; a local model often needs more on the first call, because the weights have to be loaded into memory.',
+    optTutorialLink: 'Setup guide',
+    optTutorialTitle: 'Setup guide — every provider',
+    optGuideCurrent: 'In use',
+    optGuideOpen: 'Open page',
+    optGuideLocalNote: 'Applies to Ollama / LM Studio / vLLM on this machine.',
     optTutorialClose: 'Close',
     optSupportLink: 'Support the author',
     optFeedback: 'Feedback',
@@ -346,12 +348,13 @@ const OPT_I18N = {
     optTestModelWarn: '当前 Model ID 未在端点模型列表中匹配到，若该模型确实可用，可忽略此提示。',
     optTestFail: '连接失败：',
     optTestMissing: '请先填写 API Key。',
-    optTutorialLink: '如何获取 API Key？',
-    optTutorialTitle: '如何获取 API Key',
-    optTutorialStep1: '打开所选提供商的 API Keys 页面。',
-    optTutorialStep2: '创建一个新的 API Key 并复制。',
-    optTutorialStep3: '将 Key 粘贴到上方并点击保存，然后测试连接。',
-    optTutorialGo: '前往 API Keys 页面',
+    optTimeout: '请求超时（秒）',
+    optTimeoutDesc: '单次请求最多等多久。云端接口 60 秒够用；本地模型第一次调用要把权重加载进显存，建议调大到 180。',
+    optTutorialLink: '接入教程',
+    optTutorialTitle: '接入教程 - 所有提供商',
+    optGuideCurrent: '当前使用',
+    optGuideOpen: '打开页面',
+    optGuideLocalNote: '适用于本机的 Ollama / LM Studio / vLLM。',
     optTutorialClose: '关闭',
     optSupportLink: '支持作者',
     optFeedback: '反馈问题',
@@ -544,6 +547,7 @@ async function saveAllSettings() {
     batchIntervalMs: s.batchIntervalMs,
     panelDefaultState: s.panelDefaultState,
     batchDeleteRedDots: s.batchDeleteRedDots,
+    timeoutMs: s.timeoutMs,
   });
 }
 
@@ -579,6 +583,11 @@ function collectSettings() {
   const panelDefaultState = panelStateSel && panelStateSel.value === 'collapsed' ? 'collapsed' : 'expanded';
   const bdrd = document.getElementById('batchDeleteRedDots');
   const batchDeleteRedDots = !!(bdrd && bdrd.checked);
+  // Seconds in the UI, milliseconds in storage (the request layer works in ms).
+  const tsEl = document.getElementById('timeoutSec');
+  let timeoutSec = parseInt(tsEl ? tsEl.value : '', 10);
+  if (isNaN(timeoutSec)) timeoutSec = Math.round(DEFAULTS.timeoutMs / 1000);
+  timeoutSec = Math.max(30, Math.min(600, timeoutSec));
   return {
     provider,
     apiKey,
@@ -598,6 +607,7 @@ function collectSettings() {
     batchIntervalMs,
     panelDefaultState,
     batchDeleteRedDots,
+    timeoutMs: timeoutSec * 1000,
   };
 }
 
@@ -947,7 +957,7 @@ function initAutoSave() {
       autoSave();
     });
   }
-  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax', 'batchIntervalMs'];
+  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax', 'batchIntervalMs', 'timeoutSec'];
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
@@ -1019,14 +1029,139 @@ async function initLangSelect() {
   });
 }
 
+// ---- Setup guide ----
+// One section per provider, all rendered into the tutorial modal so a user can
+// compare them without flipping the settings around. Step texts live here
+// (zh/en) instead of the flat i18n table: they are long and used in one place.
+const GUIDE = {
+  siliconflow: {
+    label: 'optProviderSiliconFlow',
+    url: 'https://cloud.siliconflow.cn/account/ak',
+    urlLabel: 'cloud.siliconflow.cn',
+    zh: [
+      '注册并登录硅基流动（cloud.siliconflow.cn）。',
+      '左侧「API 密钥」→ 新建密钥 → 复制（形如 sk-...）。',
+      '把密钥粘到上方的 API Key；视觉模型选一个 VL 模型（如 Qwen/Qwen3-VL-8B-Instruct）；保存后点「测试连接」。',
+    ],
+    en: [
+      'Sign up / sign in at SiliconFlow (cloud.siliconflow.cn).',
+      'Open "API Keys" → create a key → copy it (it looks like sk-...).',
+      'Paste it into API Key above, pick a VL model (e.g. Qwen/Qwen3-VL-8B-Instruct), then Save and Test Connection.',
+    ],
+  },
+  openai: {
+    label: 'optProviderOpenAI',
+    url: 'https://platform.openai.com/api-keys',
+    urlLabel: 'platform.openai.com',
+    zh: [
+      '注册并登录 OpenAI 平台（需要支持的地区与支付方式）。',
+      'API keys → Create new secret key → 复制（密钥只显示一次）。',
+      '粘到上方 API Key；视觉模型选 gpt-4o-mini 等；保存后点「测试连接」。',
+    ],
+    en: [
+      'Sign up / sign in at platform.openai.com (needs a supported region and billing).',
+      'API keys → Create new secret key → copy it (it is shown only once).',
+      'Paste it above, pick gpt-4o-mini or similar, then Save and Test Connection.',
+    ],
+  },
+  gemini: {
+    label: 'optProviderGemini',
+    url: 'https://aistudio.google.com/app/apikey',
+    urlLabel: 'aistudio.google.com',
+    zh: [
+      '打开 Google AI Studio（有免费额度，按速率限制）。',
+      'Get API key → Create API key → 复制。',
+      '粘到上方 API Key；视觉模型选 gemini-2.5-flash；保存后点「测试连接」。',
+    ],
+    en: [
+      'Open Google AI Studio (free tier available, rate-limited).',
+      'Get API key → Create API key → copy it.',
+      'Paste it above, pick gemini-2.5-flash, then Save and Test Connection.',
+    ],
+  },
+  local: {
+    label: 'optProviderLocal',
+    url: 'https://ollama.com/download',
+    urlLabel: 'ollama.com',
+    note: 'optGuideLocalNote',
+    zh: [
+      '安装 Ollama，拉一个视觉模型：ollama pull qwen2.5vl:7b（约 6 GB）。',
+      "放行扩展来源：PowerShell 执行一次 [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','User')，然后重启 Ollama。",
+      '设置里提供商选「本地（Ollama / LM Studio）」→ Base URL 与 API Key 会自动填好 → 视觉模型下拉会自动列出本机已装模型 → 保存。',
+      '提示：面板报「网络错误」时，多为加速器/代理拦截了 localhost，请把 localhost;127.0.0.1 加入不代理列表，或测试时暂时关闭。',
+    ],
+    en: [
+      'Install Ollama and pull a vision model: ollama pull qwen2.5vl:7b (~6 GB).',
+      "Allow the extension origin: run [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','User') once in PowerShell, then restart Ollama.",
+      'In Settings pick "Local (Ollama / LM Studio)" — Base URL and API Key are prefilled, the model dropdown lists what is installed — then Save.',
+      'If the panel reports a network error, a proxy/accelerator is usually intercepting localhost: add localhost;127.0.0.1 to its bypass list.',
+    ],
+  },
+  custom: {
+    label: 'optProviderCustom',
+    zh: [
+      'Base URL 填任意 OpenAI 兼容端点（例如 https://your-host/v1）。',
+      '填该端点的 API Key 与视觉模型 ID。',
+      '保存后点「测试连接」，成功即可用。',
+    ],
+    en: [
+      'Set Base URL to any OpenAI-compatible endpoint (e.g. https://your-host/v1).',
+      'Fill in that endpoint\'s API Key and vision model ID.',
+      'Save, then Test Connection — if it succeeds you are done.',
+    ],
+  },
+};
+
+function renderGuide() {
+  const body = document.getElementById('tutorialBody');
+  if (!body) return;
+  const lang = currentLang() === 'zh' ? 'zh' : 'en';
+  const active = getProvider();
+  body.innerHTML = '';
+  Object.keys(GUIDE).forEach((key) => {
+    const g = GUIDE[key];
+    const sec = document.createElement('section');
+    sec.className = 'opt-guide-sec' + (key === active ? ' is-active' : '');
+    const head = document.createElement('h3');
+    head.textContent = msg(g.label);
+    if (key === active) {
+      const badge = document.createElement('span');
+      badge.className = 'opt-guide-badge';
+      badge.textContent = msg('optGuideCurrent');
+      head.appendChild(badge);
+    }
+    sec.appendChild(head);
+    if (g.note) {
+      const note = document.createElement('p');
+      note.className = 'opt-guide-note';
+      note.textContent = msg(g.note);
+      sec.appendChild(note);
+    }
+    const ol = document.createElement('ol');
+    (g[lang] || g.en).forEach((step) => {
+      const li = document.createElement('li');
+      li.textContent = step;
+      ol.appendChild(li);
+    });
+    sec.appendChild(ol);
+    if (g.url) {
+      const a = document.createElement('a');
+      a.className = 'opt-guide-link';
+      a.href = g.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = msg('optGuideOpen') + ' — ' + g.urlLabel;
+      sec.appendChild(a);
+    }
+    body.appendChild(sec);
+  });
+}
+
 function updateTutorialLink() {
-  const provider = getProvider();
   const link = document.getElementById('tutorialLink');
   if (link) link.textContent = msg('optTutorialLink');
   const title = document.getElementById('tutorialTitle');
   if (title) title.textContent = msg('optTutorialTitle');
-  const go = document.getElementById('tutorialGo');
-  if (go) go.textContent = msg('optTutorialGo');
 }
 
 function initTutorial() {
@@ -1037,6 +1172,7 @@ function initTutorial() {
   link.addEventListener('click', (e) => {
     e.preventDefault();
     updateTutorialLink();
+    renderGuide();
     mask.hidden = false;
   });
   close.addEventListener('click', () => {
@@ -1164,6 +1300,8 @@ async function load() {
   if (pds) pds.value = stored.panelDefaultState === 'collapsed' ? 'collapsed' : 'expanded';
   const bdrd = document.getElementById('batchDeleteRedDots');
   if (bdrd) bdrd.checked = !!stored.batchDeleteRedDots;
+  const ts = document.getElementById('timeoutSec');
+  if (ts) ts.value = Math.round((stored.timeoutMs ?? DEFAULTS.timeoutMs) / 1000);
   // Default category select: first option is "AI auto-detect", the rest are the
   // fixed Adobe Stock categories imported from the shared constant.
   const dcSel = document.getElementById('defaultCategory');

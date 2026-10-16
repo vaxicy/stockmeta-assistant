@@ -106,6 +106,12 @@
       <input type="text" id="modelCustom" class="opt-model-custom is-hidden" placeholder="Qwen/Qwen3-Omni-30B-A3B-Captioner" autocomplete="off" />
     </section>
 
+    <section class="opt-field">
+      <label for="timeoutSec" data-i18n="optTimeout">Request timeout (seconds)</label>
+      <input type="number" id="timeoutSec" min="30" max="600" step="10" />
+      <p class="opt-hint" data-i18n="optTimeoutDesc">How long one request may take before it is given up. 60 s suits cloud APIs; a local model often needs more on the first call, because the weights have to be loaded into memory.</p>
+    </section>
+
     <div class="opt-inline-actions">
       <button id="testBtn" class="opt-btn" data-i18n="optTest">Test Connection</button>
       <p id="testStatus" class="opt-status opt-status-inline" role="status" aria-live="polite"></p>
@@ -266,11 +272,7 @@
         <h2 id="tutorialTitle" data-i18n="optTutorialTitle">How to get an API Key</h2>
         <button class="opt-modal-close" id="tutorialClose" aria-label="Close">×</button>
       </div>
-      <ol class="opt-modal-steps">
-        <li data-i18n="optTutorialStep1">Open the provider's API Keys page.</li>
-        <li data-i18n="optTutorialStep2">Create a new API Key and copy it.</li>
-        <li data-i18n="optTutorialStep3">Paste the key above and click Save, then Test Connection.</li>
-      </ol>
+      <div class="opt-guide" id="tutorialBody"></div>
     </div>
   </div>
 
