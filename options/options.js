@@ -1181,8 +1181,7 @@ function initTutorial() {
     updateTutorialLink();
     renderGuide();
     mask.hidden = false;
-    // Native scrollbar is hidden by CSS; attach the JS one once layout is ready.
-    requestAnimationFrame(() => initCustomScrollbar(document.getElementById('tutorialScroll')));
+    // No scrollbar at all here (native or drawn): the guide just scrolls.
   });
   close.addEventListener('click', () => {
     mask.hidden = true;

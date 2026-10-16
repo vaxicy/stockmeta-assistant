@@ -501,8 +501,8 @@ h1 {
   text-decoration: none;
 }
 .opt-guide-link:hover { text-decoration: underline; }
-/* The guide gets long: it scrolls inside its own host, with the native bar
-   hidden and the shared JS scrollbar (track + thumb) drawn on top. */
+/* The guide gets long: it scrolls inside its own host with every scrollbar
+   hidden (no native bar, no drawn bar) — the wheel/drag still scrolls it. */
 .opt-modal {
   overflow: hidden;
 }
@@ -514,7 +514,6 @@ h1 {
 .opt-guide {
   max-height: 62vh;
   overflow-y: auto;
-  padding-right: 10px;
   scrollbar-width: none;         /* Firefox */
   -ms-overflow-style: none;      /* legacy Edge */
 }
