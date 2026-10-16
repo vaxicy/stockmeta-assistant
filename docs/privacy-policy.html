@@ -41,14 +41,14 @@
   <!-- ===================== 中文 ===================== -->
   <div class="content content-zh">
     <h1>StockMeta Assistant 隐私政策</h1>
-    <div class="sub">生效日期 / Effective: 2026-09-04 ・ 开发者 / Developer: vaxicy</div>
+    <div class="sub">生效日期 / Effective: 2026-10-17 ・ 开发者 / Developer: vaxicy</div>
 
     <p><strong>StockMeta Assistant</strong> 是一款 Chrome 扩展，帮助 Adobe Stock 供稿人在后台页面基于当前选中的素材图片生成英文标题与关键词，并一键填入编辑表单。本政策说明扩展如何处理数据。</p>
 
     <h2>1. 我们处理的数据</h2>
     <p>本扩展<strong>不收集任何个人身份信息</strong>，也不向开发者服务器上传任何数据。涉及的数据仅包括：</p>
     <ul>
-      <li><strong>素材图片</strong>：您在 Adobe Stock 后台选中的素材缩略图。扩展会将其缩放（最长边 ≤ 1024px）并转换为 JPEG（质量 0.82）的 base64 数据，<strong>仅用于发送给您配置的 AI 服务商</strong>以生成标题/关键词。图片<strong>不会</strong>发送给开发者。</li>
+      <li><strong>素材图片</strong>：您在 Adobe Stock 后台选中的素材缩略图。扩展会将其缩放（最长边 ≤ 1024px）并转换为 JPEG（质量 0.82）的 base64 数据，<strong>仅用于发送给您配置的 AI 服务商</strong>以生成标题/关键词。若您选择「本地（Ollama / LM Studio）」提供商，图片只会发送到<strong>您本机运行的模型服务</strong>，不会离开本机。图片<strong>不会</strong>发送给开发者。</li>
       <li><strong>API Key 与设置</strong>：您填写的 AI 提供商、API Key、模型 ID、Base URL、关键词数量、界面语言，<strong>仅存储在您本地</strong>的 <code>chrome.storage.local</code>，不会上传给开发者。</li>
     </ul>
 
@@ -66,6 +66,7 @@
       <li>OpenAI（<code>openai.com</code>）</li>
       <li>Google Gemini（<code>generativelanguage.googleapis.com</code>）</li>
       <li>任何您自定义的 OpenAI 兼容端点</li>
+      <li>您本机运行的模型服务（如 <code>http://localhost:11434</code>）：仅在您选择「本地（Ollama / LM Studio）」提供商时使用，图片不会离开本机，也不属于第三方</li>
     </ul>
     <p>请参考上述第三方各自的隐私政策，了解它们如何处理您发送的图片与 Key。</p>
 
@@ -89,14 +90,14 @@
   <!-- ===================== English ===================== -->
   <div class="content content-en">
     <h1>StockMeta Assistant — Privacy Policy</h1>
-    <div class="sub">Effective: 2026-09-04 ・ Developer: vaxicy</div>
+    <div class="sub">Effective: 2026-10-17 ・ Developer: vaxicy</div>
 
     <p><strong>StockMeta Assistant</strong> is a Chrome extension that helps Adobe Stock contributors generate English titles and keywords from the currently selected asset image on the contributor dashboard, and fill them into the edit form with one click. This policy explains how the extension handles data.</p>
 
     <h2>1. Data we handle</h2>
     <p>The extension <strong>does not collect any personally identifiable information</strong> and does not upload any data to the developer's servers. Data involved is limited to:</p>
     <ul>
-      <li><strong>Asset image</strong>: the thumbnail of the asset you select on Adobe Stock. It is resized (longest edge ≤ 1024px) and converted to a base64 JPEG (quality 0.82), and is <strong>only sent to the AI provider you configure</strong> to generate titles/keywords. The image is <strong>never sent to the developer</strong>.</li>
+      <li><strong>Asset image</strong>: the thumbnail of the asset you select on Adobe Stock. It is resized (longest edge ≤ 1024px) and converted to a base64 JPEG (quality 0.82), and is <strong>only sent to the AI provider you configure</strong> to generate titles/keywords. If you pick the <strong>Local (Ollama / LM Studio)</strong> provider, it is sent only to <strong>the model server running on your own machine</strong> and never leaves your device. The image is <strong>never sent to the developer</strong>.</li>
       <li><strong>API Key &amp; settings</strong>: the AI provider, API Key, model ID, Base URL, keyword count, and UI language you enter are <strong>stored only on your local device</strong> via <code>chrome.storage.local</code> and are never uploaded to the developer.</li>
     </ul>
 
@@ -114,6 +115,7 @@
       <li>OpenAI (<code>openai.com</code>)</li>
       <li>Google Gemini (<code>generativelanguage.googleapis.com</code>)</li>
       <li>Any custom OpenAI-compatible endpoint you specify</li>
+      <li>A model server running on your own machine (e.g. <code>http://localhost:11434</code>): used only when you pick the <strong>Local (Ollama / LM Studio)</strong> provider, in which case the image never leaves your device and no third party is involved</li>
     </ul>
     <p>Please refer to those third parties' own privacy policies for how they handle the image and key you send.</p>
 
