@@ -1,5 +1,6 @@
 // services/aiProvider.js
 // Generic OpenAI-compatible chat-completions caller.
+import { isLocalEndpoint } from './config.js';
 // Supports SiliconFlow, OpenAI, Gemini (via its OpenAI-compatibility layer),
 // or any custom OpenAI-compatible endpoint.
 
@@ -302,11 +303,16 @@ async function requestMetadata({
 }) {
   const endpoint = getEndpoint(provider, baseUrl) + '/chat/completions';
 
+  // Local models are frequently "thinking" ones (Qwen3-VL): the reasoning pass
+  // can double the wall-clock time for the same answer (measured 56.6s -> 28.1s
+  // on an RTX 3080 with qwen3-vl:8b, output tokens 2060 -> 491). Qwen3 honours
+  // the /no_think soft switch; other models just ignore the extra token.
+  const text = isLocalEndpoint(provider, baseUrl) ? '/no_think ' + prompt : prompt;
   const messages = [
     {
       role: 'user',
       content: [
-        { type: 'text', text: prompt },
+        { type: 'text', text },
         { type: 'image_url', image_url: { url: imageBase64 } },
       ],
     },
