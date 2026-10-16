@@ -52,6 +52,9 @@ const PROVIDER_DEFAULTS = {
   openai: { model: 'gpt-4o-mini', url: 'https://api.openai.com/v1' },
   gemini: { model: 'gemini-2.5-flash', url: 'https://generativelanguage.googleapis.com/v1beta/openai' },
   custom: { model: '', url: '' },
+  // A local server needs no key, so the endpoint is prefilled here: picking
+  // this provider works without typing anything except the model name.
+  local: { model: '', url: 'http://localhost:11434/v1' },
 };
 
 // Per-provider vision model presets shown in the model dropdown. The sentinel
@@ -89,6 +92,7 @@ const PROVIDER_MODEL_PRESETS = {
     'gemini-3-pro-preview',
   ],
   custom: [],
+  local: [],
 };
 
 // Rebuild the model <select> options for the given provider. Presets come
@@ -100,9 +104,15 @@ function rebuildModelOptions(provider) {
   const customInput = document.getElementById('modelCustom');
   const sel = document.getElementById('modelSelect');
   if (!sel) return;
-  if (provider === 'custom') {
+  if (provider === 'custom' || provider === 'local') {
     if (selWrap) selWrap.classList.add('is-hidden');
-    if (customInput) customInput.classList.remove('is-hidden');
+    if (customInput) {
+      customInput.placeholder =
+        provider === 'local'
+          ? 'e.g. qwen2.5vl:7b  (the name shown by `ollama list`)'
+          : 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
+      customInput.classList.remove('is-hidden');
+    }
     return;
   }
   if (selWrap) selWrap.classList.remove('is-hidden');
@@ -130,11 +140,14 @@ function restoreModelSelection(model) {
   const customInput = document.getElementById('modelCustom');
   if (!sel || !customInput) return;
   const presets = PROVIDER_MODEL_PRESETS[currentProvider] || [];
-  if (currentProvider === 'custom') {
-    // Custom provider: no dropdown, always show the manual box.
+  if (currentProvider === 'custom' || currentProvider === 'local') {
+    // Manual endpoint: no dropdown, always show the manual box.
     if (selWrap) selWrap.classList.add('is-hidden');
     customInput.classList.remove('is-hidden');
-    customInput.placeholder = 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
+    customInput.placeholder =
+      currentProvider === 'local'
+        ? 'e.g. qwen2.5vl:7b  (the name shown by `ollama list`)'
+        : 'your-model-id, e.g. gpt-4o / Qwen/Qwen3-VL-8B-Instruct';
     customInput.value = model || '';
     // Keep the hidden dropdown in sync so it never holds a stale preset model.
     if (sel) sel.value = CUSTOM_MODEL_VALUE;
@@ -161,7 +174,7 @@ function readModelValue() {
   // When the custom provider is active, the dropdown is hidden and may still
   // hold the previously-selected preset model from another provider. Reading
   // it would leak that model into the custom slot. Always read the manual box.
-  if (currentProvider === 'custom') {
+  if (currentProvider === 'custom' || currentProvider === 'local') {
     return (customInput ? customInput.value.trim() : '');
   }
   if (!sel) return '';
@@ -197,6 +210,7 @@ const OPT_I18N = {
     optProviderSiliconFlow: 'SiliconFlow',
     optProviderOpenAI: 'OpenAI',
     optProviderGemini: 'Gemini',
+    optProviderLocal: 'Local (Ollama / LM Studio)',
     optProviderCustom: 'Custom (OpenAI-compatible)',
     optBaseUrl: 'Base URL',
     optBaseUrlDesc: 'OpenAI-compatible endpoint, e.g. https://api.openai.com/v1',
@@ -275,6 +289,7 @@ const OPT_I18N = {
     optProviderSiliconFlow: 'SiliconFlow',
     optProviderOpenAI: 'OpenAI',
     optProviderGemini: 'Gemini',
+    optProviderLocal: '本地（Ollama / LM Studio）',
     optProviderCustom: '自定义（OpenAI 兼容）',
     optBaseUrl: 'Base URL',
     optBaseUrlDesc: 'OpenAI 兼容的 endpoint，例如 https://api.openai.com/v1',

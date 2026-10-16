@@ -101,10 +101,13 @@ function normalizeBaseUrl(input) {
 
 export function getEndpoint(provider, baseUrl) {
   const key = String(provider || 'siliconflow').toLowerCase();
-  if (key === 'custom' && baseUrl) {
-    return normalizeBaseUrl(baseUrl);
-  }
-  return DEFAULT_ENDPOINTS[key] || DEFAULT_ENDPOINTS.siliconflow;
+  const builtin = DEFAULT_ENDPOINTS[key];
+  if (builtin) return builtin;
+  // Anything without a built-in endpoint (custom, local, …) is defined by its
+  // own baseUrl. Falling back to a cloud host here would silently send local
+  // requests to SiliconFlow, so only use the last-resort default when the user
+  // supplied no endpoint at all.
+  return baseUrl ? normalizeBaseUrl(baseUrl) : DEFAULT_ENDPOINTS.siliconflow;
 }
 
 export function getDefaultModel(provider) {

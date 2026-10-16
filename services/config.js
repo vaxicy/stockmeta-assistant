@@ -9,9 +9,22 @@ export const DEFAULT_PROVIDER_CONFIGS = {
   openai: { baseUrl: '', apiKey: '', model: 'gpt-4o-mini' },
   gemini: { baseUrl: '', apiKey: '', model: 'gemini-2.5-flash' },
   custom: { baseUrl: '', apiKey: '', model: '' },
+  // A local server (Ollama / LM Studio / vLLM) needs no real API key, so the
+  // slot ships with the endpoint and a placeholder key prefilled: picking this
+  // provider works immediately, without any "missing API key" detour.
+  local: { baseUrl: 'http://localhost:11434/v1', apiKey: 'local', model: '' },
 };
 
-const PROVIDER_KEYS = ['siliconflow', 'openai', 'gemini', 'custom'];
+const PROVIDER_KEYS = ['siliconflow', 'openai', 'gemini', 'custom', 'local'];
+
+// Anything pointing at the loopback interface is a local model server: it does
+// not authenticate, so an empty key must not block the request. The dummy value
+// keeps the Authorization header well-formed for servers that expect one.
+const LOOPBACK_RE = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?(\/|$)/i;
+
+export function isLocalEndpoint(provider, baseUrl) {
+  return provider === 'local' || LOOPBACK_RE.test(String(baseUrl || ''));
+}
 
 export async function getProviderConfigs(stored) {
   const raw = (stored && stored.providerConfigs) || null;
@@ -134,6 +147,10 @@ export async function getConfig() {
     providerConfigs[provider] = { ...providerConfigs[provider], ...legacy[provider] };
   }
   const slot = providerConfigs[provider] || DEFAULT_PROVIDER_CONFIGS[provider];
+  // Local servers authenticate nothing, so never let an empty key block them.
+  if (!slot.apiKey && isLocalEndpoint(provider, slot.baseUrl)) {
+    slot.apiKey = 'local';
+  }
   return {
     provider,
     providerConfigs,
