@@ -143,10 +143,32 @@ window.StockMetaDebug.findKeywordInput()  // 关键词输入框
 
 ---
 
+## 🖥️ 本地模型（Ollama）/ Local Models (Ollama)
+
+不想把图片发给云端？扩展支持接入本机的 **Ollama / LM Studio / vLLM**（任何 OpenAI 兼容端点）。
+
+一次性准备（装完即永久生效）：
+
+1. 安装 [Ollama](https://ollama.com)，拉取一个视觉模型：`ollama pull qwen2.5vl:7b`
+2. 放行扩展的请求来源 —— PowerShell 执行一次，然后重启 Ollama：
+
+   ```powershell
+   [Environment]::SetEnvironmentVariable('OLLAMA_ORIGINS','*','User')
+   ```
+
+   > Ollama 默认只允许 localhost 来源；扩展请求带 `chrome-extension://` 来源，会被 403 拒绝（表现为「连接失败 / 无效密钥」）。
+3. 扩展设置 → AI 服务 → 提供商选「**本地（Ollama / LM Studio）**」→ Base URL 与 API Key 自动填好（`http://localhost:11434/v1` / `local`）→ 视觉模型下拉会**自动列出本机已装的模型** → 保存
+
+之后 Ollama 默认开机自启，面板即点即用。
+
+> 若面板报「网络错误」：多为加速器/代理拦截了 localhost —— 在加速器里把 `localhost;127.0.0.1` 加入不代理列表，或测试时暂时关闭。
+
+---
+
 ## ⚠️ 已知限制 / Notes & Limitations
 
 - Adobe Stock 的 DOM 可能变化；Content Script 使用多套候选选择器，选择器失效时优雅降级（报错而非崩溃）。
-- 视觉模型须为支持 `image_url` 字段的 SiliconFlow 模型。
+- 视觉模型须为支持 OpenAI `image_url` 字段的多模态模型（云端 SiliconFlow / OpenAI / Gemini，或本地 Ollama 等）。
 - 本扩展**不会**向 Adobe Stock 提交素材，仅负责生成与填写元数据。
 - 若模型对部分图片（纯色、抽象、极简）返回空内容，会提示 `EMPTY_RESPONSE`，可换图重试。
 
