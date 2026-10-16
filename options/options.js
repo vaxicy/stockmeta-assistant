@@ -972,7 +972,8 @@ function initAutoSave() {
       autoSave();
     });
   }
-  const debounced = ['apiKey', 'baseUrl', 'keywordCount', 'keywordMin', 'keywordMax', 'batchIntervalMs', 'timeoutSec'];
+  // modelCustom is here too: typing a manual model id must persist as well.
+  const debounced = ['apiKey', 'baseUrl', 'modelCustom', 'keywordCount', 'keywordMin', 'keywordMax', 'batchIntervalMs', 'timeoutSec'];
   debounced.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autoSave);
@@ -1003,7 +1004,10 @@ function initAutoSave() {
       persistSlot().then(() => setStatus(msg('optSaved'), 'ok'));
     });
   }
-  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'panelDefaultState', 'batchDeleteRedDots'];
+  // modelSelect matters: picking a model in the dropdown used to stay unsaved,
+  // so the extension kept sending the previous (or an empty) model id and the
+  // provider answered "model not found".
+  const immediate = ['autoCheckAI', 'autoSaveAfterApply', 'autoApplyAfterGenerate', 'batchProcess', 'autoSelectCategory', 'defaultCategory', 'defaultFileType', 'panelDefaultState', 'batchDeleteRedDots', 'modelSelect'];
   immediate.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', autoSave);

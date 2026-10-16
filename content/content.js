@@ -205,6 +205,9 @@
       MISSING_API_KEY: 'errMissingKey',
       INVALID_API_KEY: 'errMissingKey',
       MODEL_NOT_FOUND: 'errModel',
+      // Provider answered 404 because the MODEL ID itself was empty: that is a
+      // settings problem, not a "the model does not exist" problem.
+      MISSING_MODEL: 'errNoModel',
       NETWORK_ERROR: 'errNet',
       TIMEOUT: 'errTimeout',
       MISSING_IMAGE: 'errImage',
@@ -350,6 +353,7 @@
         code === 'MISSING_API_KEY' ||
         code === 'INVALID_API_KEY' ||
         code === 'MODEL_NOT_FOUND' ||
+        code === 'MISSING_MODEL' ||
         code === 'MISSING_IMAGE'
       ) {
         return null;

@@ -200,6 +200,7 @@ function isRetryableError(code) {
   return !(
     c === 'MISSING_API_KEY' ||
     c === 'MISSING_IMAGE' ||
+    c === 'MISSING_MODEL' ||
     c === 'INVALID_API_KEY' ||
     c === 'MODEL_NOT_FOUND'
   );
@@ -527,6 +528,12 @@ export async function generateMetadata({
 } = {}) {
   if (!apiKey) {
     throw new Error('MISSING_API_KEY');
+  }
+  // An empty model id reaches the endpoint as model:"" and comes back as a 404
+  // "model not found", which reads like the model is missing from the server.
+  // Report the real cause instead.
+  if (!model || !String(model).trim()) {
+    throw new Error('MISSING_MODEL');
   }
   if (!imageBase64) {
     throw new Error('MISSING_IMAGE');
