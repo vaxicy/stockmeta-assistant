@@ -39,7 +39,7 @@ setTimeout(() => {
   getConfigCached();
 }, 800);
 
-function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0, defaultFileType = 'auto') {
+function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0, defaultFileType = 'auto', local = false) {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
   // Range mode accepts anything between min and max instead of forcing an exact
   // count, which VLMs frequently under-deliver. That keeps a single API call
@@ -52,6 +52,39 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
   } else {
     keywordLine = `Exactly ${n} English keywords`;
   }
+
+  // Local 7B models write bare labels ("Rambutan Fruit") when asked for a
+  // concise title plus a large keyword list in one shot. Borrow PinMate's
+  // structure: let the model write an internal visual summary first, then use
+  // that context to produce a descriptive Adobe title. The summary is parsed
+  // and discarded by the caller; the UI never sees it.
+  if (local && mode === 'all') {
+    const parts = [
+      'Return ONLY compact JSON on a single line in this exact key order:',
+      '{"visualSummary":"...","title":"...","keywords":["...","..."]}',
+      '',
+      '1. visualSummary: 1-2 sentences describing only the visible subject, colours, texture, count, state, arrangement and background/isolation. This is internal context for writing the title.',
+      '2. title: ONE descriptive English Adobe Stock title of 45-70 characters (7-10 words). Name the main subject plus clearly visible details such as colour, texture, shape, state, count, arrangement and background/isolation. It must be specific and natural for stock-photo search, never a bare label like "Rambutan Fruit", and never marketing copy.',
+      `3. keywords: ${keywordLine} as a JSON array. Never a string, never prose.`,
+    ];
+    if (defaultCategory && defaultCategory !== 'auto') {
+      parts.push(`4. The category is fixed to "${defaultCategory}" by the user — do NOT output a "category" field.`);
+    } else {
+      parts.push(`4. Pick the single best Adobe Stock category for this image from this exact list: ${ADOBE_CATEGORIES.join(', ')}. If unsure, use "Graphic Resources".`);
+    }
+    if (defaultFileType && defaultFileType !== 'auto') {
+      parts.push(`5. The file type is fixed to "${defaultFileType}" by the user — do NOT output a "fileType" field.`);
+    } else {
+      parts.push('5. Pick the file type: exactly "Photos" or "Illustrations". If unsure, use "Photos".');
+    }
+    parts.push('Rules:');
+    parts.push('- Describe only visible content. Do not invent brands, places, events, or invisible details.');
+    parts.push('- All output must be in English. Do not include Chinese or any non-English words.');
+    parts.push('- "keywords" MUST be a JSON array; each entry is lowercase plain English, 1-4 words, no numbering, no bullets, no trailing punctuation.');
+    parts.push('- Do NOT output Markdown. Return ONLY the JSON object, with no code fence and no text before or after it.');
+    return parts.join('\n');
+  }
+
   const parts = [
     'You are helping a contributor upload an asset to Adobe Stock.',
     'Look at the provided image and describe ONLY what is visibly present.',
@@ -144,6 +177,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? 'keywords'
             : 'all';
         console.log('[StockMeta] generateMetadata model:', cfg.model, 'mode:', mode);
+        const localEndpoint = isLocalEndpoint(cfg.provider, cfg.baseUrl);
         const ov = await chrome.storage.local.get(['defaultCategory', 'defaultFileType']);
         const categoryOverride = ov.defaultCategory || 'auto';
         const fileTypeOverride = ov.defaultFileType || 'auto';
@@ -157,7 +191,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride),
+          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride, localEndpoint),
           timeoutMs: cfg.timeoutMs,
           attempts: 3,
           // Judge the answer against what the USER asked for, not just Adobe's

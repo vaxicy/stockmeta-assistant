@@ -15,6 +15,16 @@ const DEFAULT_ENDPOINTS = {
 // Reject keywords containing CJK, Hiragana/Katakana, Hangul, Arabic, etc.
 const NON_ENGLISH_RE = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af\u0600-\u06ff\u0750-\u077f]/;
 
+// Local 7B models write bare labels ("Rambutan Fruit") unless given a role and
+// a strict output contract. Cloud Captioner-style models already behave well,
+// so this is intentionally only used for local endpoints.
+const LOCAL_METADATA_SYSTEM_PROMPT = [
+  'You are an expert Adobe Stock metadata writer.',
+  'Look only at the clearly visible image content.',
+  'Write specific, search-friendly stock metadata; never return bare labels or marketing copy.',
+  'Return STRICT JSON only. No Markdown, no code fences, no prose outside JSON.',
+].join('\n');
+
 function isEnglishKeyword(k) {
   return k && typeof k === 'string' && !NON_ENGLISH_RE.test(k);
 }
@@ -296,6 +306,7 @@ async function requestMetadata({
   model,
   imageBase64,
   prompt,
+  systemPrompt = '',
   timeoutMs = 60000,
   // Without a cap, qwen2.5vl on Ollama can keep generating until the 4096-token
   // context is full (measured 2651 output tokens / 41.7s for a 30-keyword job).
@@ -315,7 +326,11 @@ async function requestMetadata({
   // the /no_think soft switch; qwen2.5vl also benefits (8.45s -> 3.93s with the
   // same cap). Cloud providers keep the original prompt untouched.
   const text = local ? '/no_think ' + prompt : prompt;
-  const messages = [
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  messages.push(
     {
       role: 'user',
       content: [
@@ -323,7 +338,7 @@ async function requestMetadata({
         { type: 'image_url', image_url: { url: imageBase64 } },
       ],
     },
-  ];
+  );
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -632,8 +647,9 @@ export async function generateMetadata({
   attempts = 3,
   minKeywords = MIN_KEYWORDS,
   need = { title: true, keywords: true },
-  // Kept as an option for callers that need a different budget; 256 is the
-  // measured sweet spot for local qwen2.5vl:7b (8-9.5s for title + 30 keywords).
+  // Kept as an option for callers that need a different budget. Local metadata
+  // generation gets a higher floor because it now also writes the internal
+  // visualSummary and must not truncate the keyword array.
   maxTokens = 256,
 } = {}) {
   if (!apiKey) {
@@ -651,6 +667,13 @@ export async function generateMetadata({
   const total = Math.max(1, Math.min(5, Number(attempts) || 1));
   const needTitle = need.title !== false;
   const needKeywords = need.keywords !== false;
+  // Local one-shot metadata now writes an internal visualSummary before the
+  // title/keywords, so the older 256-token cap can truncate mid-JSON when the
+  // user allows many keywords. Give local requests a larger bounded budget.
+  const local = isLocalEndpoint(provider, baseUrl);
+  const effectiveMaxTokens = local
+    ? Math.max(512, Number(maxTokens) || 0)
+    : maxTokens;
 
   let best = null;
   let lastError = null;
@@ -664,8 +687,9 @@ export async function generateMetadata({
         model,
         imageBase64,
         prompt: attempt === 1 ? prompt : prompt + retrySuffix(needKeywords, minKeywords),
+        systemPrompt: local ? LOCAL_METADATA_SYSTEM_PROMPT : '',
         timeoutMs,
-        maxTokens,
+        maxTokens: effectiveMaxTokens,
         useJsonMode: attempt === 1,
       });
       if (!best || resultScore(result) > resultScore(best)) best = result;
