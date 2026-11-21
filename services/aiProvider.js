@@ -297,17 +297,24 @@ async function requestMetadata({
   imageBase64,
   prompt,
   timeoutMs = 60000,
+  // Without a cap, qwen2.5vl on Ollama can keep generating until the 4096-token
+  // context is full (measured 2651 output tokens / 41.7s for a 30-keyword job).
+  // Measured on the real extension path: 256 -> 8-9.5s / 31 keywords,
+  // 384 -> 12-13s, 512 -> 17s. Keep the answer tightly bounded.
+  maxTokens = 256,
   // Some gateways reject response_format, so only the first attempt uses it and
   // a rejection cannot burn every remaining attempt.
   useJsonMode = true,
 }) {
   const endpoint = getEndpoint(provider, baseUrl) + '/chat/completions';
+  const local = isLocalEndpoint(provider, baseUrl);
 
   // Local models are frequently "thinking" ones (Qwen3-VL): the reasoning pass
   // can double the wall-clock time for the same answer (measured 56.6s -> 28.1s
   // on an RTX 3080 with qwen3-vl:8b, output tokens 2060 -> 491). Qwen3 honours
-  // the /no_think soft switch; other models just ignore the extra token.
-  const text = isLocalEndpoint(provider, baseUrl) ? '/no_think ' + prompt : prompt;
+  // the /no_think soft switch; qwen2.5vl also benefits (8.45s -> 3.93s with the
+  // same cap). Cloud providers keep the original prompt untouched.
+  const text = local ? '/no_think ' + prompt : prompt;
   const messages = [
     {
       role: 'user',
@@ -329,11 +336,16 @@ async function requestMetadata({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(
-        useJsonMode
-          ? { model, messages, stream: false, response_format: { type: 'json_object' } }
-          : { model, messages, stream: false }
-      ),
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        // Ollama's OpenAI-compatible endpoint maps max_tokens -> num_predict.
+        // Cloud providers support the same field, so no endpoint-specific split
+        // is needed and every answer stays bounded.
+        max_tokens: Math.max(64, Math.min(2048, Number(maxTokens) || 512)),
+        ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
+      }),
       signal: controller.signal,
     });
   } catch (err) {
@@ -531,6 +543,9 @@ export async function generateMetadata({
   attempts = 3,
   minKeywords = MIN_KEYWORDS,
   need = { title: true, keywords: true },
+  // Kept as an option for callers that need a different budget; 256 is the
+  // measured sweet spot for local qwen2.5vl:7b (8-9.5s for title + 30 keywords).
+  maxTokens = 256,
 } = {}) {
   if (!apiKey) {
     throw new Error('MISSING_API_KEY');
@@ -561,6 +576,7 @@ export async function generateMetadata({
         imageBase64,
         prompt: attempt === 1 ? prompt : prompt + retrySuffix(needKeywords, minKeywords),
         timeoutMs,
+        maxTokens,
         useJsonMode: attempt === 1,
       });
       if (!best || resultScore(result) > resultScore(best)) best = result;
