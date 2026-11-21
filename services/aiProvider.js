@@ -510,12 +510,15 @@ function resultScore(r) {
 }
 
 // A local 7B model answers "White Mushroom" when asked for a "concise" title.
-// Asking only for the title, with an explicit 40-70 character noun-phrase
-// contract, produces Adobe-like captions in ~0.2-1.2s (measured on qwen2.5vl).
+// Asking only for the title, with an explicit framing + colour contract,
+// produces Adobe-like captions in ~0.3-1.2s (measured on qwen2.5vl).
 const TITLE_REFINEMENT_PROMPT = [
   'Generate ONLY one Adobe Stock title for the image.',
   '',
-  'Write a descriptive English noun phrase of 40-70 characters (about 6-10 words). Include the main subject plus visible details such as color, shape, state, count, arrangement, and setting/isolation when relevant. Make it specific and natural for stock-photo search, not a bare label and not marketing copy.',
+  'Length: 45-70 characters, 7-11 words. Make it a descriptive noun phrase.',
+  'Start with framing when it is true (Close-Up / Isolated / Studio Shot), then the main subject, then its colour and one or two clearly visible details. Include a setting or background only when visible.',
+  'Good style: "Isolated Close-Up of a Vibrant Purple Iris Flower with Yellow Edges".',
+  'Do not return a bare label. Do not use marketing copy.',
   '',
   'Describe only visible content. Do not invent brands, places, events, or invisible details.',
   'All output must be in English. Do not include Chinese or any non-English words.',
@@ -523,16 +526,26 @@ const TITLE_REFINEMENT_PROMPT = [
   'JSON format: {"title":"..."}',
 ].join('\n');
 
+function titleWordCount(value) {
+  return String(value || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
 function cleanRefinedTitle(value) {
   if (typeof value !== 'string') return '';
   const t = value.trim().replace(/\s+/g, ' ');
-  // Adobe's title field is capped at 70 characters; keep the refinement only
-  // when it is genuinely more descriptive, still English, and safe to apply.
+  // Anything outside printed ASCII would break the English-only Adobe field.
   if (t.length < 24 || t.length > 70) return '';
   if (!/^[\x20-\x7E]+$/.test(t)) return '';
-  const words = t.split(' ').filter(Boolean);
-  if (words.length < 4 || words.length > 12) return '';
+  const words = titleWordCount(t);
+  if (words < 4 || words > 12) return '';
   return t;
+}
+
+// The user's complaint was "title is still a bit short": treat anything below
+// 45 characters or 7 words as needing the refinement pass.
+function isTitleDetailedEnough(value) {
+  const t = cleanRefinedTitle(value);
+  return !!t && t.length >= 45 && titleWordCount(t) >= 7;
 }
 
 /**
@@ -550,9 +563,8 @@ export async function refineTitle({
   currentTitle = '',
 } = {}) {
   if (!isLocalEndpoint(provider, baseUrl)) return null;
-  // Already descriptive (e.g. "Purple and White Iris Flower")? Skip the extra
-  // round trip. Only bare labels like "White Mushroom" need refinement.
-  if (cleanRefinedTitle(currentTitle)) return null;
+  // Already detailed (>=45 chars and >=7 words)? Skip the extra round trip.
+  if (isTitleDetailedEnough(currentTitle)) return null;
   try {
     const result = await requestMetadata({
       apiKey,
@@ -562,12 +574,20 @@ export async function refineTitle({
       imageBase64,
       prompt: TITLE_REFINEMENT_PROMPT,
       timeoutMs,
-      maxTokens: 128,
+      maxTokens: 160,
       useJsonMode: true,
     });
     const title = cleanRefinedTitle(result.title);
     if (!title) {
       console.warn('[StockMeta] title refinement rejected:', JSON.stringify(result.title));
+      return null;
+    }
+    const current = cleanRefinedTitle(currentTitle);
+    // Prefer the refined title when it meets the target length, or at least is
+    // clearly longer than the original. A short-but-valid answer must not
+    // replace a decent title with a shorter one.
+    if (!isTitleDetailedEnough(title) && (!current || title.length < current.length + 8)) {
+      console.warn('[StockMeta] title refinement too short:', JSON.stringify(title));
       return null;
     }
     console.log('[StockMeta] title refined:', title);
