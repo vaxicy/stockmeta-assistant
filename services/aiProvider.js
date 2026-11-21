@@ -509,6 +509,75 @@ function resultScore(r) {
   return (r.title ? 1000 : 0) + Math.min(100, r.keywords.length);
 }
 
+// A local 7B model answers "White Mushroom" when asked for a "concise" title.
+// Asking only for the title, with an explicit 40-70 character noun-phrase
+// contract, produces Adobe-like captions in ~0.2-1.2s (measured on qwen2.5vl).
+const TITLE_REFINEMENT_PROMPT = [
+  'Generate ONLY one Adobe Stock title for the image.',
+  '',
+  'Write a descriptive English noun phrase of 40-70 characters (about 6-10 words). Include the main subject plus visible details such as color, shape, state, count, arrangement, and setting/isolation when relevant. Make it specific and natural for stock-photo search, not a bare label and not marketing copy.',
+  '',
+  'Describe only visible content. Do not invent brands, places, events, or invisible details.',
+  'All output must be in English. Do not include Chinese or any non-English words.',
+  'Do NOT output Markdown. Return ONLY a JSON object on a single line.',
+  'JSON format: {"title":"..."}',
+].join('\n');
+
+function cleanRefinedTitle(value) {
+  if (typeof value !== 'string') return '';
+  const t = value.trim().replace(/\s+/g, ' ');
+  // Adobe's title field is capped at 70 characters; keep the refinement only
+  // when it is genuinely more descriptive, still English, and safe to apply.
+  if (t.length < 24 || t.length > 70) return '';
+  if (!/^[\x20-\x7E]+$/.test(t)) return '';
+  const words = t.split(' ').filter(Boolean);
+  if (words.length < 4 || words.length > 12) return '';
+  return t;
+}
+
+/**
+ * Refine a local model's title in a separate, cheap call.
+ * Returns null on any failure so the caller can keep the original title —
+ * a better title must never cost the user a failed generation.
+ */
+export async function refineTitle({
+  apiKey,
+  provider,
+  baseUrl,
+  model,
+  imageBase64,
+  timeoutMs = 60000,
+  currentTitle = '',
+} = {}) {
+  if (!isLocalEndpoint(provider, baseUrl)) return null;
+  // Already descriptive (e.g. "Purple and White Iris Flower")? Skip the extra
+  // round trip. Only bare labels like "White Mushroom" need refinement.
+  if (cleanRefinedTitle(currentTitle)) return null;
+  try {
+    const result = await requestMetadata({
+      apiKey,
+      provider,
+      baseUrl,
+      model,
+      imageBase64,
+      prompt: TITLE_REFINEMENT_PROMPT,
+      timeoutMs,
+      maxTokens: 128,
+      useJsonMode: true,
+    });
+    const title = cleanRefinedTitle(result.title);
+    if (!title) {
+      console.warn('[StockMeta] title refinement rejected:', JSON.stringify(result.title));
+      return null;
+    }
+    console.log('[StockMeta] title refined:', title);
+    return title;
+  } catch (err) {
+    console.warn('[StockMeta] title refinement failed:', (err && err.message) || 'UNKNOWN');
+    return null;
+  }
+}
+
 /**
  * Ask the model for metadata and RE-RECOGNIZE when the answer is unusable.
  *

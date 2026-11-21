@@ -1,6 +1,6 @@
 // background/background.js  (MV3 service worker, ES module)
-import { getConfig, targetKeywordMinimum } from '../services/config.js';
-import { generateMetadata, getEndpoint, ADOBE_CATEGORIES, ADOBE_FILE_TYPES } from '../services/aiProvider.js';
+import { getConfig, targetKeywordMinimum, isLocalEndpoint } from '../services/config.js';
+import { generateMetadata, refineTitle, getEndpoint, ADOBE_CATEGORIES, ADOBE_FILE_TYPES } from '../services/aiProvider.js';
 
 // In-memory config cache. The SW re-reads storage only when the cache is
 // empty or invalidated, so a config change made in the options page is picked
@@ -168,6 +168,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           minKeywords: targetKeywordMinimum(cfg),
           need: { title: mode !== 'keywords', keywords: mode !== 'title' },
         });
+        // Local 7B models answer "White Mushroom" to a concise-title prompt.
+        // Refine the title in a separate cheap call so keyword generation stays
+        // untouched; cloud models already produce detailed captions, so they
+        // are not asked for an extra round trip.
+        let titleRefined = false;
+        if (
+          mode !== 'keywords' &&
+          result.title &&
+          isLocalEndpoint(cfg.provider, cfg.baseUrl)
+        ) {
+          const better = await refineTitle({
+            apiKey: cfg.apiKey,
+            provider: cfg.provider,
+            baseUrl: cfg.baseUrl,
+            model: cfg.model,
+            imageBase64: message.imageBase64,
+            timeoutMs: cfg.timeoutMs,
+            currentTitle: result.title,
+          });
+          if (better) {
+            result.title = better;
+            titleRefined = true;
+          }
+        }
         // In range mode the model can overshoot the maximum; trim so Adobe
         // never receives more keywords than the user allowed.
         if (cfg.keywordCountMode === 'range' && Array.isArray(result.keywords)) {
@@ -188,6 +212,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           fileType: result.fileType,
           attempts: result.attempts || 1,
           keywordsPatched: !!result.keywordsPatched,
+          titleRefined,
           // The count this answer was judged against, so the batch can enforce the
           // same bar without re-reading the settings itself.
           targetMin: targetKeywordMinimum(cfg),
