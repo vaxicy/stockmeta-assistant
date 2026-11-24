@@ -1274,6 +1274,8 @@ async function load() {
     'batchProcess',
     'batchIntervalMs',
     'autoSelectCategory',
+    'defaultCategory',
+    'defaultFileType',
     'panelDefaultState',
     'batchDeleteRedDots',
   ]);

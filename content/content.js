@@ -445,11 +445,17 @@
     const genBtn = panel.querySelector('#sm-generate');
     genBtn.disabled = true;
     try {
-      const res = await generateForCurrentAsset((phase) => {
-        if (phase === 'reading') setStatus('statusReading');
-        else if (phase === 'rescuing') setStatus('statusGeneratingKeywords');
-        else setStatus('statusGenerating');
-      });
+      const res = await generateForCurrentAsset(
+        (phase) => {
+          if (phase === 'reading') setStatus('statusReading');
+          else if (phase === 'rescuing') setStatus('statusGeneratingKeywords');
+          else setStatus('statusGenerating');
+        },
+        // Single generation uses the same lean local prompt as the batch:
+        // no visualSummary, 320-token budget, title refined separately.
+        // Cloud ignores fastBatch, so its behaviour is unchanged.
+        { fastBatch: true }
+      );
       if (!res.ok) {
         setError(res.error);
         return;
