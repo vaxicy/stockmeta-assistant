@@ -82,8 +82,6 @@
       errNotLanded: 'Adobe did not keep the title / keywords for this asset. Please check the form.',
       statusKeywordsPatched:
         'Title & keywords ready (keywords derived from the title — regenerate keywords for better ones).',
-      statusKeywordsShort:
-        'Only {n}/{min} keywords recognized. Not auto-applied; press ↻ next to KEYWORDS to retry.',
       errNoKeywords:
         'No keywords could be recognized for this asset. Press the ↻ button next to KEYWORDS to try again.',
       statusCardPending:
@@ -187,7 +185,6 @@
       batchNoGrid: '批量：当前页面未找到素材网格。',
       errNotLanded: 'Adobe 未保留该素材的标题/关键词，请检查表单。',
       statusKeywordsPatched: '标题与关键词已生成（关键词由标题补齐，建议点「重新生成关键词」）。',
-      statusKeywordsShort: '只识别到 {n}/{min} 个关键词，未自动应用；请点「关键词」右侧的 ↻ 再试。',
       errNoKeywords: '这张素材没能识别出关键词，请点「关键词」右侧的 ↻ 按钮再试一次。',
       statusCardPending:
         '已应用，但网格卡片上的关键词数还是 0（表单里已写入）。已再次保存；卡片仍未更新的话请刷新页面。',
