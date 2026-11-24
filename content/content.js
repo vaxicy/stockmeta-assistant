@@ -363,6 +363,48 @@
     return null;
   }
 
+  // Merge a keyword top-up into the existing list without case-insensitive
+  // duplicates. Used when the model returns fewer than the user's range minimum.
+  function mergeKeywords(existing, incoming) {
+    const seen = new Set();
+    const out = [];
+    for (const raw of [...existing, ...incoming]) {
+      const k = String(raw || '').trim();
+      if (!k) continue;
+      const key = k.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(k);
+    }
+    return out;
+  }
+
+  // A local 7B model can return a valid but short keyword list (e.g. 16/20).
+  // The background already retries the full call; this asks for KEYWORDS ONLY,
+  // so a short range does not keep paying for the title / category.
+  async function ensureKeywordMinimum(imageBase64, targetMin, onPhase) {
+    const target = Math.max(5, Number(targetMin) || 5);
+    for (let attempt = 1; attempt <= KEYWORD_RESCUE_ATTEMPTS && state.keywords.length < target; attempt++) {
+      if (onPhase) onPhase('rescuing');
+      const resp = await sendGenerateField(imageBase64, 'keywords');
+      if (resp && resp.targetMin) state.targetKeywordMinimum = resp.targetMin;
+      if (resp && resp.ok && Array.isArray(resp.keywords) && resp.keywords.length) {
+        const before = state.keywords.length;
+        state.keywords = mergeKeywords(state.keywords, resp.keywords);
+        renderResults();
+        console.log(
+          '[StockMeta] keyword top-up ' + attempt + ': ' + before + ' -> ' + state.keywords.length + '/' + target
+        );
+        if (state.keywords.length >= target) break;
+      } else {
+        console.warn('[StockMeta] keyword top-up failed:', (resp && resp.error) || 'no keywords');
+        break;
+      }
+      if (attempt < KEYWORD_RESCUE_ATTEMPTS) await sleep(600 * attempt);
+    }
+    return state.keywords.length;
+  }
+
   // Keywords-only generation: keep the title that is already on the panel and ask
   // for the keyword list alone — literally the request the ↻ button next to
   // KEYWORDS sends. The batch uses it for its second pass when the card on the
@@ -397,7 +439,9 @@
     if (onPhase) onPhase('reading');
     const imageBase64 = await Img.getCurrentImageBase64();
     if (onPhase) onPhase('generating');
-      const resp = await sendGenerate(imageBase64, opts);
+    // Local endpoints use the lean prompt (no visualSummary) and the adaptive
+    // token cap. Cloud ignores fastBatch, so its behaviour is unchanged.
+    const resp = await sendGenerate(imageBase64, { ...opts, fastBatch: true });
     console.log('[StockMeta] generate response:', resp);
     if (!resp.ok) return { ok: false, error: resp.error };
     // How many keywords the user asked for (range minimum, or the fixed count).
@@ -415,12 +459,12 @@
     state.category = resp.category || '';
     state.fileType = resp.fileType || '';
     let keywordsPatched = !!resp.keywordsPatched;
-    if (!state.keywords.length) {
-      const rescued = await rescueKeywords(imageBase64, onPhase);
-      if (rescued) {
-        state.keywords = rescued.keywords;
-        keywordsPatched = !!rescued.keywordsPatched;
-      }
+
+    // A result below the configured range is NOT complete. Ask for keywords
+    // only (never redo the full generation) and merge until the minimum is met.
+    const targetMin = Math.max(5, Number(state.targetKeywordMinimum) || 0);
+    if (state.keywords.length < targetMin) {
+      await ensureKeywordMinimum(imageBase64, targetMin, onPhase);
     }
     renderResults();
     // Still nothing: report a failure instead of letting the caller apply (and
@@ -432,6 +476,8 @@
       ok: true,
       attempts: resp.attempts || 1,
       keywordsPatched,
+      keywordsShort: state.keywords.length < targetMin,
+      targetMin,
     };
   }
 
@@ -455,12 +501,20 @@
         return;
       }
       // Keywords derived from the title mean every re-recognition call failed:
-      // say so instead of pretending the result is complete.
-      setStatus(res.keywordsPatched ? 'statusKeywordsPatched' : 'statusDone');
+      // say so instead of pretending the result is complete. A short range is a
+      // warning too, and must not be auto-applied as if it were complete.
+      if (res.keywordsShort) {
+        setStatus('statusKeywordsShort', true, {
+          n: state.keywords.length,
+          min: res.targetMin || state.targetKeywordMinimum || 0,
+        });
+      } else {
+        setStatus(res.keywordsPatched ? 'statusKeywordsPatched' : 'statusDone');
+      }
       // Optional: apply everything as soon as the result lands, so the user does
       // not have to press "Apply All" afterwards. Driven by the settings toggle.
       const cfg = await getApplyConfig();
-      if (cfg.autoApplyAfterGenerate) {
+      if (cfg.autoApplyAfterGenerate && !res.keywordsShort) {
         await onApplyAll();
       }
     } catch (err) {
@@ -541,6 +595,8 @@
         setError(resp.error);
         return;
       }
+      let keywordsShort = false;
+      let targetMin = Math.max(5, Number(state.targetKeywordMinimum) || 0);
       if (mode === 'title') {
         if (!resp.title) {
           setError('EMPTY_RESPONSE');
@@ -552,16 +608,27 @@
           setError('EMPTY_RESPONSE');
           return;
         }
+        if (resp.targetMin) state.targetKeywordMinimum = resp.targetMin;
+        targetMin = Math.max(5, Number(state.targetKeywordMinimum) || 0);
         state.keywords = resp.keywords;
+        if (state.keywords.length < targetMin) {
+          await ensureKeywordMinimum(imageBase64, targetMin, () => setStatus('statusGeneratingKeywords'));
+        }
+        keywordsShort = state.keywords.length < targetMin;
       }
       renderResults();
-      // Keywords derived from the title = every recognition call failed.
-      if (mode === 'keywords' && resp.keywordsPatched) setStatus('statusKeywordsPatched');
-      else setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
+      if (keywordsShort) {
+        setStatus('statusKeywordsShort', true, { n: state.keywords.length, min: targetMin });
+      } else if (mode === 'keywords' && resp.keywordsPatched) {
+        // Keywords derived from the title = every recognition call failed.
+        setStatus('statusKeywordsPatched');
+      } else {
+        setStatus(mode === 'title' ? 'statusTitleReady' : 'statusKeywordsReady');
+      }
       // Optional: apply the field that was just regenerated, so the ↻ buttons
       // also save a manual click when the auto-apply setting is on.
       const cfg = await getApplyConfig();
-      if (cfg.autoApplyAfterGenerate) {
+      if (cfg.autoApplyAfterGenerate && !keywordsShort) {
         await onApply(mode);
       }
     } catch (err) {
