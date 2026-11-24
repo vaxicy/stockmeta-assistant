@@ -674,7 +674,7 @@ export async function generateMetadata({
   const local = isLocalEndpoint(provider, baseUrl);
   const effectiveMaxTokens = local
     ? fastBatch
-      ? 320
+      ? Math.max(192, Math.min(320, Number(maxTokens) || 320))
       : Math.max(512, Number(maxTokens) || 0)
     : maxTokens;
 

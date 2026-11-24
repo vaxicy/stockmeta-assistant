@@ -181,6 +181,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             : 'all';
         const localEndpoint = isLocalEndpoint(cfg.provider, cfg.baseUrl);
         const fastBatch = !!message.fastBatch && localEndpoint && mode === 'all';
+        // Batch fast mode: enough room for the top of the configured keyword
+        // range, but not the old fixed 320 that made small ranges pay for a
+        // large generation. max 30 -> 248, max 49 -> 320.
+        const keywordMax =
+          cfg.keywordCountMode === 'range'
+            ? Math.max(1, Math.min(50, Number(cfg.keywordCountMax) || 30))
+            : Math.max(1, Math.min(50, Number(cfg.keywordCount) || 30));
+        const fastBatchMaxTokens = Math.max(192, Math.min(320, 128 + keywordMax * 4));
         console.log(
           '[StockMeta] generateMetadata model:',
           cfg.model,
@@ -212,6 +220,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           minKeywords: targetKeywordMinimum(cfg),
           need: { title: mode !== 'keywords', keywords: mode !== 'title' },
           fastBatch,
+          maxTokens: fastBatch ? fastBatchMaxTokens : undefined,
         });
         // Local 7B models answer "White Mushroom" to a concise-title prompt.
         // Refine the title in a separate cheap call so keyword generation stays
