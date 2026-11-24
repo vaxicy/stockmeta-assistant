@@ -647,10 +647,11 @@ export async function generateMetadata({
   attempts = 3,
   minKeywords = MIN_KEYWORDS,
   need = { title: true, keywords: true },
-  // Kept as an option for callers that need a different budget. Local metadata
-  // generation gets a higher floor because it now also writes the internal
-  // visualSummary and must not truncate the keyword array.
+  // Local one-shot metadata normally gets a higher floor because it writes the
+  // internal visualSummary. Batch fast mode skips that summary and can use a
+  // tight 320-token budget (measured ~2s for 20-30 keywords on qwen2.5vl).
   maxTokens = 256,
+  fastBatch = false,
 } = {}) {
   if (!apiKey) {
     throw new Error('MISSING_API_KEY');
@@ -672,7 +673,9 @@ export async function generateMetadata({
   // user allows many keywords. Give local requests a larger bounded budget.
   const local = isLocalEndpoint(provider, baseUrl);
   const effectiveMaxTokens = local
-    ? Math.max(512, Number(maxTokens) || 0)
+    ? fastBatch
+      ? 320
+      : Math.max(512, Number(maxTokens) || 0)
     : maxTokens;
 
   let best = null;

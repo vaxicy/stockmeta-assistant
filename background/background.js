@@ -39,7 +39,7 @@ setTimeout(() => {
   getConfigCached();
 }, 800);
 
-function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0, defaultFileType = 'auto', local = false) {
+function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', countMode = 'fixed', countMin = 0, countMax = 0, defaultFileType = 'auto', local = false, fastBatch = false) {
   const n = Math.max(1, Math.min(50, Number(keywordCount) || 30));
   // Range mode accepts anything between min and max instead of forcing an exact
   // count, which VLMs frequently under-deliver. That keeps a single API call
@@ -58,7 +58,10 @@ function buildPrompt(keywordCount, mode = 'all', defaultCategory = 'auto', count
   // structure: let the model write an internal visual summary first, then use
   // that context to produce a descriptive Adobe title. The summary is parsed
   // and discarded by the caller; the UI never sees it.
-  if (local && mode === 'all') {
+  // Batch on a local GPU: skip the internal visualSummary so the model spends
+  // its budget on keywords/category/fileType. The title is refined separately
+  // afterwards, so the visible result keeps its descriptive title.
+  if (local && mode === 'all' && !fastBatch) {
     const parts = [
       'Return ONLY compact JSON on a single line in this exact key order:',
       '{"visualSummary":"...","title":"...","keywords":["...","..."]}',
@@ -176,8 +179,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             : message.type === 'GENERATE_KEYWORDS'
             ? 'keywords'
             : 'all';
-        console.log('[StockMeta] generateMetadata model:', cfg.model, 'mode:', mode);
         const localEndpoint = isLocalEndpoint(cfg.provider, cfg.baseUrl);
+        const fastBatch = !!message.fastBatch && localEndpoint && mode === 'all';
+        console.log(
+          '[StockMeta] generateMetadata model:',
+          cfg.model,
+          'mode:',
+          mode,
+          fastBatch ? '(batch fast)' : ''
+        );
         const ov = await chrome.storage.local.get(['defaultCategory', 'defaultFileType']);
         const categoryOverride = ov.defaultCategory || 'auto';
         const fileTypeOverride = ov.defaultFileType || 'auto';
@@ -191,7 +201,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           baseUrl: cfg.baseUrl,
           model: cfg.model,
           imageBase64: message.imageBase64,
-          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride, localEndpoint),
+          prompt: buildPrompt(cfg.keywordCount, mode, categoryOverride, cfg.keywordCountMode, cfg.keywordCountMin, cfg.keywordCountMax, fileTypeOverride, localEndpoint, fastBatch),
           timeoutMs: cfg.timeoutMs,
           attempts: 3,
           // Judge the answer against what the USER asked for, not just Adobe's
@@ -201,6 +211,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // 也检查如果关键词不满足用户设置数量也要重新生成".
           minKeywords: targetKeywordMinimum(cfg),
           need: { title: mode !== 'keywords', keywords: mode !== 'title' },
+          fastBatch,
         });
         // Local 7B models answer "White Mushroom" to a concise-title prompt.
         // Refine the title in a separate cheap call so keyword generation stays

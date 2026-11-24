@@ -397,7 +397,7 @@
     if (onPhase) onPhase('reading');
     const imageBase64 = await Img.getCurrentImageBase64();
     if (onPhase) onPhase('generating');
-    const resp = await sendGenerate(imageBase64);
+      const resp = await sendGenerate(imageBase64, opts);
     console.log('[StockMeta] generate response:', resp);
     if (!resp.ok) return { ok: false, error: resp.error };
     // How many keywords the user asked for (range minimum, or the fixed count).
@@ -512,8 +512,14 @@
     });
   }
 
-  function sendGenerate(imageBase64) {
-    return sendMessageWithTimeout({ type: 'GENERATE_METADATA', imageBase64 });
+  function sendGenerate(imageBase64, opts) {
+    return sendMessageWithTimeout({
+      type: 'GENERATE_METADATA',
+      imageBase64,
+      // Batch uses the lean prompt on local endpoints; the title is refined
+      // separately by the background worker.
+      fastBatch: !!(opts && opts.fastBatch),
+    });
   }
 
   // Regenerate a single field (title or keywords) without touching the other.
@@ -927,19 +933,32 @@
   // keywords): select -> generate -> apply -> save. The engine itself lives in
   // content/batch.js; the panel only owns the button, the counter and the
   // progress line, and hands the engine the same write path the buttons use.
-  let batchCfg = { batchProcess: false, batchIntervalMs: 2000, batchDeleteRedDots: false };
+  let batchCfg = {
+    batchProcess: false,
+    batchIntervalMs: 2000,
+    batchDeleteRedDots: false,
+    localEndpoint: false,
+  };
 
   function loadBatchConfig() {
     try {
-      chrome.storage.local.get(['batchProcess', 'batchIntervalMs', 'batchDeleteRedDots'], (s) => {
-        batchCfg = {
-          batchProcess: !!(s && s.batchProcess),
-          batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 2000,
-          batchDeleteRedDots: !!(s && s.batchDeleteRedDots),
-        };
-        renderBatchUi();
-        renderDeleteUi();
-      });
+      chrome.storage.local.get(
+        ['batchProcess', 'batchIntervalMs', 'batchDeleteRedDots', 'provider', 'providerConfigs'],
+        (s) => {
+          const provider = (s && s.provider) || 'siliconflow';
+          const slot = (s && s.providerConfigs && s.providerConfigs[provider]) || {};
+          const baseUrl = String(slot.baseUrl || '');
+          batchCfg = {
+            batchProcess: !!(s && s.batchProcess),
+            batchIntervalMs: (s && parseInt(s.batchIntervalMs, 10)) || 2000,
+            batchDeleteRedDots: !!(s && s.batchDeleteRedDots),
+            localEndpoint:
+              provider === 'local' ||
+              /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i.test(baseUrl),
+          };
+          renderBatchUi();
+          renderDeleteUi();
+        });
     } catch (_) {}
   }
 
@@ -1045,7 +1064,12 @@
       toast('batchNoGrid');
       return;
     }
-    await Batch.start({ intervalMs: batchCfg.batchIntervalMs, mode });
+    // Local models have no provider rate limit; the 2s default is pure idle
+    // time. Keep 300ms so the UI can still repaint between assets.
+    const intervalMs = batchCfg.localEndpoint
+      ? Math.min(batchCfg.batchIntervalMs, 300)
+      : batchCfg.batchIntervalMs;
+    await Batch.start({ intervalMs, mode });
   }
 
   // Called by the batch engine whenever it starts or finishes a run.
@@ -1206,7 +1230,8 @@
       phase: onBatchPhase,
       showError: (code) => setError(code),
       // generate({ keywordsOnly: true }) re-asks for the keywords alone.
-      generate: (opts) => generateForCurrentAsset(undefined, opts),
+      // The batch always opts into the lean local prompt; cloud ignores it.
+      generate: (opts) => generateForCurrentAsset(undefined, { ...opts, fastBatch: true }),
       applyAll: () => applyAllCurrent({ skipAutoSave: true }),
       save: saveNow,
       titleValue: () => {
@@ -1304,7 +1329,13 @@
       try {
         chrome.storage.onChanged.addListener((changes, area) => {
           if (area !== 'local') return;
-          if (changes.batchProcess || changes.batchIntervalMs || changes.batchDeleteRedDots) {
+          if (
+            changes.batchProcess ||
+            changes.batchIntervalMs ||
+            changes.batchDeleteRedDots ||
+            changes.provider ||
+            changes.providerConfigs
+          ) {
             loadBatchConfig();
           }
         });
